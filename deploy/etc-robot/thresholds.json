@@ -1,0 +1,5 @@
+{
+  "temperature_c": { "warn": 50.0, "crit": 70.0, "direction": "above" },
+  "gas_ppm": { "warn": 10.0, "crit": 20.0, "direction": "above" },
+  "range_cm": { "warn": 30.0, "crit": 20.0, "direction": "below" }
+}

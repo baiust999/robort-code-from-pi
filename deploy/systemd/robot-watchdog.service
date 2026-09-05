@@ -1,0 +1,26 @@
+[Unit]
+Description=Rescue Robot Process Watchdog (P3)
+Documentation=file:///opt/robot/docs
+# The Arduino enumerates as a USB serial device; wait for udev to settle so
+# P1's handshake doesn't race a not-yet-present /dev/ttyUSB0.
+After=network.target dev-ttyUSB0.device
+Wants=dev-ttyUSB0.device
+
+[Service]
+Type=simple
+User=robot
+Group=robot
+WorkingDirectory=/opt/robot/pi
+EnvironmentFile=-/etc/robot/p1.env
+EnvironmentFile=-/etc/robot/p2.env
+EnvironmentFile=-/etc/robot/p3.env
+ExecStart=/opt/robot/venv/bin/python -m p3_watchdog.main
+Restart=on-failure
+RestartSec=5
+# P1/P2 are spawned and monitored by P3 itself (Section 8.8.3), not by
+# systemd directly, so systemd only needs to keep P3 itself alive.
+KillMode=control-group
+TimeoutStopSec=15
+
+[Install]
+WantedBy=multi-user.target

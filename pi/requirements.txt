@@ -1,0 +1,16 @@
+# Core: P1 control server and P3 watchdog.
+fastapi>=0.110,<1.0
+uvicorn[standard]>=0.27,<1.0
+websockets>=12.0
+aiohttp>=3.9
+
+# Serial hardware. Not needed when MOCK_HARDWARE=1, but harmless to install.
+pyserial>=3.5
+
+# Testing.
+pytest>=8.0
+pytest-asyncio>=0.24
+
+# P2 media server. aiortc pulls in av (FFmpeg bindings) and cryptography.
+# These are the slowest wheels to build; install with the extras group when
+# the media path is needed:  pip install -r requirements.txt -r requirements-media.txt

@@ -1,0 +1,46 @@
+# logrotate config for robot logs, Section 8.13.8.1.
+# Install to /etc/logrotate.d/robot on the Pi.
+
+# High-frequency log: telemetry.log
+/var/log/robot/telemetry.log {
+    daily
+    size 50M
+    rotate 7
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+}
+
+# Medium-frequency logs: watchdog, p1_events, p2_events, fault
+/var/log/robot/watchdog.log
+/var/log/robot/p1_events.log
+/var/log/robot/p2_events.log
+/var/log/robot/fault.log {
+    weekly
+    size 10M
+    rotate 8
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+}
+
+# Session log: smaller, retain longer
+/var/log/robot/session.log {
+    monthly
+    size 5M
+    rotate 12
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+}
+
+# Archive cleanup for GPS tracks and exports is not handled by logrotate;
+# run via cron instead (see install.sh):
+#   find /var/log/robot/gps_track/ -name '*.geojson' -mtime +90 -delete
+#   find /var/log/robot/exports/  -name '*.csv'     -mtime +90 -delete

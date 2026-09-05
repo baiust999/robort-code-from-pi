@@ -1,0 +1,5 @@
+# P2 media server dependencies, split out because aiortc/av wheels are large
+# and are not required to run or test the control path.
+aiortc>=1.9,<2.0
+av>=11.0
+numpy>=1.24
