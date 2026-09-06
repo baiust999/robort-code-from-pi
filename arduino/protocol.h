@@ -38,12 +38,23 @@
 /* Outbound line tags. */
 #define TAG_READY      "READY"
 #define TAG_STATUS     "STATUS"
-#define TAG_TELEMETRY  "TELEM"
 #define TAG_HEARTBEAT  "HB"
 #define TAG_ACK        "ACK"
 #define TAG_NACK       "NACK"
 #define TAG_PANIC      "PANIC"
 #define TAG_EVENT      "EVT"
+
+/* Periodic telemetry frame, Section 8.7.5. Untagged CSV, positional fields:
+ *   temperature_c,humidity_pct,gas_ppm,motion,range_cm,ir_left,ir_right,
+ *   pan_angle,tilt_angle,fw_state,uptime_ms
+ * Order and field count are load-bearing: parsed positionally by
+ * pi/common/protocol.py:parse_telemetry_line / TELEMETRY_FIELDS. */
+
+/* Firmware state values for the fw_state field. Mirrors FW_STATE_* in
+ * pi/common/protocol.py. */
+#define FW_STATE_ARMED    1
+#define FW_STATE_DRIVING  2
+#define FW_STATE_STOPPED  3
 
 /* Result codes from command validation / execution. */
 enum CmdResult {

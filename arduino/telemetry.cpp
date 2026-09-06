@@ -4,9 +4,10 @@
  * Outbound message formatting. Uses direct Serial.print calls (no dynamic
  * String allocation) to keep RAM usage predictable on the UNO.
  *
- * Telemetry line format (semicolon-delimited key=value pairs):
- *   TELEM;MODE=<m>;FAULT=<f>;DIR=<d>;SPD=<n>;DIST=<cm>;IRL=<0|1>;IRR=<0|1>;
- *         MOT=<0|1>;T=<c>;H=<%>;GAS=<raw>;GALM=<0|1>;PAN=<a>;TILT=<a>
+ * Telemetry line format: untagged CSV, positional fields (Section 8.7.5),
+ * parsed by pi/common/protocol.py:parse_telemetry_line:
+ *   temperature_c,humidity_pct,gas_ppm,motion,range_cm,ir_left,ir_right,
+ *   pan_angle,tilt_angle,fw_state,uptime_ms
  * -----------------------------------------------------------------------------
  */
 
@@ -53,24 +54,33 @@ void Telemetry::sendNack(char opcode, CmdResult reason) {
   Serial.println(cmdResultString(reason));
 }
 
+/* Maps the firmware mode to the fw_state value the Pi parser expects
+ * (range 1-3). BOOT, ESTOP and PANIC all report STOPPED since none of them
+ * permit motion. */
+static uint8_t telemetryFwState() {
+  switch (g_state.mode()) {
+    case MODE_ACTIVE: return FW_STATE_DRIVING;
+    case MODE_READY:  return FW_STATE_ARMED;
+    default:          return FW_STATE_STOPPED;
+  }
+}
+
 void Telemetry::sendTelemetry() {
   const SensorData &s = g_state.sensors();
 
-  Serial.print(TAG_TELEMETRY);
-  Serial.print(";MODE=");  Serial.print(g_state.modeString());
-  Serial.print(";FAULT="); Serial.print(g_state.faultString());
-  Serial.print(";DIR=");   Serial.print(directionString(g_motors.direction()));
-  Serial.print(";SPD=");   Serial.print(g_motors.targetSpeed());
-  Serial.print(";DIST=");  Serial.print(s.distanceCm);
-  Serial.print(";IRL=");   Serial.print(s.irLeft ? 1 : 0);
-  Serial.print(";IRR=");   Serial.print(s.irRight ? 1 : 0);
-  Serial.print(";MOT=");   Serial.print(s.motion ? 1 : 0);
-  Serial.print(";T=");     Serial.print(s.dhtValid ? (int)s.temperatureC : -99);
-  Serial.print(";H=");     Serial.print(s.dhtValid ? (int)s.humidity : 0);
-  Serial.print(";GAS=");   Serial.print(s.gasRaw);
-  Serial.print(";GALM=");  Serial.print(s.gasAlarm ? 1 : 0);
-  Serial.print(";PAN=");   Serial.print(g_servos.pan());
-  Serial.print(";TILT=");  Serial.println(g_servos.tilt());
+  /* Untagged CSV; last known temperature/humidity (dhtValid or not) are
+   * always in-range for the Pi parser, unlike a sentinel such as -99. */
+  Serial.print((int)s.temperatureC);   Serial.print(',');
+  Serial.print(s.humidity);            Serial.print(',');
+  Serial.print(s.gasRaw);              Serial.print(',');
+  Serial.print(s.motion ? 1 : 0);      Serial.print(',');
+  Serial.print(s.distanceCm);          Serial.print(',');
+  Serial.print(s.irLeft ? 1 : 0);      Serial.print(',');
+  Serial.print(s.irRight ? 1 : 0);     Serial.print(',');
+  Serial.print(g_servos.pan());        Serial.print(',');
+  Serial.print(g_servos.tilt());       Serial.print(',');
+  Serial.print(telemetryFwState());    Serial.print(',');
+  Serial.println(millis());
 }
 
 void Telemetry::sendHeartbeat() {
