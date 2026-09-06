@@ -184,7 +184,11 @@ export interface ThresholdLimits {
 
 export const DEFAULT_THRESHOLDS: Record<string, ThresholdLimits> = {
   temperature_c: { warn: 50.0, crit: 70.0, direction: 'above' },
-  gas_ppm: { warn: 10.0, crit: 20.0, direction: 'above' },
+  // gas_ppm actually carries the MQ-136's raw ADC count (0-1023), not a
+  // calibrated ppm value -- no calibration curve exists for this sensor yet.
+  // Scaled to line up with the firmware's own alarm point, GAS_ALARM_THRESHOLD
+  // in arduino/config.h.
+  gas_ppm: { warn: 450.0, crit: 600.0, direction: 'above' },
   range_cm: { warn: 30.0, crit: 20.0, direction: 'below' },
 };
 
