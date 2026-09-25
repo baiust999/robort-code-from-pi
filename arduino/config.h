@@ -96,7 +96,7 @@
 #define OBSTACLE_DISTANCE_CM   20    /* auto-stop below this forward dist    */
 #define ULTRASONIC_MAX_CM     400    /* HC-SR04 practical max range          */
 #define ULTRASONIC_TIMEOUT_US 25000UL /* pulseIn timeout (~4.2 m)            */
-#define GAS_ALARM_THRESHOLD   600    /* raw ADC value -> gas panic           */
+#define GAS_ALARM_THRESHOLD   1000   /* raw ADC value -> gas panic - increased for testing */
 #define IR_OBSTACLE_ACTIVE    LOW    /* most IR modules pull LOW on detect   */
 
 /* ===========================================================================
