@@ -1,0 +1,619 @@
+You are editing the documentation of my rescue-robot capstone project.
+
+IMPORTANT:
+This is a DOCUMENTATION-ONLY change.
+
+Do NOT modify any source code, firmware, Python code, TypeScript/React code, configuration files, tests, hardware files, diagrams outside the specified documentation files, or any other project files.
+
+Do NOT delete unrelated files.
+Do NOT refactor anything.
+Do NOT make any other architectural or functional changes.
+Do NOT commit anything.
+
+Your ONLY task is to update the documentation so that it accurately reflects the following FINAL REQUIREMENT.
+
+============================================================
+FINAL REQUIREMENT — OBSTACLE SENSOR CHANGE
+============================================================
+
+1. REMOVE THE IR OBSTACLE SENSORS COMPLETELY FROM THE DOCUMENTATION.
+
+The project no longer uses:
+* IR obstacle sensor left
+* IR obstacle sensor right
+* IR obstacle sensors ×2
+* IR obstacle detection
+* IR-based obstacle detection
+* IR-based proximity detection
+* IR-based motor stopping
+* ir_left
+* ir_right
+
+Remove their references from all documentation.
+
+IMPORTANT:
+Do NOT remove the HC-SR501 PIR motion sensor.
+
+PIR motion detection is a separate sensor and must remain documented wherever it is currently part of the system.
+
+Do NOT blindly search-and-delete every occurrence of "IR", because "PIR" must remain.
+
+============================================================
+2. HC-SR04 MUST REMAIN
+============================================================
+
+The HC-SR04 ultrasonic sensor remains part of the robot.
+
+Its purpose is:
+
+HC-SR04
+    ↓
+Distance measurement
+    ↓
+range_cm telemetry
+    ↓
+Dashboard / operator display
+    ↓
+Obstacle warning / alert
+
+The HC-SR04 is a DISTANCE-MEASUREMENT / WARNING sensor only.
+
+============================================================
+3. HC-SR04 MUST NEVER STOP OR BLOCK THE MOTORS
+============================================================
+
+This is extremely important.
+
+REMOVE every documentation statement saying that HC-SR04 distance causes automatic motor stopping or command blocking.
+
+The following behavior MUST NOT appear anywhere in the updated documentation:
+
+HC-SR04 distance <= 20 cm
+        ↓
+forward command blocked
+        ↓
+motor stopped
+
+Instead, document:
+
+HC-SR04 distance <= 20 cm
+        ↓
+obstacle warning / critical range alert
+        ↓
+distance shown to operator
+
+Motor movement is NOT automatically stopped or blocked because of the HC-SR04 distance.
+
+The operator remains responsible for deciding whether to stop, reverse, or change direction.
+
+Therefore:
+
+* range <= 20 cm → warning/critical alert only
+* range <= 20 cm → NOT a motor stop
+* range <= 20 cm → NOT a command rejection
+* range <= 20 cm → NOT a proximity gate
+* range <= 20 cm → NOT a forward-motion block
+
+The existing dead-man timer, emergency stop, communication-loss safety, and other unrelated safety mechanisms remain unchanged.
+
+============================================================
+4. REMOVE THE OLD "PROXIMITY GATE"
+============================================================
+
+Search the documentation for all descriptions of:
+
+* proximity gate
+* proximity safety check
+* obstacle gate
+* obstacle safety gate
+* forward suppression
+* forward blocked
+* forward command rejected because of range
+* range <= 20 cm blocks forward
+* range < 20 cm blocks forward
+* sonar blocks forward
+* sonar stops motors
+* ultrasonic stops motors
+* obstacle automatically stops the robot
+
+Remove or rewrite those statements.
+
+The HC-SR04 range value may still be used by the dashboard alert system, but it must NOT be described as a motor-control safety gate.
+
+============================================================
+5. UPDATE THE SENSOR LIST
+============================================================
+
+Where the environmental sensor suite is documented, remove:
+
+IR Obstacle (×2)
+
+Keep:
+
+* DHT11
+* MQ-136
+* HC-SR501 PIR
+* HC-SR04
+* NEO-6M GPS
+
+Do not invent a replacement sensor.
+
+============================================================
+6. UPDATE ARDUINO SCHEDULER DOCUMENTATION
+============================================================
+
+Remove IR sensor polling/read operations from documentation such as:
+
+IR sensor read
+sensorsPollIr()
+IR 100ms
+IR sensor cadence
+IR sensor acquisition
+
+Keep HC-SR04 / sonar measurement and echo processing.
+
+The documentation should describe the ultrasonic sensor as a distance measurement source, not a motor-blocking mechanism.
+
+============================================================
+7. UPDATE ARDUINO PIN ALLOCATION
+============================================================
+
+Remove the IR obstacle assignments:
+
+A0 → IR left obstacle
+A1 → IR right obstacle
+
+Do not invent new hardware connections unless they are already documented elsewhere.
+
+If A0/A1 become unused, document them as unused/reserved only if the existing documentation format requires every Arduino pin to be listed.
+
+Do not reassign those pins to another sensor.
+
+Keep all existing HC-SR04 pins unchanged.
+
+============================================================
+8. UPDATE TELEMETRY FORMAT
+============================================================
+
+The old telemetry contains:
+
+temperature_c
+humidity_pct
+gas_ppm
+motion
+range_cm
+ir_left
+ir_right
+pan_angle
+tilt_angle
+fw_state
+uptime_ms
+
+The IR fields must be removed from the documentation.
+
+The resulting telemetry description should contain:
+
+temperature_c
+humidity_pct
+gas_ppm
+motion
+range_cm
+pan_angle
+tilt_angle
+fw_state
+uptime_ms
+
+That means the documented Arduino telemetry changes from 11 fields to 9 fields.
+
+Update:
+* CSV examples
+* field descriptions
+* protocol diagrams
+* telemetry tables
+* telemetry snapshot descriptions
+* dashboard telemetry descriptions
+* any field-count statements
+* any byte-size/length statements that are explicitly derived from the old 11-field format
+
+If a size must change, calculate it from the documented format rather than guessing.
+
+============================================================
+9. UPDATE DASHBOARD SENSOR / ALERT DOCUMENTATION
+============================================================
+
+Keep range display.
+
+For example:
+
+Range:
+"47 cm"
+
+Warning:
+< 30 cm
+
+Critical:
+< 20 cm
+
+But the critical range alert MUST NOT say:
+
+"blocks forward"
+
+Instead use wording such as:
+
+"Critical obstacle-distance warning; operator action required."
+
+The exact threshold values already documented may remain unless another document contradicts them.
+
+Do not introduce new thresholds unless necessary.
+
+============================================================
+10. UPDATE ARCHITECTURE DIAGRAMS
+============================================================
+
+Search every Mermaid diagram, ASCII architecture diagram, flowchart, sequence diagram, component diagram, and data-flow diagram.
+
+Remove IR obstacle sensor nodes and connections.
+
+Remove:
+* IR
+* IR Left
+* IR Right
+* ir_left
+* ir_right
+
+where those terms specifically refer to the IR obstacle sensors.
+
+Keep PIR motion sensor references.
+
+Update sensor/data flows so that:
+
+HC-SR04 → range_cm → telemetry → P1/dashboard → operator alert
+
+There must NOT be an arrow showing:
+
+HC-SR04 → safety gate → motor stop
+
+============================================================
+11. UPDATE SAFETY AND FAULT-TOLERANCE SECTIONS
+============================================================
+
+This is critical.
+
+The safety architecture must continue to describe:
+
+* Arduino dead-man timer
+* emergency stop
+* communication-loss safety
+* watchdog/process supervision
+* other existing safety mechanisms
+
+But obstacle distance from HC-SR04 must NOT be listed as a motor-stop mechanism.
+
+If a failure-mode table currently contains:
+
+Obstacle ≤ 20 cm | Sonar | Forward suppressed; reverse allowed
+
+replace it with a documentation-consistent description such as:
+
+Obstacle distance ≤ 20 cm | HC-SR04 | Range warning/critical alert; operator decides movement
+
+Do NOT claim automatic motor stopping.
+
+============================================================
+12. UPDATE COMMAND VALIDATION DOCUMENTATION
+============================================================
+
+The current documentation may describe a 4-stage validation pipeline such as:
+
+1. Length check
+2. Token recognition
+3. Argument range
+4. Proximity safety check
+
+Remove the proximity-safety stage if it specifically means HC-SR04-based motor blocking.
+
+Do NOT invent a new validation stage just to preserve the number "4".
+
+If necessary, document the actual remaining validation stages accurately.
+
+Similarly, remove descriptions such as:
+
+"P1 CommandValidator applies the proximity gate"
+
+and:
+
+"Arduino Stage 4 proximity gate"
+
+because HC-SR04 no longer blocks motor commands.
+
+============================================================
+13. UPDATE MOTOR-COMMAND SEQUENCE DIAGRAMS
+============================================================
+
+Any sequence diagram currently showing:
+
+Operator
+→ Dashboard
+→ P1 proximity gate
+→ Arduino proximity gate
+→ Motor blocked
+
+must be rewritten.
+
+The correct conceptual flow is:
+
+Operator
+→ Dashboard
+→ P1 command validation
+→ Arduino command validation
+→ Motors
+
+Separately:
+
+HC-SR04
+→ range measurement
+→ telemetry
+→ P1
+→ dashboard
+→ obstacle warning
+
+The distance warning path must be separate from the motor-command path.
+
+============================================================
+14. UPDATE SENSOR COUNTS AND NUMERIC CLAIMS
+============================================================
+
+Search for statements such as:
+
+* 11 sensors
+* 11 sensor readings
+* 11-field telemetry
+* 11-field CSV
+* telemetry fields
+* snapshot size
+* CSV length
+* sensor suite count
+
+Update only the numbers that are directly affected by removing the two IR obstacle fields/sensors.
+
+Do NOT arbitrarily change unrelated numbers.
+
+If "11 sensor readings" refers to something other than the IR telemetry fields, inspect the context before changing it.
+
+============================================================
+15. UPDATE CONCLUSIONS / SUMMARY SECTIONS
+============================================================
+
+Search the executive summary, system overview, conclusion, architecture summary, methodology summary, and capability lists.
+
+Remove IR obstacle sensors from those summaries.
+
+Do NOT claim that the robot uses IR obstacle detection.
+
+The updated summary should communicate:
+
+* HC-SR04 provides obstacle-distance measurement.
+* Distance is displayed/reported to the operator.
+* Distance thresholds can generate warnings.
+* HC-SR04 does not automatically stop or block motor movement.
+* Motor safety remains handled by the existing dead-man/emergency/network-loss mechanisms.
+
+============================================================
+16. VERY IMPORTANT — DO NOT CONFUSE PIR WITH IR
+============================================================
+
+The project still uses:
+
+HC-SR501 PIR motion sensor
+
+This must remain.
+
+Only remove the dedicated IR obstacle sensors.
+
+Examples:
+
+REMOVE:
+"IR Obstacle ×2"
+"IR left"
+"IR right"
+"IR obstacle detection"
+
+KEEP:
+"PIR"
+"HC-SR501"
+"motion detection"
+"motion sensor"
+
+============================================================
+17. DOCUMENTS TO UPDATE
+============================================================
+
+Update ONLY the following documentation files:
+
+1. CAPSTONE_METHODOLOGY_FINAL.md
+2. SOFTWARE_ARCHITECTURE.md
+3. ARCHITECTURE.md
+4. high level software architecture diagram.md
+
+Before editing, inspect all four files completely enough to find every affected reference.
+
+Do not modify any other file.
+
+============================================================
+18. CONSISTENCY REQUIREMENT
+============================================================
+
+After editing, search all four documents again for these terms:
+
+IR obstacle
+IR left
+IR right
+ir_left
+ir_right
+infrared obstacle
+IR sensor
+IR sensors
+proximity gate
+proximity safety
+forward suppressed
+forward blocked
+range <= 20 cm blocks
+range < 20 cm blocks
+sonar blocks
+ultrasonic blocks
+obstacle stop
+obstacle-stop
+automatic obstacle stop
+
+For each match:
+
+* If it refers to the removed IR obstacle sensors → remove/update it.
+* If it describes HC-SR04 as a motor-blocking mechanism → rewrite it.
+* If it is a legitimate unrelated use → preserve it.
+* If it refers to PIR → preserve it.
+
+Also search for:
+
+HC-SR04
+sonar
+ultrasonic
+range_cm
+20 cm
+telemetry
+sensor suite
+
+Verify that all remaining descriptions are consistent with the new behavior.
+
+============================================================
+19. DO NOT MAKE UNRELATED IMPROVEMENTS
+============================================================
+
+Do NOT:
+* rewrite the architecture style
+* change terminology unrelated to this requirement
+* change network architecture
+* change mesh architecture
+* change Raspberry Pi architecture
+* change P1/P2/P3 responsibilities except where the old obstacle gate is documented
+* change Arduino dead-man behavior
+* change emergency stop behavior
+* change motor commands
+* change servo behavior
+* change GPS
+* change gas sensing
+* change temperature/humidity sensing
+* change PIR motion sensing
+* change WebSocket/WebRTC
+* change authentication
+* change deployment
+* change performance numbers unless directly affected by removing the IR telemetry fields
+* add new sensors
+* add new safety mechanisms
+
+ONLY make changes required to reflect the new obstacle-sensor requirement.
+
+============================================================
+20. IMPORTANT IMPLEMENTATION/DOCUMENTATION RULE
+============================================================
+
+Do not change source code in this task.
+
+If the current source code still contains IR handling or HC-SR04 motor blocking, DO NOT edit it.
+
+Only update the four documentation files listed above.
+
+The purpose of this task is to update the documentation only.
+
+============================================================
+21. BEFORE EDITING
+============================================================
+
+First inspect all four documents and identify every affected section.
+
+Do not immediately start replacing text blindly.
+
+Build an internal checklist of:
+* IR hardware references
+* IR telemetry references
+* IR pin references
+* IR scheduler references
+* IR diagrams
+* HC-SR04 motor-blocking references
+* proximity-gate references
+* affected sensor counts
+* affected telemetry field counts
+* affected safety tables
+* affected conclusion/summary statements
+
+Then make the minimal documentation changes.
+
+============================================================
+22. AFTER EDITING
+============================================================
+
+Perform a final consistency audit across all four documents.
+
+The final documentation must communicate exactly this architecture:
+
+                HC-SR04
+                    |
+                    v
+             Distance Measurement
+                    |
+                    v
+               range_cm
+                    |
+                    v
+          P1 / Dashboard Telemetry
+                    |
+                    v
+          Operator Warning / Alert
+
+
+Motor command path:
+
+Operator
+   |
+   v
+Dashboard
+   |
+   v
+P1
+   |
+   v
+Arduino
+   |
+   v
+Motors
+
+There must be NO automatic connection:
+
+HC-SR04 → motor stop
+
+and NO:
+
+HC-SR04 → forward command blocking
+
+and NO:
+
+IR sensor → motor stop
+
+and NO IR obstacle sensor anywhere in the documented hardware architecture.
+
+============================================================
+23. FINAL RESPONSE FROM YOU
+============================================================
+
+After making the changes, report:
+
+1. Which of the four documentation files were modified.
+2. The main sections changed in each file.
+3. Confirm that IR obstacle sensors and IR telemetry fields were removed.
+4. Confirm that PIR was preserved.
+5. Confirm that HC-SR04 remains.
+6. Confirm that HC-SR04 is documented only as distance measurement / warning and does NOT automatically stop or block motors.
+7. Confirm that no source-code files were modified.
+8. Report any remaining occurrences that require manual review instead of silently changing them.
+
+Do not commit the changes.
+Do not modify anything outside the four documentation files.
