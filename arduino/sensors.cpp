@@ -26,8 +26,8 @@ void Sensors::init() {
   pinMode(ULTRASONIC_ECHO_PIN, INPUT);
   digitalWrite(ULTRASONIC_TRIG_PIN, LOW);
 
-  pinMode(IR_LEFT_PIN,  INPUT);
-  pinMode(IR_RIGHT_PIN, INPUT);
+  pinMode(IR_LEFT_PIN,  INPUT_PULLUP);
+  pinMode(IR_RIGHT_PIN, INPUT_PULLUP);
 
   pinMode(PIR_PIN, INPUT);
   attachInterrupt(digitalPinToInterrupt(PIR_PIN),
