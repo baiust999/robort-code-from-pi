@@ -1,4 +1,4 @@
-"""MockArduino dead-man timer and obstacle gate, mirrors robot_state.cpp/command_parser.cpp."""
+"""MockArduino dead-man timer, mirrors robot_state.cpp/command_parser.cpp."""
 
 import time
 
@@ -49,27 +49,6 @@ def test_heartbeat_rearms_deadman_without_moving():
 
     board.tick()
     assert board._motors.speed == 120  # noqa: SLF001, heartbeat doesn't change motor state
-
-
-def test_obstacle_blocks_forward_and_still_arms_deadman():
-    board = MockArduino(seed=1)
-    board._range_cm = 10  # noqa: SLF001, within OBSTACLE_BLOCK_CM
-    board.write(b"F120\n")
-    lines = _read_lines(board)
-
-    assert protocol.ALERT_OBSTACLE_TOKEN in lines
-    assert board._motors.speed == 0  # noqa: SLF001, forward suppressed
-    # Re-arming on a suppressed forward means holding forward against a wall
-    # doesn't trip the deadman while the operator is still actively driving.
-    assert board._deadman_tripped is False  # noqa: SLF001
-
-
-def test_obstacle_gate_does_not_block_reverse():
-    board = MockArduino(seed=1)
-    board._range_cm = 10  # noqa: SLF001
-    board.write(b"R120\n")
-    assert board._motors.speed == 120  # noqa: SLF001
-    assert board._motors.direction == protocol.CMD_REVERSE  # noqa: SLF001
 
 
 def test_stop_command_resets_motors_and_arms_state():

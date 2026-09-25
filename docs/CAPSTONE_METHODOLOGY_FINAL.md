@@ -168,7 +168,7 @@ SUBSYSTEM 1: OPERATOR CONTROL
 ├─ Dashboard: React SPA with Tailwind CSS
 ├─ Motor control: 4-direction, speed 0-180
 ├─ Servo control: Pan/tilt 0-180°
-├─ Telemetry display: 11 sensor readings
+├─ Telemetry display: 9 sensor readings
 ├─ Video stream: H.264, 640×480, 10 fps
 ├─ Audio: Bidirectional, Opus 32 kbps
 └─ Mission state: READY/DRIVING/LIMITED/STOP
@@ -195,7 +195,7 @@ SUBSYSTEM 4: MOBILE UNIT
 ├─ 4WD chassis: ~300mm × 200mm × 150mm
 ├─ Motor control: 4× DC motors, BTS7960 H-bridge
 ├─ Servo control: 2× SG90 (180° horizontal, 90° vertical)
-├─ Sensors: DHT11, MQ-136, HC-SR501, HC-SR04, IR, GPS
+├─ Sensors: DHT11, MQ-136, HC-SR501, HC-SR04, GPS
 ├─ Camera: Logitech C270 (640×480, 10 fps)
 ├─ Audio: USB mic + speaker (48 kHz, bidirectional)
 ├─ Battery: 24V Li-Po, BEC 5V for Pi/sensors
@@ -251,7 +251,6 @@ SUBSYSTEM 5: FAULT-TOLERANCE
 | Gas Detection | MQ-136 | Hydrogen sulfide (H₂S) | 0-100+ ppm | Continuous |
 | Motion Detection | HC-SR501 PIR | Occupancy/movement | 5-20m | Event-driven |
 | Distance (Ultrasonic) | HC-SR04 | Obstacle range | 2-400 cm | 40 Hz |
-| IR Obstacle (×2) | Sharp GP2Y0A21YK | Wall/cliff detection | 10-80 cm | Continuous |
 | GPS Receiver | NEO-6M | Absolute position | NMEA @ 5 Hz | Real-time |
 
 ---
@@ -296,7 +295,6 @@ Main Loop (infinite):
 │  └─ Servo PWM update (< 50 µs)
 │
 ├─ Timer-gated (millis() delta)
-│  ├─ IR sensor read (2-5 ms)
 │  ├─ Ultrasonic trigger (1 ms)
 │  ├─ Gas ADC read (< 10 µs)
 │  ├─ DHT11 acquisition (25 ms blocking, ~2 sec interval)
@@ -336,7 +334,7 @@ Key Design: No system calls, no OS overhead.
 | Framework | FastAPI + uvicorn |
 | Port | TCP 8080 |
 | Owned Resources | UART device /dev/ttyAMA0 (exclusive fcntl lock) |
-| Ring Buffer | 300 snapshots × 88 bytes = 26.4 KB (60 sec history) |
+| Ring Buffer | 300 snapshots × 86 bytes = 25.8 KB (60 sec history) |
 | Telemetry Cadence | 200 ms (from Arduino) |
 | GPS Parsing | NMEA sentence parsing, position tracking |
 | WebSocket | Broadcast telemetry to all connected operators |
@@ -417,8 +415,7 @@ Motor Commands:
 | Humidity | 2 sec (DHT11) | INFO only | INFO only |
 | Gas (H₂S) | Continuous (ADC) | ≥ 10 ppm | ≥ 20 ppm |
 | Motion (PIR) | Event-driven | NOTICE (confirmatory) | — |
-| Range (Ultrasonic) | Continuous (trigger) | < 30 cm | < 20 cm (blocks forward) |
-| IR Obstacle (×2) | Continuous (ADC) | INFO only | Proximity check |
+| Range (Ultrasonic) | Continuous (trigger) | < 30 cm | < 20 cm (critical alert) |
 | GPS Position | 200 ms (NMEA) | Fix loss = WARNING | — |
 
 ## 9.2 Sensor Ring Buffer (P1)
@@ -641,18 +638,22 @@ ping -c 10 192.168.10.10  # Target: Robot Pi
 
 ```
 CSV Format, 200 ms cadence:
-temp_c, humidity_pct, gas_ppm, motion, range_cm, ir_left, ir_right, 
+temp_c, humidity_pct, gas_ppm, motion, range_cm,
 pan_angle, tilt_angle, fw_state, uptime_ms
 
 Example:
-28.4, 62.1, 3, 0, 47, 0, 0, 90, 60, 2, 184320
+28.4, 62.1, 3, 0, 47, 90, 60, 2, 184320
 ```
 
 **Validation Pipeline (4 Stages):**
 1. Length check (1-8 characters)
 2. Token recognition (F/R/L/G/S/H/P/T/?)
 3. Argument range (0-180 for PWM/servo)
-4. Proximity safety check (forward only: range_cm > 20 cm)
+4. State-machine gate (motion commands rejected while ESTOP/PANIC latched; S always accepted)
+
+The HC-SR04 `range_cm` reading is not part of command validation. It is
+reported to the operator via telemetry as a warning/critical alert only; it
+never rejects or blocks a motor command.
 
 ---
 
@@ -703,8 +704,6 @@ Example:
   "gas_ppm": 3,
   "motion_detected": false,
   "range_cm": 47,
-  "ir_left": false,
-  "ir_right": false,
   "pan_angle": 90,
   "tilt_angle": 60,
   "lat": 40.7128,
@@ -1047,7 +1046,6 @@ Arduino (Real-Time)
   │  ├─ DHT11 (temp/humidity)
   │  ├─ MQ-136 (gas)
   │  ├─ HC-SR04 (range)
-  │  ├─ IR sensors (obstacles)
   │  ├─ GPS (position)
   │  └─ PIR (motion)
   │
@@ -1066,7 +1064,7 @@ Motor Command Path:
 Operator Dashboard
   │ (WebSocket)
   ├─→ P1: Receive command
-  │       ├─ Validate (range, proximity, state)
+  │       ├─ Validate (speed/angle range, sequence state)
   │       ├─ Translate to Arduino format
   │       └─ UART TX → Arduino
   │
@@ -1101,20 +1099,19 @@ Arduino Sensors
 ```
 Memory Layout (P1 Process Heap):
 ├─ Capacity: 300 snapshots
-├─ Snapshot size: 88 bytes (struct TelemetrySnapshot)
-├─ Total: 26.4 KB (volatile, RAM only)
+├─ Snapshot size: 86 bytes (struct TelemetrySnapshot)
+├─ Total: 25.8 KB (volatile, RAM only)
 ├─ Lifespan: P1 process lifetime (lost on restart)
 ├─ Cadence: Update every 200 ms (from Arduino)
 └─ Overflow: Circular (oldest overwritten when capacity exceeded)
 
-Snapshot Structure (88 bytes):
+Snapshot Structure (86 bytes):
 ├─ timestamp_ms: 4 bytes (uint32)
 ├─ temperature_c: 4 bytes (float)
 ├─ humidity_pct: 4 bytes (float)
 ├─ gas_ppm: 2 bytes (uint16)
 ├─ motion_detected: 1 byte (uint8)
 ├─ range_cm: 2 bytes (uint16)
-├─ ir_left, ir_right: 2 bytes (uint8 × 2)
 ├─ pan_angle, tilt_angle: 2 bytes (uint8 × 2)
 ├─ lat, lon: 16 bytes (double × 2)
 ├─ gps_fix, gps_sats: 2 bytes (uint8 × 2)
@@ -1161,11 +1158,11 @@ Browser Processes Recovery_Batch:
 
 ```
 Arduino Captures Sensors (every 200 ms):
-└─ DHT11, MQ-136, HC-SR04, IR, PIR, GPS
+└─ DHT11, MQ-136, HC-SR04, PIR, GPS
    └─ Package into TelemetrySnapshot
 
 Arduino TX via UART (200 ms):
-└─ CSV format: "28.4,62.1,3,0,47,0,0,90,60,2,184320\n"
+└─ CSV format: "28.4,62.1,3,0,47,90,60,2,184320\n"
    └─ Latency: ~2 ms (serial TX time, 88 bytes @ 115,200 baud)
 
 P1 RX via UART (< 1 ms after Arduino TX):
@@ -1198,7 +1195,7 @@ One Full Cycle: 200 ms (200 ms Arduino sample period)
 | Humidity | "62.1% RH" | INFO only | INFO only |
 | Gas | "3 ppm" | ≥ 10 ppm | ≥ 20 ppm |
 | Motion | "Motion detected" | NOTICE (confirmatory) | — |
-| Range | "47 cm" | < 30 cm | < 20 cm (blocks forward) |
+| Range | "47 cm" | < 30 cm | < 20 cm (critical obstacle-distance warning; operator action required) |
 | GPS | "40.7128, -74.0060" | Fix loss | — |
 
 ---
@@ -1293,8 +1290,6 @@ Estimated SD Card Lifespan:
 | D10 | OC1B | PWM | Servo tilt angle |
 | D11 | GPIO | Output | Motor right direction FWD |
 | D12 | GPIO | Output | Motor right direction REV |
-| A0 | ADC | Input | IR left obstacle |
-| A1 | ADC | Input | IR right obstacle |
 | A2 | ADC | Input | MQ-136 gas sensor |
 | A3 | ADC | Input | DHT11 data (1-wire) |
 
@@ -1324,7 +1319,7 @@ Services Online: P1 ✓, P2 ✓, P3 ✓
 Capability:
 ├─ Motor control: ✓ Full (4-direction, speed 0-180)
 ├─ Servo control: ✓ Full (pan/tilt 0-180°)
-├─ Telemetry: ✓ Full (all 11 sensors, 200 ms cadence)
+├─ Telemetry: ✓ Full (all 9 sensors, 200 ms cadence)
 ├─ Video stream: ✓ Full (H.264, 640×480, 10 fps)
 ├─ Audio: ✓ Bidirectional (Opus 32 kbps)
 ├─ GPS tracking: ✓ Real-time path visualization
@@ -1550,15 +1545,15 @@ Sensor Threshold Crossing:
 └─ TRANSPORT: Red indicator + disconnect tone
    └─ Mission → STOP, operator must reconnect
 
-Motor Command Blocking (Safety):
-├─ Forward command: Range < 20 cm → BLOCK
-│  └─ Arduino rejects command, motor doesn't move
+Obstacle Distance Warning (Advisory Only, Not Motor-Blocking):
+├─ Range < 30 cm → WARNING banner (amber)
+├─ Range < 20 cm → CRITICAL banner (red, repeating tone)
+│  └─ "Critical obstacle-distance warning; operator action required."
 │
-├─ Reverse command: No range check
-│  └─ Allowed (assuming operator has situational awareness)
+├─ Forward, reverse, and turn commands: No range check
+│  └─ HC-SR04 distance never rejects or blocks any motor command
 │
-└─ Turn commands: No proximity check
-   └─ Allowed (orthogonal to obstacle)
+└─ Operator decides whether to stop, reverse, or change direction
 
 Temperature-Based Throttling (Optional):
 ├─ Temp 60-70°C: Warn operator, suggest motor cooldown
@@ -1763,7 +1758,7 @@ WantedBy=multi-user.target
 ROBOT UNIT:
   ☐ 4WD chassis assembled, motors tested
   ☐ Pan-tilt camera assembly (SG90 servos) mounted, range tested
-  ☐ Sensor wiring (DHT11, MQ-136, HC-SR501, HC-SR04, IR) connected
+  ☐ Sensor wiring (DHT11, MQ-136, HC-SR501, HC-SR04) connected
   ☐ GPS receiver (NEO-6M) connected to Arduino
   ☐ USB camera focused, mounted on pan-tilt (aim center)
   ☐ USB microphone & speaker mounted, audio levels set
@@ -1814,13 +1809,13 @@ OPERATOR LAPTOP:
 3. ROBOT SYSTEMS VERIFICATION:
    ☐ Operator browser: http://192.168.10.10 (Robot Pi dashboard)
    ☐ Dashboard loads: React SPA visible, no console errors
-   ☐ Telemetry display: All 11 sensors showing live data (200 ms update)
+   ☐ Telemetry display: All 9 sensors showing live data (200 ms update)
    ☐ Video stream: H.264 video visible (640×480, live)
    ☐ Audio test: Microphone/speaker working (two-way audio)
    ☐ Motor test: Forward/Reverse commands → motors move
    ☐ Servo test: Pan/Tilt commands → servos respond
    ☐ GPS test: Position displayed on map (if outdoor with sky view)
-   ☐ Alert test: Range sensor < 20 cm → motor forward BLOCKED
+   ☐ Alert test: Range sensor < 20 cm → critical alert shown to operator (motors unaffected)
    ☐ Emergency stop: Click button → motors STOP immediately
 
 4. MESH FAILOVER TEST:
@@ -1966,7 +1961,7 @@ Architecture: 5 principal subsystems + 4-tier fault-tolerance
 Capabilities:
 ├─ Real-time teleoperation: 110 ms motor command latency
 ├─ Live video + audio: H.264 (500 Kbps) + Opus (32 Kbps)
-├─ Environmental monitoring: 11 sensors, 200 ms cadence
+├─ Environmental monitoring: 9 sensors, 200 ms cadence
 ├─ GPS tracking: Real-time path visualization
 ├─ Disaster resilience: Requires NO internet, local mesh only
 └─ Safety guarantee: Motors stop within 2 seconds, ANY failure

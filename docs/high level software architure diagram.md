@@ -10,9 +10,9 @@ flowchart TB
         A_UART["UART parser\n4-stage validation"]
         A_DM["Dead-man timer\n2000 ms"]
         A_SM["State machine\nARMED / DRIVING / STOPPED"]
-        A_SENS["Sensors\nIR · Sonar(ISR) · PIR(ISR)\nGas · Temp/Hum"]
+        A_SENS["Sensors\nSonar(ISR) · PIR(ISR)\nGas · Temp/Hum"]
         A_ACT["Actuators\nMotors (BTS7960) · Servos"]
-        A_TX["Telemetry CSV\n11 fields @200ms"]
+        A_TX["Telemetry CSV\n9 fields @200ms"]
         A_UART --> A_DM --> A_SM --> A_ACT
         A_SENS --> A_TX
     end
@@ -23,7 +23,7 @@ flowchart TB
         subgraph P1["P1 · Control Server — FastAPI :8080"]
             direction TB
             P1_SB["serial_bridge\n+ lockfile (fcntl.flock)"]
-            P1_SAF["safety.py\nclamp · proximity · seq-check"]
+            P1_SAF["safety.py\nclamp · seq-check"]
             P1_GPS["gps_reader\npynmea2 thread"]
             P1_RING["ring_buffer\n300-slot recovery"]
             P1_WS["websocket_hub\n/control/ws — broadcast telemetry\n+ resume_from → recovery_batch"]

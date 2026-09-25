@@ -6,7 +6,6 @@
  *
  * Sensors:
  *   - HC-SR04  ultrasonic distance   (fast poll, non-blocking pulseIn)
- *   - IR left / right obstacle       (fast poll, digital)
  *   - HC-SR501 PIR motion            (interrupt driven, INT0)
  *   - DHT11    temperature/humidity  (slow poll)
  *   - MQ-136   gas                   (slow poll, analog)
@@ -36,7 +35,6 @@ class Sensors {
 
  private:
   uint16_t readUltrasonicCm();
-  void     readIR();
   void     readDHT();
   void     readGas();
 

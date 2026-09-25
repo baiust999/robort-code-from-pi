@@ -45,7 +45,7 @@
 #define TAG_EVENT      "EVT"
 
 /* Periodic telemetry frame, Section 8.7.5. Untagged CSV, positional fields:
- *   temperature_c,humidity_pct,gas_ppm,motion,range_cm,ir_left,ir_right,
+ *   temperature_c,humidity_pct,gas_ppm,motion,range_cm,
  *   pan_angle,tilt_angle,fw_state,uptime_ms
  * Order and field count are load-bearing: parsed positionally by
  * pi/common/protocol.py:parse_telemetry_line / TELEMETRY_FIELDS. */

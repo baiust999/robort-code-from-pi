@@ -1,9 +1,11 @@
 """Software emulation of the Arduino board and the NEO-6M GPS.
 
-Enabled with MOCK_HARDWARE=1. The emulator implements the same four-stage
-validation pipeline, dead-man timer, and telemetry cadence as the firmware, so
-P1 cannot tell it apart from a real board across the serial boundary. This is
-what lets the full stack run on a development machine.
+Enabled with MOCK_HARDWARE=1. The emulator implements the firmware's
+framing/opcode/argument-clamp validation, dead-man timer, and telemetry
+cadence closely enough that P1 cannot tell it apart from a real board across
+the serial boundary for driving and telemetry purposes; it does not model the
+firmware's ESTOP/PANIC state-machine gate, since the mock has no fault
+states. This is what lets the full stack run on a development machine.
 
 Reference: arduino/ — behaviour mirrored from there.
 """
@@ -47,8 +49,6 @@ class MockArduino:
         self._humidity = 55.0
         self._gas = 3
         self._range_cm = 180
-        self._ir_left = 0
-        self._ir_right = 0
         self._next_motion_ms = _now_ms() + self._rng.uniform(4000, 12000)
 
         self._tx.extend((protocol.READY_TOKEN + "\n").encode())
@@ -103,15 +103,12 @@ class MockArduino:
         self._humidity = _clamp(self._humidity + self._rng.uniform(-0.2, 0.2), 30.0, 85.0)
         self._gas = int(_clamp(self._gas + self._rng.uniform(-0.4, 0.4), 0, 18))
 
-        # Range closes when driving forward and recovers otherwise, so the
-        # 20cm obstacle block is reachable in a demo.
+        # Range closes when driving forward and recovers otherwise, so a
+        # close-range warning is reachable in a demo.
         if self._motors.direction == protocol.CMD_FORWARD and self._motors.speed > 0:
             self._range_cm = int(max(8, self._range_cm - self._motors.speed * 0.05))
         else:
             self._range_cm = int(min(400, self._range_cm + 2))
-
-        self._ir_left = 1 if self._range_cm < 35 and self._rng.random() < 0.6 else 0
-        self._ir_right = 1 if self._range_cm < 35 and self._rng.random() < 0.6 else 0
 
         if now >= self._next_motion_ms:
             self._motion_latch = 1
@@ -124,8 +121,6 @@ class MockArduino:
             "gas_ppm": self._gas,
             "motion": self._motion_latch,
             "range_cm": self._range_cm,
-            "ir_left": self._ir_left,
-            "ir_right": self._ir_right,
             "pan_angle": self._pan,
             "tilt_angle": self._tilt,
             "fw_state": self._fw_state,
@@ -173,13 +168,6 @@ class MockArduino:
                 self._respond("WARN_CLAMP")
 
         now = _now_ms()
-
-        # Stage 4: proximity gate on forward motion only.
-        if opcode == protocol.CMD_FORWARD and argument > 0:
-            if self._range_cm <= protocol.OBSTACLE_BLOCK_CM:
-                self._respond(protocol.ALERT_OBSTACLE_TOKEN)
-                self._arm(now)
-                return
 
         if opcode in protocol.DEADMAN_ARMING_COMMANDS:
             self._arm(now)

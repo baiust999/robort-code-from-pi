@@ -26,15 +26,12 @@ enum FaultReason {
   FAULT_NONE = 0,
   FAULT_DEADMAN,       /* comms timeout                               */
   FAULT_GAS,           /* MQ-136 over threshold                       */
-  FAULT_OBSTACLE,      /* obstacle inside safety distance             */
   FAULT_OPERATOR_ESTOP /* operator issued S/emergency                 */
 };
 
 /* Aggregated live sensor readings, updated by the sensors module. */
 struct SensorData {
   uint16_t distanceCm;   /* HC-SR04 forward distance (cm)             */
-  bool     irLeft;       /* true when left IR sees an obstacle        */
-  bool     irRight;      /* true when right IR sees an obstacle       */
   bool     motion;       /* HC-SR501 PIR motion detected              */
   int8_t   temperatureC; /* DHT11 temperature (deg C)                 */
   uint8_t  humidity;     /* DHT11 relative humidity (%)               */

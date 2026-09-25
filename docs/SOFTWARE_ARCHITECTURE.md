@@ -53,7 +53,7 @@ The implementation is approximately 5,500 lines across all tiers. The distributi
 | P1 control server | `pi/p1_control/` | 1,400 | Serial ownership, telemetry fan-out, command validation |
 | Shared protocol layer | `pi/common/` | 957 | Wire contract, configuration, logging, hardware emulation |
 | Operator dashboard | `dashboard/src/` | 980 | Operator interface, transport clients, state derivation |
-| Test suite | `pi/tests/` | 456 | 56 tests over protocol, safety, and buffer logic |
+| Test suite | `pi/tests/` | 456 | 50 tests over protocol, safety, and buffer logic |
 | P2 media server | `pi/p2_media/` | 378 | WebRTC negotiation, camera and microphone tracks |
 | P3 watchdog | `pi/p3_watchdog/` | 271 | Process supervision, health checking, restart policy |
 
@@ -75,7 +75,7 @@ An architecture is best understood through the forces that shaped it. Six driver
 
 **Driver 4 — Exactly one process may write to the Arduino.** Two writers interleaving bytes on a UART would produce commands neither of them sent. This is Invariant VI in the methodology, and it is enforced twice independently: an advisory `flock` on `/run/robot/p1.lock` via `ProcessLock`, and `O_EXCL` on the serial device through pyserial's `exclusive=True`.
 
-**Driver 5 — The system must be developable and testable without hardware.** A capstone project cannot depend on continuous access to an assembled robot. This produces `mock_hardware.py`, which is architecturally significant precisely because it is not a stub: `MockArduino` reimplements the firmware's four-stage validation, its dead-man semantics, and its 200 ms telemetry cadence faithfully enough that P1 cannot distinguish it from a real board across the serial boundary.
+**Driver 5 — The system must be developable and testable without hardware.** A capstone project cannot depend on continuous access to an assembled robot. This produces `mock_hardware.py`, which is architecturally significant precisely because it is not a stub: `MockArduino` reimplements the firmware's framing/opcode/argument-clamp validation, its dead-man semantics, and its 200 ms telemetry cadence faithfully enough that P1 cannot distinguish it from a real board across the serial boundary for driving and telemetry purposes; it does not model the firmware's fourth validation stage, the ESTOP/PANIC state-machine gate, since the mock has no fault states to gate against.
 
 **Driver 6 — One operator, one vehicle, no ambiguity about who is driving.** Multiple dashboards may observe a mission, but a second controller sending contradictory motion commands would be actively dangerous. This produces the single-controller slot in `WebSocketHub.claim_role()`, where the first client to request the controller role holds it until disconnect and all others are silently downgraded to observers.
 
@@ -205,7 +205,7 @@ void loop() {
   servosApply();
   checkInvariants();
   // --- Category 2: cadence-gated work ---
-  sensorsPollSonar(now);   sensorsPollIr(now);
+  sensorsPollSonar(now);
   sensorsPollGas(now);     sensorsPollDht(now);
   telemetryPoll(now);      pollStatusLed(now);
 }
@@ -219,9 +219,7 @@ The **state machine** has three states — `ARMED` (1), `DRIVING` (2), `STOPPED`
 
 The **dead-man timer** is the system's most important safety mechanism. `stateInit()` deliberately sets `lastCommandTime = millis() - (DEADMAN_MS + 1)` and `deadmanTripped = true`, so a freshly reset board boots with the window already expired and never inherits a spurious armed state. Only the arming opcode set `{F, R, L, G, S, H}` refreshes the window; pan, tilt, and status queries do not, on the explicit reasoning that a camera movement is not evidence the drive link is alive.
 
-**Four-stage command validation** filters every inbound line. Stage 1 enforces a length of 1–8 characters, emitting `ERR_LEN` and consuming through the delimiter so that the tail of an overflowed line cannot be reinterpreted as a command. Stage 2 checks the opcode whitelist, emitting `ERR_TOK`. Stage 3 parses and clamps the numeric argument to 0–180, emitting `WARN_CLAMP`; a non-numeric tail becomes zero rather than a rejection, under an explicit clamp-don't-discard policy. Stage 4 is the proximity gate: forward motion is suppressed when the sonar range is at or below 20 cm, emitting `ALERT_OBSTACLE`, while reverse and pivots remain available so the operator can always back away from an obstacle.
-
-One detail in Stage 4 repays close attention, because it is the kind of correctness property that is easy to get wrong and hard to notice: **a suppressed forward command still re-arms the dead-man timer.** Without this, an operator holding forward against a wall would send commands that were all rejected, the dead-man window would expire, and the vehicle would report a link-loss fault when in fact the link was perfectly healthy and the operator was actively driving.
+**Four-stage command validation** filters every inbound line. Stage 1 enforces a length of 1–8 characters, emitting `ERR_LEN` and consuming through the delimiter so that the tail of an overflowed line cannot be reinterpreted as a command. Stage 2 checks the opcode whitelist, emitting `ERR_TOK`. Stage 3 parses and clamps the numeric argument to 0–180, emitting `WARN_CLAMP`; a non-numeric tail becomes zero rather than a rejection, under an explicit clamp-don't-discard policy. Stage 4 is a state-machine gate: a motion opcode (`F`/`R`/`L`/`G`) is rejected unless the firmware is `READY` or `ACTIVE` with no fault latched, so a command arriving during an e-stop or a gas panic cannot move the vehicle; `S` (stop) always passes this gate. A close-range HC-SR04 reading is not part of this pipeline at all: `range_cm` is reported on the telemetry path, where it drives the dashboard's warn/critical coloring and the `range_warn`/`range_crit` bits in the logged alert flags — it never intercepts or rejects a forward command, and the operator decides whether to stop, reverse, or continue.
 
 ### **A.5.2  P1 Control Server — Serial Ownership and Telemetry Fan-Out**
 
@@ -237,8 +235,8 @@ The broadcast loop uses **absolute scheduling** — `next_tick += period` rather
 | `websocket_hub.py` | `WebSocketHub`, `Client` | Client registry, role arbitration, concurrent broadcast |
 | `gps_reader.py` | `GPSReader` | Threaded NMEA parsing, track accumulation, GeoJSON export |
 | `ring_buffer.py` | `RingBuffer` | 300-entry history; `since()` and `gap_ms()` for replay |
-| `safety.py` | `CommandValidator` | Server-side clamp, proximity gate, sequence monotonicity |
-| `telemetry_log.py` | `TelemetryLog` | 1 Hz, 21-column CSV with packed alert bitfield |
+| `safety.py` | `CommandValidator` | Server-side clamp, sequence monotonicity |
+| `telemetry_log.py` | `TelemetryLog` | 1 Hz, 19-column CSV with packed alert bitfield |
 | `lockfile.py` | `ProcessLock` | Advisory `flock` enforcing the single-writer invariant |
 
 ***Table A.5.2 — P1 Module Responsibilities***
@@ -297,11 +295,11 @@ The contract is defined canonically in `pi/common/protocol.py` and hand-mirrored
 
 Manual mirroring is a real risk and should be named as such: a constant changed in one file and not the others produces a silent protocol mismatch that no compiler will catch. The mitigation is partly procedural — the docstrings state the obligation explicitly — and partly structural, in that `derive_mission_state()` is implemented twice against the same first-match rules and the test suite pins the Python side. A stronger design would generate all three files from one source; that is recorded as future work in Section A.10 rather than claimed as present.
 
-**Upstream, Arduino to P1**, telemetry is an 11-field positional CSV, at most 80 characters, emitted every 200 ms:
+**Upstream, Arduino to P1**, telemetry is a 9-field positional CSV, at most 80 characters, emitted every 200 ms:
 
 ```
-temperature_c, humidity_pct, gas_ppm, motion, range_cm, ir_left,
-ir_right, pan_angle, tilt_angle, fw_state, uptime_ms
+temperature_c, humidity_pct, gas_ppm, motion, range_cm,
+pan_angle, tilt_angle, fw_state, uptime_ms
 ```
 
 Field order is load-bearing — parsing is by index, not by name — which is the correct trade on a link where every byte costs transmission time on an 8-bit MCU. `parse_telemetry_line()` validates in three passes: field count, per-field type coercion, and per-field plausibility range. Any failure at any stage discards the entire frame.
@@ -310,12 +308,12 @@ Field order is load-bearing — parsing is by index, not by name — which is th
 
 **Downstream, dashboard to P1 to Arduino**, commands are single-character opcodes with optional numeric arguments — `F120\n` is forward at PWM 120. The dashboard speaks JSON WebSocket messages; P1 validates and lowers them to the wire grammar. Six client message types (`hello`, `motor`, `servo`, `heartbeat`, `stop_all`, `resume_from`) and four server types (`telemetry`, `recovery_batch`, `ack`, `error`) constitute the entire application protocol.
 
-**P1 outward to the dashboard**, the unit of exchange is the 22-key `TelemetrySnapshot`: the 11 Arduino fields, plus GPS position and fix quality merged from the reader thread, plus server metadata — sequence number, server timestamp, serial health, client count, and TURN status. `build_snapshot()` re-asserts the P1-owned fields *last*, after merging, so that a malformed or hostile frame can never overwrite the server's own view of its health.
+**P1 outward to the dashboard**, the unit of exchange is the 20-key `TelemetrySnapshot`: the 9 Arduino fields, plus GPS position and fix quality merged from the reader thread, plus server metadata — sequence number, server timestamp, serial health, client count, and TURN status. `build_snapshot()` re-asserts the P1-owned fields *last*, after merging, so that a malformed or hostile frame can never overwrite the server's own view of its health.
 
 | **Store** | **Medium** | **Retention** | **Purpose** |
 | --- | --- | --- | --- |
 | Ring buffer | Memory, 300 entries | 60 s at 200 ms | `resume_from` replay after reconnect |
-| `telemetry.log` | Disk CSV, 21 columns | Daily rotation, 7 kept | Post-mission analysis at 1 Hz |
+| `telemetry.log` | Disk CSV, 19 columns | Daily rotation, 7 kept | Post-mission analysis at 1 Hz |
 | `p{1,2,3}_events.log` | Disk, structured text | Weekly rotation, 8 kept | Fault diagnosis and audit |
 | GeoJSON track | Disk, per session | 90 days (cron) | Mission path reconstruction |
 
@@ -383,7 +381,7 @@ The reader and broadcaster are connected only by `_latest_frame`, a single last-
 
 ### **A.7.3  Motor Command with Dual Validation**
 
-An operator keypress travels through two independent validators. The dashboard sends `{type:"motor", dir:"F", speed:120, seq:n}`. P1's `CommandValidator` clamps the speed to 0–180, applies the proximity gate against the most recent range reading, checks that the sequence number exceeds the last seen from that client, and encodes `F120\n`. The Arduino then re-validates through all four of its own stages before acting.
+An operator keypress travels through two independent validators. The dashboard sends `{type:"motor", dir:"F", speed:120, seq:n}`. P1's `CommandValidator` clamps the speed to 0–180, checks that the sequence number exceeds the last seen from that client, and encodes `F120\n`. The Arduino then re-validates through all four of its own stages before acting, including the state-machine gate that P1 does not duplicate, since P1 has no notion of the firmware's fault latch. The HC-SR04 range reading takes a separate path — Arduino to P1 telemetry to dashboard alert — and never enters either validator.
 
 The redundancy is deliberate and the two validators serve different purposes. The Arduino enforces safety for its own sake and cannot be bypassed by any Pi-side defect. P1's copy rejects bad input before it consumes UART bandwidth and — equally important — returns a human-readable reason to the operator, which the Arduino's terse `ERR_TOK` cannot. Note that `stop_all` bypasses the sequence check entirely: a stop must never be dropped because a counter arrived out of order.
 
@@ -397,7 +395,7 @@ On disconnect the dashboard begins backing off from 1 second toward a 30-second 
 
 Safety in this system is not a subsystem but a property distributed across every tier, and it is arranged so that mechanisms at each level are independent — no single defect disables more than one of them.
 
-**Layered command validation.** Clamping and the obstacle gate exist at four levels: the dashboard's slider bounds, P1's `CommandValidator`, the Arduino's four-stage parser, and the mock emulator that mirrors the firmware. The dashboard's bounds are convenience; P1's are efficiency and operator feedback; the Arduino's are authoritative.
+**Layered command validation.** Speed and angle clamping exist at three levels: the dashboard's slider bounds, P1's `CommandValidator`, and the Arduino's four-stage parser (the mock emulator mirrors the framing/opcode/argument stages but not the state-machine gate). The dashboard's bounds are convenience; P1's are efficiency and operator feedback; the Arduino's are authoritative. Obstacle distance from the HC-SR04 is reported through telemetry as a warning, not enforced as a validation stage.
 
 **Dual-mechanism dead-man.** The Arduino's 2,000 ms timer is the guarantee. P1's immediate stop on controller disconnect is the optimisation. Either alone is sufficient to halt the vehicle.
 
@@ -417,7 +415,7 @@ Safety in this system is not a subsystem but a property distributed across every
 | Camera failure | Capture exception | Synthetic track substituted | Mission continues in `DRIVING_LIMITED` |
 | Mesh partition | Telemetry gap, ack timeout | Mission state → `STOP` | Backoff reconnect + replay |
 | Corrupt frame | Parse or range check | Frame discarded silently | Next frame within 200 ms |
-| Obstacle ≤ 20 cm | Sonar, Category 2 poll | Forward suppressed; reverse allowed | Operator reverses |
+| Obstacle distance ≤ 20 cm | HC-SR04, Category 2 poll | Range warning/critical alert; operator decides movement | N/A — not a fault, no recovery needed |
 | State invariant violated | `checkInvariants()` | Panic; motors stopped, latched | Board reset only |
 | GPS loss | Fix flag, `gps_lost` bit | Position stale-flagged; drive unaffected | Automatic on reacquisition |
 
@@ -468,7 +466,7 @@ Two housekeeping defects are worth recording. The systemd unit advertises `Docum
 
 **Latency** is budgeted at every hop: sensor to telemetry at most 200 ms, telemetry to render one broadcast period, keypress to motor a validation pass plus UART transit. The 200 ms cadence, the 5 ms serial poll, and the absolute-scheduled broadcast loop all exist to keep the operator's perception of the vehicle current.
 
-**Testability** is achieved through the mock hardware layer, which decouples the entire stack from physical hardware. Fifty-six tests exercise the protocol parser, the validation pipeline, ring-buffer wraparound and replay, mission-state derivation, and the emulated dead-man — with boundary cases pinned deliberately: blocked at exactly 20 cm, permitted at 21 cm; `STOP` at 3,001 ms but not at exactly 3,000 ms.
+**Testability** is achieved through the mock hardware layer, which decouples the entire stack from physical hardware. Fifty tests exercise the protocol parser, the validation pipeline, ring-buffer wraparound and replay, mission-state derivation, and the emulated dead-man — with boundary cases pinned deliberately: `STOP` at 3,001 ms but not at exactly 3,000 ms.
 
 **Modifiability** follows from the narrow protocol contract. A new sensor requires a coordinated change to three mirror files and nothing else. The corresponding weakness is that the mirroring is manual.
 
@@ -482,8 +480,7 @@ The methodology's two source documents disagreed in several places. The implemen
 | Router IP plan | Robot router `.1` as gateway (§8.14.5) | Mesh UCI scripts |
 | Mesh ID naming | `robot-mesh` (matches the UCI snippet) | Mesh script variable |
 | Dead-man: `millis()` vs Timer1 ISR | Software check — Timer1 belongs to Servo | `DEADMAN_MS` |
-| IR sensors: boolean vs analog | Analog read plus threshold → boolean | Firmware threshold |
-| Telemetry field count (12/22/26) | 22-key schema of §8.10.1.2 | `pi/common/protocol.py` |
+| Telemetry field count (12/22/26) | 20-key schema of §8.10.1.2 | `pi/common/protocol.py` |
 | Operational mode count | Build Mode 2, Local Mesh Only (§8.11.6) | `p3.env: ENABLE_OVERLAY=0` |
 
 ***Table A.10 — Specification Contradictions and Their Resolutions***
@@ -494,7 +491,7 @@ Three further decisions are visible only in the code and are recorded here for t
 
 **No reconnection on the video path.** The control socket reconnects indefinitely; the WebRTC path attempts negotiation once. This asymmetry is intentional: control is safety-critical and must self-heal, while video is a capability whose loss should be surfaced to the operator as a decision.
 
-**Mock hardware as protocol reimplementation.** This is the most consequential decision not present in the original plan. `MockArduino` does not stub the firmware — it reimplements the four-stage validation, the dead-man semantics including the boot-expired initial state, and the 200 ms cadence faithfully enough that P1 cannot distinguish it across the serial boundary. Its simulated obstacle range even closes while driving forward so the 20 cm gate is reachable in a demonstration. The consequence is that the entire stack runs end-to-end on a laptop, the full test suite executes with no hardware attached, and the protocol has been exercised continuously throughout development rather than only at hardware bring-up. The cost is a second implementation of the firmware's semantics that must be kept in step — an obligation its docstring states explicitly.
+**Mock hardware as protocol reimplementation.** This is the most consequential decision not present in the original plan. `MockArduino` does not stub the firmware — it reimplements the framing/opcode/argument-clamp validation, the dead-man semantics including the boot-expired initial state, and the 200 ms cadence faithfully enough that P1 cannot distinguish it across the serial boundary for driving and telemetry purposes, though it does not model the firmware's ESTOP/PANIC state-machine gate. Its simulated obstacle range even closes while driving forward so the 20 cm warning threshold is reachable in a demonstration. The consequence is that the entire stack runs end-to-end on a laptop, the full test suite executes with no hardware attached, and the protocol has been exercised continuously throughout development rather than only at hardware bring-up. The cost is a second implementation of the firmware's semantics that must be kept in step — an obligation its docstring states explicitly.
 
 ### **A.10.3  Known Limitations**
 

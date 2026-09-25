@@ -16,8 +16,6 @@ RobotState::RobotState()
     _fault(FAULT_NONE),
     _lastCmdTime(0) {
   _sensors.distanceCm   = ULTRASONIC_MAX_CM;
-  _sensors.irLeft       = false;
-  _sensors.irRight      = false;
   _sensors.motion       = false;
   _sensors.temperatureC = 0;
   _sensors.humidity     = 0;
@@ -78,7 +76,6 @@ const char* RobotState::faultString() const {
     case FAULT_NONE:           return "NONE";
     case FAULT_DEADMAN:        return "DEADMAN";
     case FAULT_GAS:            return "GAS";
-    case FAULT_OBSTACLE:       return "OBSTACLE";
     case FAULT_OPERATOR_ESTOP: return "ESTOP";
     default:                   return "UNKNOWN";
   }

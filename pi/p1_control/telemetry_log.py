@@ -25,8 +25,6 @@ CSV_COLUMNS: tuple[str, ...] = (
     "gas_ppm",
     "motion",
     "range_cm",
-    "ir_left",
-    "ir_right",
     "pan_angle",
     "tilt_angle",
     "fw_state",

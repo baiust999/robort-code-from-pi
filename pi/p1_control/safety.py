@@ -5,7 +5,7 @@ defence-in-depth: the Arduino enforces safety for its own sake and cannot be
 bypassed, while these checks reject bad input before it consumes UART
 bandwidth and give the operator an immediate reason string.
 
-Pipeline: speed clamp -> proximity gate -> sequence monotonicity -> encode.
+Pipeline: speed clamp -> sequence monotonicity -> encode.
 """
 
 from __future__ import annotations
@@ -30,12 +30,11 @@ class CommandValidator:
         message: dict[str, Any],
         *,
         client_id: str,
-        range_cm: int | None,
     ) -> ValidationResult:
         msg_type = message.get("type")
 
         if msg_type == protocol.MSG_MOTOR:
-            return self._validate_motor(message, client_id=client_id, range_cm=range_cm)
+            return self._validate_motor(message, client_id=client_id)
         if msg_type == protocol.MSG_SERVO:
             return self._validate_servo(message, client_id=client_id)
         if msg_type == protocol.MSG_HEARTBEAT:
@@ -56,7 +55,7 @@ class CommandValidator:
         return ValidationResult(ok=False, reason=f"unsupported type {msg_type!r}")
 
     def _validate_motor(
-        self, message: dict[str, Any], *, client_id: str, range_cm: int | None
+        self, message: dict[str, Any], *, client_id: str
     ) -> ValidationResult:
         direction = message.get("dir")
         opcode = protocol.DIRECTION_TO_OPCODE.get(str(direction))
@@ -68,13 +67,6 @@ class CommandValidator:
         )
         if speed is None:
             return ValidationResult(ok=False, reason="speed is not a number")
-
-        if opcode == protocol.CMD_FORWARD and speed > 0:
-            if range_cm is not None and range_cm <= protocol.OBSTACLE_BLOCK_CM:
-                return ValidationResult(
-                    ok=False,
-                    reason=f"obstacle at {range_cm}cm blocks forward motion",
-                )
 
         seq_error = self._check_sequence(message, client_id)
         if seq_error is not None:

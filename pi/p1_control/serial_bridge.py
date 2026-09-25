@@ -48,7 +48,7 @@ class SerialBridge:
     def set_handlers(
         self,
         on_telemetry: Callable[[dict[str, Any]], None],
-        on_event: Callable[[str], None],
+        on_event: Callable[[str], None] | None,
     ) -> None:
         self._on_telemetry = on_telemetry
         self._on_event = on_event
@@ -145,14 +145,12 @@ class SerialBridge:
                 self._on_telemetry(parsed)
             return
 
-        # Everything else is a token: READY, PANIC, ALERT_OBSTACLE, ERR_*.
+        # Everything else is a token: READY, PANIC, ERR_*.
         self._log.info("DEBUG_RX", "arduino line", line=line)
         if self._on_event:
             self._on_event(line)
         if line.startswith(protocol.PANIC_TOKEN):
             self._log.critical("FW_PANIC", "firmware panic", detail=line)
-        elif line.startswith(protocol.ALERT_OBSTACLE_TOKEN):
-            self._log.warning("FW_OBSTACLE", "forward blocked by obstacle")
         elif line.startswith(("ERR_", "WARN_")):
             self._log.warning("FW_REJECT", "command rejected", token=line)
 

@@ -119,7 +119,7 @@ flowchart LR
         direction TB
         lock["lockfile.py<br/>ProcessLock<br/>(flock, tmpfs)"]
         sb["serial_bridge.py<br/>SerialBridge<br/>(sole UART owner)"]
-        safety["safety.py<br/>CommandValidator<br/>(clamp, proximity gate)"]
+        safety["safety.py<br/>CommandValidator<br/>(clamp, sequence check)"]
         gps["gps_reader.py<br/>GPSReader<br/>(daemon thread, 1Hz)"]
         ring["ring_buffer.py<br/>RingBuffer<br/>(300 entries, 60s)"]
         hub["websocket_hub.py<br/>WebSocketHub<br/>(role arbitration, fan-out)"]
@@ -150,8 +150,8 @@ flowchart LR
 | `websocket_hub.py` | `WebSocketHub`, `Client` | Client registry, role arbitration, concurrent broadcast |
 | `gps_reader.py` | `GPSReader` | Threaded NMEA parsing, track accumulation, GeoJSON export |
 | `ring_buffer.py` | `RingBuffer` | 300-entry history; `since()` / `gap_ms()` for replay |
-| `safety.py` | `CommandValidator` | Server-side clamp, proximity gate, sequence monotonicity |
-| `telemetry_log.py` | `TelemetryLog` | 1 Hz, 21-column CSV with packed alert bitfield |
+| `safety.py` | `CommandValidator` | Server-side clamp, sequence monotonicity |
+| `telemetry_log.py` | `TelemetryLog` | 1 Hz, 19-column CSV with packed alert bitfield |
 | `lockfile.py` | `ProcessLock` | Advisory `flock` enforcing the single-writer invariant |
 
 ---
@@ -175,7 +175,6 @@ flowchart TD
     subgraph c2["CATEGORY 2 — millis()-gated cadence"]
         direction LR
         sonar["sonar 100ms"]
-        ir["IR 100ms"]
         gas["gas 500ms"]
         dht["DHT11 2000ms<br/>(~25ms blocking read)"]
         tel["telemetry TX 200ms"]
@@ -303,7 +302,7 @@ sequenceDiagram
     participant TL as TelemetryLog
     participant WS as WebSocketHub
 
-    AR->>SR: CSV line (11 fields)
+    AR->>SR: CSV line (9 fields)
     SR->>SR: parse_telemetry_line()
     alt malformed
         SR->>SR: discard frame
@@ -340,7 +339,6 @@ sequenceDiagram
     OP->>DASH: press "forward"
     DASH->>P1V: {type:"motor", dir:"F", speed:120, seq:n}
     P1V->>P1V: clamp 0-180
-    P1V->>P1V: proximity gate (range check)
     P1V->>P1V: seq > last seq from client?
     alt rejected
         P1V-->>DASH: error (human-readable reason)
@@ -349,18 +347,19 @@ sequenceDiagram
         AR->>AR: Stage 1: length 1-8
         AR->>AR: Stage 2: opcode whitelist
         AR->>AR: Stage 3: parse + clamp arg
-        AR->>AR: Stage 4: proximity gate (range <= 20cm blocks fwd)
-        alt suppressed by Stage 4
-            AR->>AR: re-arm dead-man anyway
-        else accepted
-            AR->>MOT: apply PWM
-            AR->>AR: re-arm dead-man
-        end
+        AR->>AR: Stage 4: state-machine gate (ESTOP/PANIC reject)
+        AR->>MOT: apply PWM
+        AR->>AR: re-arm dead-man
     end
 ```
 
 `stop_all` bypasses the sequence check entirely — a stop must never be
 dropped for arriving "out of order."
+
+The HC-SR04 range reading is not part of this path. It travels a separate,
+read-only route — `HC-SR04 → range measurement → telemetry → P1 → dashboard
+→ obstacle warning` — that only ever informs the operator; it never
+intercepts or blocks a motor command.
 
 ---
 
@@ -373,14 +372,12 @@ canonically in `pi/common/protocol.py`, hand-mirrored into `protocol.h` and
 ```mermaid
 classDiagram
     class TelemetryFrame_Arduino {
-        <<11-field CSV, <=80 chars, 200ms>>
+        <<9-field CSV, <=80 chars, 200ms>>
         float temperature_c
         float humidity_pct
         int gas_ppm
         bool motion
         int range_cm
-        bool ir_left
-        bool ir_right
         int pan_angle
         int tilt_angle
         int fw_state
@@ -388,8 +385,8 @@ classDiagram
     }
 
     class TelemetrySnapshot_P1toDash {
-        <<22-key JSON, 200ms broadcast>>
-        ...11 Arduino fields
+        <<20-key JSON, 200ms broadcast>>
+        ...9 Arduino fields
         float gps_lat
         float gps_lon
         bool gps_fix
@@ -440,7 +437,7 @@ frame is dropped; the next one arrives within 200 ms.
 | Store | Medium | Retention | Purpose |
 |---|---|---|---|
 | Ring buffer | Memory, 300 entries | 60 s @ 200 ms | `resume_from` replay after reconnect |
-| `telemetry.log` | Disk CSV, 21 columns | Daily rotation, 7 kept | Post-mission analysis @ 1 Hz |
+| `telemetry.log` | Disk CSV, 19 columns | Daily rotation, 7 kept | Post-mission analysis @ 1 Hz |
 | `p{1,2,3}_events.log` | Disk, structured text | Weekly rotation, 8 kept | Fault diagnosis, audit |
 | GeoJSON track | Disk, per session | 90 days (cron) | Mission path reconstruction |
 
@@ -482,7 +479,7 @@ flowchart LR
         r5["synthetic track, DRIVING_LIMITED"]
         r6["backoff reconnect + replay"]
         r7["frame dropped, next in 200ms"]
-        r8["forward suppressed, reverse OK"]
+        r8["warning/critical alert, operator decides"]
         r9["panic latch — reset only"]
     end
 
@@ -498,8 +495,10 @@ flowchart LR
 
     classDef auto fill:#fff,stroke:#3E7D4C;
     classDef manual fill:#fff,stroke:#C4392B,stroke-width:2px;
-    class r1,r2,r3,r4,r5,r6,r7,r8 auto;
+    classDef advisory fill:#fff,stroke:#2F7C9E;
+    class r1,r2,r3,r4,r5,r6,r7 auto;
     class r9 manual;
+    class r8 advisory;
 ```
 
 Every fault recovers automatically except a panic latch — deliberately, since
@@ -556,7 +555,6 @@ flowchart LR
         i2["Router IP plan"]
         i3["Mesh ID naming"]
         i4["Dead-man:<br/>millis() vs Timer1 ISR"]
-        i5["IR sensors:<br/>boolean vs analog"]
         i6["Telemetry fields:<br/>12 / 22 / 26"]
         i7["Operational modes:<br/>4 vs 5"]
     end
@@ -565,15 +563,13 @@ flowchart LR
         r2["robot router = .1<br/>gateway (§8.14.5)"]
         r3["robot-mesh<br/>(matches UCI snippet)"]
         r4["software millis() check<br/>(Timer1 owned by Servo)"]
-        r5["analog read + threshold<br/>→ boolean"]
-        r6["22-key schema<br/>(§8.10.1.2 canonical)"]
+        r6["20-key schema<br/>(§8.10.1.2 canonical)"]
         r7["Mode 2, Local Mesh Only<br/>(§8.11.6)"]
     end
     i1-->r1
     i2-->r2
     i3-->r3
     i4-->r4
-    i5-->r5
     i6-->r6
     i7-->r7
 ```
@@ -584,8 +580,7 @@ flowchart LR
 | Router IP plan | Robot router `.1` as gateway (§8.14.5) | Mesh UCI scripts |
 | Mesh ID naming | `robot-mesh` (matches UCI snippet) | Mesh script variable |
 | Dead-man: `millis()` vs Timer1 ISR | Software check — Timer1 owned by Servo lib | `DEADMAN_MS` |
-| IR sensors: boolean vs analog | Analog read + threshold → boolean | Firmware threshold |
-| Telemetry field count (12/22/26) | 22-key schema of §8.10.1.2 | `pi/common/protocol.py` |
+| Telemetry field count (12/22/26) | 20-key schema of §8.10.1.2 | `pi/common/protocol.py` |
 | Operational mode count | Mode 2, Local Mesh Only (§8.11.6) | `p3.env: ENABLE_OVERLAY=0` |
 
 ---

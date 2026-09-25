@@ -83,7 +83,7 @@ class ControlServer:
 
     async def start(self) -> None:
         self.config.paths.ensure()
-        self.serial.set_handlers(self._on_telemetry_frame, self._on_serial_event)
+        self.serial.set_handlers(self._on_telemetry_frame, None)
         await self.serial.open()
         self.serial.start_reader()
         self.gps.start()
@@ -115,18 +115,6 @@ class ControlServer:
 
     def _on_telemetry_frame(self, frame: dict[str, Any]) -> None:
         self._latest_frame = frame
-
-    def _on_serial_event(self, token: str) -> None:
-        if token.startswith(protocol.ALERT_OBSTACLE_TOKEN):
-            asyncio.create_task(
-                self.hub.broadcast(
-                    {
-                        "type": protocol.MSG_ERROR,
-                        "code": "obstacle",
-                        "message": "Forward motion blocked by obstacle",
-                    }
-                )
-            )
 
     def build_snapshot(self) -> dict[str, Any]:
         """Merge the Arduino frame, GPS state, and server metadata."""
@@ -216,7 +204,6 @@ class ControlServer:
         result = self.validator.validate(
             message,
             client_id=client.id,
-            range_cm=self._latest_frame.get("range_cm"),
         )
         if not result.ok or result.opcode is None:
             await self._reject(client, result.reason or "rejected")

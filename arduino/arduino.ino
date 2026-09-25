@@ -10,7 +10,7 @@
  *
  * Scheduled tasks:
  *   taskMotorService   10 ms   PWM ramp + motor safety
- *   taskSensorFast     50 ms   ultrasonic + IR
+ *   taskSensorFast     50 ms   ultrasonic
  *   taskSensorSlow   2000 ms   DHT11 + gas
  *   taskTelemetry     500 ms   periodic telemetry line
  *   taskHeartbeat    1000 ms   heartbeat line
@@ -23,7 +23,7 @@
  *   scheduler         cooperative millis() scheduler
  *   motors            BTS7960 differential drive
  *   servos            pan/tilt gimbal
- *   sensors           acquisition (HC-SR04, IR, PIR, DHT11, MQ-136)
+ *   sensors           acquisition (HC-SR04, PIR, DHT11, MQ-136)
  *   protocol          UART wire format
  *   command_parser    RX framing + 4-stage validation
  *   telemetry         outbound messages
@@ -68,7 +68,7 @@ static void taskHeartbeat() {
 }
 
 /* ---------------------------------------------------------------------------
- * Safety supervisor: dead-man timer, obstacle guard, gas panic, and fault
+ * Safety supervisor: dead-man timer, gas panic, and fault
  * recovery. Runs frequently (10 ms) so faults are caught promptly.
  * ------------------------------------------------------------------------- */
 static void taskSafety() {
@@ -93,18 +93,6 @@ static void taskSafety() {
       g_telemetry.sendPanic();
     }
     return;
-  }
-
-  /* --- Obstacle guard: auto-stop forward motion near an obstacle ------- */
-  if (g_state.mode() == MODE_ACTIVE &&
-      g_motors.direction() == DIR_FORWARD) {
-    bool blocked = (s.distanceCm <= OBSTACLE_DISTANCE_CM) ||
-                   s.irLeft || s.irRight;
-    if (blocked) {
-      g_motors.stop();
-      g_state.setMode(MODE_READY);
-      g_telemetry.sendEvent("OBSTACLE_STOP");
-    }
   }
 
   /* --- Recovery: if a dead-man fault cleared because comms resumed ----- */

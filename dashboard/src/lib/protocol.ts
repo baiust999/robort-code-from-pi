@@ -95,8 +95,6 @@ export interface TelemetrySnapshot {
   gas_ppm: number;
   motion: number;
   range_cm: number;
-  ir_left: number;
-  ir_right: number;
   pan_angle: number;
   tilt_angle: number;
   fw_state: number;

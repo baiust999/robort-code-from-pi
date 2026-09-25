@@ -26,7 +26,6 @@ HANDSHAKE_READY_TIMEOUT_S = 5.0
 
 READY_TOKEN = "READY"
 PANIC_TOKEN = "PANIC"
-ALERT_OBSTACLE_TOKEN = "ALERT_OBSTACLE"
 
 # Command opcodes, Table 8.7.4. Values are the leading ASCII character.
 CMD_FORWARD = "F"
@@ -76,8 +75,6 @@ TELEMETRY_FIELDS: tuple[str, ...] = (
     "gas_ppm",
     "motion",
     "range_cm",
-    "ir_left",
-    "ir_right",
     "pan_angle",
     "tilt_angle",
     "fw_state",
@@ -93,8 +90,6 @@ TELEMETRY_FIELD_TYPES: dict[str, type] = {
     "gas_ppm": int,
     "motion": int,
     "range_cm": int,
-    "ir_left": int,
-    "ir_right": int,
     "pan_angle": int,
     "tilt_angle": int,
     "fw_state": int,
@@ -108,8 +103,6 @@ TELEMETRY_FIELD_RANGES: dict[str, tuple[float, float]] = {
     "gas_ppm": (0, 10000),
     "motion": (0, 1),
     "range_cm": (0, 500),
-    "ir_left": (0, 1),
-    "ir_right": (0, 1),
     "pan_angle": (0, 180),
     "tilt_angle": (0, 180),
     "fw_state": (1, 3),
@@ -137,7 +130,6 @@ RING_BUFFER_SIZE = 300  # 60s at 200ms, Section 8.10.3
 
 # --- Safety -----------------------------------------------------------------
 
-OBSTACLE_BLOCK_CM = 20  # forward motion suppressed at or below, Section 8.7.4
 COMMAND_ACK_TIMEOUT_MS = 3000  # mission state -> STOP, Section 8.11.1.1
 
 # --- Network ----------------------------------------------------------------
@@ -219,8 +211,6 @@ class TelemetrySnapshot:
     gas_ppm: int = 0
     motion: int = 0
     range_cm: int = 0
-    ir_left: int = 0
-    ir_right: int = 0
     pan_angle: int = 90
     tilt_angle: int = 90
     fw_state: int = FW_STATE_ARMED

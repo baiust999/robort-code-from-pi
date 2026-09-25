@@ -26,9 +26,6 @@ void Sensors::init() {
   pinMode(ULTRASONIC_ECHO_PIN, INPUT);
   digitalWrite(ULTRASONIC_TRIG_PIN, LOW);
 
-  pinMode(IR_LEFT_PIN,  INPUT_PULLUP);
-  pinMode(IR_RIGHT_PIN, INPUT_PULLUP);
-
   pinMode(PIR_PIN, INPUT);
   attachInterrupt(digitalPinToInterrupt(PIR_PIN),
                   motionInterruptTrampoline, RISING);
@@ -69,12 +66,6 @@ uint16_t Sensors::readUltrasonicCm() {
   return (uint16_t)cm;
 }
 
-void Sensors::readIR() {
-  SensorData &s = g_state.sensors();
-  s.irLeft  = (digitalRead(IR_LEFT_PIN)  == IR_OBSTACLE_ACTIVE);
-  s.irRight = (digitalRead(IR_RIGHT_PIN) == IR_OBSTACLE_ACTIVE);
-}
-
 void Sensors::readGas() {
   SensorData &s = g_state.sensors();
   s.gasRaw   = (uint16_t)analogRead(GAS_PIN);
@@ -85,7 +76,6 @@ void Sensors::serviceFast() {
   SensorData &s = g_state.sensors();
 
   s.distanceCm = readUltrasonicCm();
-  readIR();
 
   /* Latch motion flag set by the ISR. */
   noInterrupts();

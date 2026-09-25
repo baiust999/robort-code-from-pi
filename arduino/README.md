@@ -21,9 +21,9 @@ services every subsystem without ever calling `delay()` in the main loop.
 - **BTS7960 differential drive** — dual half-bridge, PWM speed control, current-
   friendly ramping, hardware enable line.
 - **Pan / tilt servos** — 0–180° clamped.
-- **Sensor suite** — HC-SR04 ultrasonic, left/right IR, HC-SR501 PIR (interrupt),
+- **Sensor suite** — HC-SR04 ultrasonic, HC-SR501 PIR (interrupt),
   DHT11 (bit-banged, no external library), MQ-136 gas.
-- **Safety supervisor** — gas panic, obstacle auto-stop, emergency stop,
+- **Safety supervisor** — gas panic, emergency stop,
   fault latching and recovery.
 - **Telemetry** — periodic status line, heartbeat, `READY` banner, `PANIC`
   alerts, per-command `ACK` / `NACK`.
@@ -41,7 +41,7 @@ unocode/arduino/
 ├── scheduler.h / .cpp   Cooperative millis() scheduler
 ├── motors.h / .cpp      BTS7960 differential drive + ramping
 ├── servos.h / .cpp      Pan / tilt gimbal
-├── sensors.h / .cpp     HC-SR04, IR, PIR, DHT11, MQ-136 acquisition
+├── sensors.h / .cpp     HC-SR04, PIR, DHT11, MQ-136 acquisition
 ├── protocol.h / .cpp    UART wire-protocol definitions
 ├── command_parser.h/.cpp RX framing + 4-stage validation pipeline
 ├── telemetry.h / .cpp   Outbound message formatting
@@ -65,8 +65,6 @@ unocode/arduino/
 | HC-SR04 TRIG              | D7   |                                |
 | HC-SR04 ECHO              | D8   |                                |
 | HC-SR501 PIR              | D2   | external interrupt (INT0)      |
-| IR left                   | A0   | digital read                   |
-| IR right                  | A1   | digital read                   |
 | DHT11 data                | A2   | bit-banged single wire         |
 | MQ-136 gas (analog)       | A3   |                                |
 | Status LED                | D13  | on-board                       |
@@ -118,9 +116,9 @@ Any valid, well-formed line (including `H` and `?`) refreshes the dead-man timer
 | `TELEM`   | `TELEM;MODE=READY;FAULT=NONE;DIR=S;SPD=0;DIST=124;…` |
 | `STATUS`  | `STATUS;FW=RESCUE-UNO;VER=1.0.0;MODE=READY;…`        |
 | `PANIC`   | `PANIC GAS`                                          |
-| `EVT`     | `EVT OBSTACLE_STOP`                                  |
+| `EVT`     | `EVT DEADMAN_CLEARED`                                |
 
-Telemetry `TELEM` / `STATUS` fields: `MODE, FAULT, DIR, SPD, DIST, IRL, IRR,
+Telemetry `TELEM` / `STATUS` fields: `MODE, FAULT, DIR, SPD, DIST,
 MOT, T, H, GAS, GALM, PAN, TILT`.
 
 ---
@@ -130,7 +128,7 @@ MOT, T, H, GAS, GALM, PAN, TILT`.
 ```
 BOOT ──► READY ──► ACTIVE
            ▲          │
-           └──────────┘   (S / stop, obstacle auto-stop)
+           └──────────┘   (S / stop)
 
   any state ──► ESTOP   (operator stop while faulted)
   any state ──► PANIC   (gas alarm, dead-man timeout)
@@ -148,8 +146,9 @@ Motion is permitted only in `READY` / `ACTIVE` with no latched fault.
   resume.
 - **Gas panic:** `MQ-136` raw ADC ≥ threshold → latched `PANIC GAS`, motors
   cut. Recovers when the reading drops.
-- **Obstacle guard:** forward motion with distance ≤ 20 cm (or either IR
-  triggered) → auto-stop + `EVT OBSTACLE_STOP`, robot returns to `READY`.
+- **Obstacle distance:** the HC-SR04 `DIST` reading is reported via telemetry/
+  `STATUS` only; it does not auto-stop the motors — the operator decides
+  whether to stop, reverse, or continue.
 - **Emergency stop:** `S` cuts motion; if faulted with an operator e-stop it
   also clears that latch.
 

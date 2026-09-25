@@ -79,10 +79,6 @@
 /* HC-SR501 PIR motion sensor */
 #define PIR_PIN               2    /* interrupt capable (INT0)              */
 
-/* IR obstacle sensors (digital) */
-#define IR_LEFT_PIN          A0
-#define IR_RIGHT_PIN         A1
-
 /* DHT11 temperature / humidity */
 #define DHT_PIN              A2
 #define DHT_TYPE_DHT11        11
@@ -93,11 +89,9 @@
 /* ===========================================================================
  * SENSOR THRESHOLDS / SAFETY
  * ======================================================================== */
-#define OBSTACLE_DISTANCE_CM   20    /* auto-stop below this forward dist    */
 #define ULTRASONIC_MAX_CM     400    /* HC-SR04 practical max range          */
 #define ULTRASONIC_TIMEOUT_US 25000UL /* pulseIn timeout (~4.2 m)            */
 #define GAS_ALARM_THRESHOLD   1000   /* raw ADC value -> gas panic - increased for testing */
-#define IR_OBSTACLE_ACTIVE    LOW    /* most IR modules pull LOW on detect   */
 
 /* ===========================================================================
  * STATUS LED
