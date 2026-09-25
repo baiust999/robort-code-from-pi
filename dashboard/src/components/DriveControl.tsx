@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type PointerEvent } from 'react';
 
 const KEY_TO_DIR: Record<string, 'F' | 'R' | 'L' | 'G'> = {
   ArrowUp: 'F',
@@ -43,8 +43,9 @@ export function DriveControl(props: {
     };
   }, [onDrive, onStop, speed, disabled]);
 
-  function press(dir: 'F' | 'R' | 'L' | 'G') {
+  function press(e: PointerEvent<HTMLButtonElement>, dir: 'F' | 'R' | 'L' | 'G') {
     if (disabled) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
     onDrive(dir, speed);
   }
 
@@ -56,9 +57,9 @@ export function DriveControl(props: {
         <button
           className="rounded bg-white/10 py-2 hover:bg-white/20 disabled:opacity-30"
           disabled={disabled}
-          onPointerDown={() => press('F')}
+          onPointerDown={(e) => press(e, 'F')}
           onPointerUp={onStop}
-          onPointerLeave={onStop}
+          onPointerCancel={onStop}
         >
           ▲
         </button>
@@ -66,9 +67,9 @@ export function DriveControl(props: {
         <button
           className="rounded bg-white/10 py-2 hover:bg-white/20 disabled:opacity-30"
           disabled={disabled}
-          onPointerDown={() => press('L')}
+          onPointerDown={(e) => press(e, 'L')}
           onPointerUp={onStop}
-          onPointerLeave={onStop}
+          onPointerCancel={onStop}
         >
           ◀
         </button>
@@ -81,9 +82,9 @@ export function DriveControl(props: {
         <button
           className="rounded bg-white/10 py-2 hover:bg-white/20 disabled:opacity-30"
           disabled={disabled}
-          onPointerDown={() => press('G')}
+          onPointerDown={(e) => press(e, 'G')}
           onPointerUp={onStop}
-          onPointerLeave={onStop}
+          onPointerCancel={onStop}
         >
           ▶
         </button>
@@ -91,9 +92,9 @@ export function DriveControl(props: {
         <button
           className="rounded bg-white/10 py-2 hover:bg-white/20 disabled:opacity-30"
           disabled={disabled}
-          onPointerDown={() => press('R')}
+          onPointerDown={(e) => press(e, 'R')}
           onPointerUp={onStop}
-          onPointerLeave={onStop}
+          onPointerCancel={onStop}
         >
           ▼
         </button>

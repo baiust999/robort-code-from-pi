@@ -146,6 +146,7 @@ class SerialBridge:
             return
 
         # Everything else is a token: READY, PANIC, ALERT_OBSTACLE, ERR_*.
+        self._log.info("DEBUG_RX", "arduino line", line=line)
         if self._on_event:
             self._on_event(line)
         if line.startswith(protocol.PANIC_TOKEN):
@@ -159,6 +160,7 @@ class SerialBridge:
 
     async def send(self, opcode: str, argument: int | None = None) -> None:
         wire = protocol.encode_command(opcode, argument)
+        self._log.info("DEBUG_TX", "sending to arduino", wire=wire.strip())
         async with self._lock:
             try:
                 self._write_line(wire)
