@@ -317,6 +317,19 @@ def create_app(server: ControlServer) -> FastAPI:
     async def control_ws(socket: WebSocket) -> None:
         client = await server.hub.register(socket)
         try:
+            # Wait for hello message before sending telemetry, so the client
+            # can authenticate and claim a role (controller vs observer).
+            raw = await socket.receive_text()
+            try:
+                message = json.loads(raw)
+            except json.JSONDecodeError:
+                await server._reject(client, "malformed json")
+                return
+            if not isinstance(message, dict):
+                await server._reject(client, "message must be an object")
+                return
+            await server.handle_client_message(client, message)
+
             # Prime the client with the current state so its first render is
             # immediate rather than up to 200ms late.
             await server.hub.send(client, server.build_snapshot())

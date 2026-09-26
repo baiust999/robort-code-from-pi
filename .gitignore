@@ -3,10 +3,12 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 .venv/
+venv/
 .pytest_cache/
 
 # Runtime data
 pi/var/
+var/log/
 
 # Node
 node_modules/
@@ -19,3 +21,7 @@ dist-ssr/
 .idea/
 .DS_Store
 *.swp
+
+# Claude Code
+.claude/settings.local.json
+.claude/*.tmp*
