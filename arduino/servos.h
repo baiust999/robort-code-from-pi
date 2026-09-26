@@ -1,7 +1,9 @@
 /**
  * servos.h
  * -----------------------------------------------------------------------------
- * Pan / tilt camera gimbal control using the Arduino Servo library. Enforces
+ * Pan / tilt camera gimbal control using ServoTimer2Plus (Timer2), which keeps
+ * Timer1 free so analogWrite() still works on the right motor pins D9/D10.
+ * Enforces
  * 0-180 degree limits and centres both servos at boot.
  * -----------------------------------------------------------------------------
  */
@@ -10,7 +12,7 @@
 #define SERVOS_H
 
 #include <Arduino.h>
-#include <Servo.h>
+#include <ServoTimer2Plus.h>
 
 class Servos {
  public:
@@ -32,8 +34,8 @@ class Servos {
   uint8_t tilt() const { return _tilt; }
 
  private:
-  Servo   _panServo;
-  Servo   _tiltServo;
+  ServoTimer2Plus _panServo;
+  ServoTimer2Plus _tiltServo;
   uint8_t _pan;
   uint8_t _tilt;
 };

@@ -21,12 +21,12 @@ void Servos::init() {
 
 void Servos::setPan(uint8_t angle) {
   _pan = (uint8_t)utils::clampInt(angle, SERVO_ANGLE_MIN, SERVO_ANGLE_MAX);
-  _panServo.write(_pan);
+  _panServo.writeAngle(_pan);
 }
 
 void Servos::setTilt(uint8_t angle) {
   _tilt = (uint8_t)utils::clampInt(angle, SERVO_ANGLE_MIN, SERVO_ANGLE_MAX);
-  _tiltServo.write(_tilt);
+  _tiltServo.writeAngle(_tilt);
 }
 
 void Servos::home() {
