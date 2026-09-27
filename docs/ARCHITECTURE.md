@@ -710,6 +710,11 @@ stateDiagram-v2
 Every change is broadcast to all dashboards in `talk_status`, so the radio
 buttons always show the mode the robot is really in.
 
+A VNC viewer mirrors the robot display, so its clicks and key presses reach
+the kiosk radio buttons too; close it while talking to a victim. P2 logs
+which local client switched the mode (`source=local:127.0.0.1:kiosk` or
+`:curl`) in the `DISPLAY_MODE` event.
+
 ---
 
 *For the full architectural rationale — drivers, quality attributes, known

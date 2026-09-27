@@ -747,7 +747,7 @@ never rejects or blocks a motor command.
 | Signalling | GET /api/ice-config (STUN), POST /webrtc/offer (SDP) |
 | Media Codec | H.264 Baseline (video), Opus 32 kbps (audio) |
 | Data Channel | SCTP, label `screen`, ordered + reliable |
-| Browser Requirement | Operator page must be a secure context (HTTPS, or Chrome flag for the robot IP) so `getUserMedia` can open the laptop mic/camera |
+| Browser Requirement | Operator page must be a secure context (HTTPS, or Chrome flag for the robot's exact origin, e.g. `http://192.168.10.10:8080`) so `getUserMedia` can open the laptop mic/camera; Chrome or Edge, as Firefox/Safari have no equivalent flag |
 
 ## 16.2 RTP Tracks (4 Total)
 
@@ -1003,7 +1003,7 @@ USB Camera (Video):
 
 Audio (Two-Way):
 ├─ Microphone (victim → operator):
-│  ├─ Capture: 48 kHz mono (ALSA)
+│  ├─ Capture: 48 kHz mono (ALSA, via p2_media/alsa.conf)
 │  ├─ Encode: Opus 32 kbps (VBR)
 │  └─ Output: RTP stream (Track 2, Pi → Operator)
 │
@@ -1402,7 +1402,7 @@ Estimated SD Card Lifespan:
 | GPIO14 | TXD | Serial | UART TX (to Arduino) |
 | GPIO15 | RXD | Serial | UART RX (from Arduino) |
 | USB 3.0 Port 1 | /dev/video0 | Camera | Logitech C270 camera |
-| USB 2.0 Port 1 | /dev/snd/pcmC0D0c | Audio | USB microphone (ALSA) |
+| USB 2.0 Port 1 | first ALSA capture card (e.g. "U20") | Audio | USB microphone (ALSA; P2 picks it by card id) |
 | 3.5 mm jack | ALSA card "Headphones" | Audio | Speaker (operator voice) |
 | micro-HDMI 0 | HDMI-A-1 | Display | Robot display (Robot Screen kiosk) |
 | Ethernet | eth0 | Network | Robot Mesh Router → Pi |
@@ -1892,7 +1892,10 @@ OPERATOR LAPTOP:
   ☐ React SPA built (Vite production bundle)
   ☐ Browser: Chrome/Firefox/Safari (modern version, WebRTC support)
   ☐ Laptop mic + camera working; browser allowed to use them
-    (dashboard over HTTPS, or Chrome flag for the robot IP)
+    (dashboard over HTTPS, or Chrome/Edge flag for the robot's exact
+    origin; check `isSecureContext` is true in the browser console)
+  ☐ VNC viewer closed while talking to the victim (its clicks and
+    keys can switch the robot display to VNC mode)
   ☐ Network: Wi-Fi adapter (802.11g at minimum, 5 GHz preferred)
   ☐ Storage: 1 GB free disk space
 ```
