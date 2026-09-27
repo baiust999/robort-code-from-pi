@@ -76,9 +76,6 @@
 #define ULTRASONIC_TRIG_PIN   7
 #define ULTRASONIC_ECHO_PIN   8    /* echo -> uses pulseIn                   */
 
-/* HC-SR501 PIR motion sensor */
-#define PIR_PIN               2    /* interrupt capable (INT0)              */
-
 /* DHT11 temperature / humidity */
 #define DHT_PIN              A2
 #define DHT_TYPE_DHT11        11

@@ -93,7 +93,6 @@ export interface TelemetrySnapshot {
   temperature_c: number;
   humidity_pct: number;
   gas_ppm: number;
-  motion: number;
   range_cm: number;
   pan_angle: number;
   tilt_angle: number;

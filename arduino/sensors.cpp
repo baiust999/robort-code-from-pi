@@ -12,12 +12,6 @@
 #include "utils.h"
 
 Sensors g_sensors;
-volatile bool g_motionFlag = false;
-
-/* Free-function ISR trampoline required by attachInterrupt(). */
-static void motionInterruptTrampoline() {
-  Sensors::onMotionISR();
-}
 
 Sensors::Sensors() {}
 
@@ -26,16 +20,8 @@ void Sensors::init() {
   pinMode(ULTRASONIC_ECHO_PIN, INPUT);
   digitalWrite(ULTRASONIC_TRIG_PIN, LOW);
 
-  pinMode(PIR_PIN, INPUT);
-  attachInterrupt(digitalPinToInterrupt(PIR_PIN),
-                  motionInterruptTrampoline, RISING);
-
   pinMode(DHT_PIN, INPUT_PULLUP);
   /* GAS_PIN is analog, no pinMode needed. */
-}
-
-void Sensors::onMotionISR() {
-  g_motionFlag = true;
 }
 
 /* ---------------------------------------------------------------------------
@@ -76,23 +62,11 @@ void Sensors::serviceFast() {
   SensorData &s = g_state.sensors();
 
   s.distanceCm = readUltrasonicCm();
-
-  /* Latch motion flag set by the ISR. */
-  noInterrupts();
-  bool motion = g_motionFlag;
-  g_motionFlag = false;
-  interrupts();
-  if (motion) {
-    s.motion = true;
-  }
 }
 
 void Sensors::serviceSlow() {
   readDHT();
   readGas();
-  /* Motion is a momentary event; clear it each slow cycle so telemetry
-   * reflects recent activity rather than latching forever. */
-  g_state.sensors().motion = false;
 }
 
 /* ---------------------------------------------------------------------------

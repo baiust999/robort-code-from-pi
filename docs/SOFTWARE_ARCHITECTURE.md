@@ -122,7 +122,7 @@ There is no cloud tier in the deployed configuration. The methodology defines fi
   +==================================================|===========+
                                                      v
                                        [ DISASTER ENVIRONMENT ]
-                                         temperature, gas, motion,
+                                         temperature, gas,
                                          obstacles, terrain, GPS sky
 
   Mission-path transports:  WebSocket :8080  |  WebRTC :8443
@@ -295,16 +295,16 @@ The contract is defined canonically in `pi/common/protocol.py` and hand-mirrored
 
 Manual mirroring is a real risk and should be named as such: a constant changed in one file and not the others produces a silent protocol mismatch that no compiler will catch. The mitigation is partly procedural — the docstrings state the obligation explicitly — and partly structural, in that `derive_mission_state()` is implemented twice against the same first-match rules and the test suite pins the Python side. A stronger design would generate all three files from one source; that is recorded as future work in Section A.10 rather than claimed as present.
 
-**Upstream, Arduino to P1**, telemetry is a 9-field positional CSV, at most 80 characters, emitted every 200 ms:
+**Upstream, Arduino to P1**, telemetry is an 8-field positional CSV, at most 80 characters, emitted every 200 ms:
 
 ```
-temperature_c, humidity_pct, gas_ppm, motion, range_cm,
+temperature_c, humidity_pct, gas_ppm, range_cm,
 pan_angle, tilt_angle, fw_state, uptime_ms
 ```
 
 Field order is load-bearing — parsing is by index, not by name — which is the correct trade on a link where every byte costs transmission time on an 8-bit MCU. `parse_telemetry_line()` validates in three passes: field count, per-field type coercion, and per-field plausibility range. Any failure at any stage discards the entire frame.
 
-**The discard-don't-retransmit rule is the single most characteristic decision in the data architecture.** There is no retransmission, no sequence numbering, and no acknowledgement on the UART link. A corrupted frame is dropped and nothing is requested. This is correct rather than lazy: the next frame arrives within 200 ms, so the cost of a discard is one dropped sample of a continuously-sampled signal, whereas a retransmission protocol would add buffering, state, and latency to a safety-critical path in exchange for data that will be superseded before it could be re-delivered. The same reasoning drives the PIR motion latch to be edge-reported and cleared after each transmission.
+**The discard-don't-retransmit rule is the single most characteristic decision in the data architecture.** There is no retransmission, no sequence numbering, and no acknowledgement on the UART link. A corrupted frame is dropped and nothing is requested. This is correct rather than lazy: the next frame arrives within 200 ms, so the cost of a discard is one dropped sample of a continuously-sampled signal, whereas a retransmission protocol would add buffering, state, and latency to a safety-critical path in exchange for data that will be superseded before it could be re-delivered.
 
 **Downstream, dashboard to P1 to Arduino**, commands are single-character opcodes with optional numeric arguments — `F120\n` is forward at PWM 120. The dashboard speaks JSON WebSocket messages; P1 validates and lowers them to the wire grammar. Six client message types (`hello`, `motor`, `servo`, `heartbeat`, `stop_all`, `resume_from`) and four server types (`telemetry`, `recovery_batch`, `ack`, `error`) constitute the entire application protocol.
 
@@ -321,7 +321,7 @@ Field order is load-bearing — parsing is by index, not by name — which is th
 
 The two telemetry rates are deliberately decoupled. Broadcast runs at 200 ms because the operator needs a responsive interface; disk logging samples at 1 Hz because the full stream would consume roughly 3.2 MB per hour to record data whose post-mission value is trend-level. The ring buffer holds 60 seconds, which bounds the worst case for a reconnecting dashboard: 60 seconds of history against a P1 restart of approximately 8 seconds. When a client's `last_ts` predates the oldest buffered entry, `gap_ms()` reports the shortfall and the dashboard renders an explicit gap marker on the map rather than interpolating across data it never received.
 
-`compute_alert_flags()` packs eight boolean conditions — temperature warn and critical, gas warn and critical, range warn and critical, motion, and GPS loss — into a single integer bitfield per log row, keeping the CSV compact while preserving the full alert history.
+`compute_alert_flags()` packs seven boolean conditions — temperature warn and critical, gas warn and critical, range warn and critical, and GPS loss — into a single integer bitfield per log row, keeping the CSV compact while preserving the full alert history.
 
 ---
 

@@ -37,7 +37,6 @@ export function SensorCardGrid(props: { telemetry: TelemetrySnapshot | null }) {
         value={t ? `${t.range_cm} cm` : '—'}
         tone={cardTone(t?.range_cm ?? null, 'range_cm')}
       />
-      <Card label="Motion" value={t ? (t.motion ? 'detected' : 'clear') : '—'} tone={t?.motion ? 'border-amber-500/60 bg-amber-500/10' : 'border-white/10'} />
     </div>
   );
 }

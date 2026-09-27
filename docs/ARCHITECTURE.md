@@ -17,7 +17,7 @@ Who and what the system talks to, and what's outside its boundary.
 flowchart TB
     operator["🧑 Operator<br/>(drives, interprets sensors)"]
     osm["OpenStreetMap tiles<br/>(non-critical, degrades to blank map)"]
-    env["Disaster environment<br/>(temp, gas, motion, obstacles, GPS sky)"]
+    env["Disaster environment<br/>(temp, gas, obstacles, GPS sky)"]
 
     subgraph system["RESCUE ROBOT SYSTEM"]
         dashboard["Dashboard<br/>(React 19 + TS)"]
@@ -184,14 +184,13 @@ flowchart TD
     c2 --> loopback(["back to top of loop()"])
 
     isr1(["ISR: sonar echo<br/>CATEGORY 3, &lt;5µs"]) -.writes volatile.-> dead
-    isr2(["ISR: PIR motion<br/>CATEGORY 3, &lt;5µs"]) -.writes volatile.-> dead
 
     classDef safety fill:#fff,stroke:#C4392B,stroke-width:2px;
     classDef cadence fill:#fff,stroke:#7C8A7E;
     classDef isr fill:#fff,stroke:#E85A20,stroke-dasharray: 4 3;
     class c1 safety;
     class c2 cadence;
-    class isr1,isr2 isr;
+    class isr1 isr;
 ```
 
 The DHT11's 2000 ms cadence is set specifically because its ~25 ms blocking
@@ -302,7 +301,7 @@ sequenceDiagram
     participant TL as TelemetryLog
     participant WS as WebSocketHub
 
-    AR->>SR: CSV line (9 fields)
+    AR->>SR: CSV line (8 fields)
     SR->>SR: parse_telemetry_line()
     alt malformed
         SR->>SR: discard frame
@@ -372,11 +371,10 @@ canonically in `pi/common/protocol.py`, hand-mirrored into `protocol.h` and
 ```mermaid
 classDiagram
     class TelemetryFrame_Arduino {
-        <<9-field CSV, <=80 chars, 200ms>>
+        <<8-field CSV, <=80 chars, 200ms>>
         float temperature_c
         float humidity_pct
         int gas_ppm
-        bool motion
         int range_cm
         int pan_angle
         int tilt_angle

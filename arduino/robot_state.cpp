@@ -16,7 +16,6 @@ RobotState::RobotState()
     _fault(FAULT_NONE),
     _lastCmdTime(0) {
   _sensors.distanceCm   = ULTRASONIC_MAX_CM;
-  _sensors.motion       = false;
   _sensors.temperatureC = 0;
   _sensors.humidity     = 0;
   _sensors.gasRaw       = 0;

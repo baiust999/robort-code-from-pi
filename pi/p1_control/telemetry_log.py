@@ -23,7 +23,6 @@ CSV_COLUMNS: tuple[str, ...] = (
     "temperature_c",
     "humidity_pct",
     "gas_ppm",
-    "motion",
     "range_cm",
     "pan_angle",
     "tilt_angle",

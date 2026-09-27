@@ -21,7 +21,7 @@ services every subsystem without ever calling `delay()` in the main loop.
 - **BTS7960 differential drive** — dual half-bridge, PWM speed control, current-
   friendly ramping, hardware enable line.
 - **Pan / tilt servos** — 0–180° clamped.
-- **Sensor suite** — HC-SR04 ultrasonic, HC-SR501 PIR (interrupt),
+- **Sensor suite** — HC-SR04 ultrasonic,
   DHT11 (bit-banged, no external library), MQ-136 gas.
 - **Safety supervisor** — gas panic, emergency stop,
   fault latching and recovery.
@@ -41,7 +41,7 @@ unocode/arduino/
 ├── scheduler.h / .cpp   Cooperative millis() scheduler
 ├── motors.h / .cpp      BTS7960 differential drive + ramping
 ├── servos.h / .cpp      Pan / tilt gimbal
-├── sensors.h / .cpp     HC-SR04, PIR, DHT11, MQ-136 acquisition
+├── sensors.h / .cpp     HC-SR04, DHT11, MQ-136 acquisition
 ├── protocol.h / .cpp    UART wire-protocol definitions
 ├── command_parser.h/.cpp RX framing + 4-stage validation pipeline
 ├── telemetry.h / .cpp   Outbound message formatting
@@ -64,7 +64,6 @@ unocode/arduino/
 | Servo TILT                | D3   | PWM                            |
 | HC-SR04 TRIG              | D7   |                                |
 | HC-SR04 ECHO              | D8   |                                |
-| HC-SR501 PIR              | D2   | external interrupt (INT0)      |
 | DHT11 data                | A2   | bit-banged single wire         |
 | MQ-136 gas (analog)       | A3   |                                |
 | Status LED                | D13  | on-board                       |

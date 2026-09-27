@@ -32,7 +32,6 @@ enum FaultReason {
 /* Aggregated live sensor readings, updated by the sensors module. */
 struct SensorData {
   uint16_t distanceCm;   /* HC-SR04 forward distance (cm)             */
-  bool     motion;       /* HC-SR501 PIR motion detected              */
   int8_t   temperatureC; /* DHT11 temperature (deg C)                 */
   uint8_t  humidity;     /* DHT11 relative humidity (%)               */
   uint16_t gasRaw;       /* MQ-136 raw ADC (0-1023)                   */

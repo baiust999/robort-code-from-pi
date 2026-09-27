@@ -73,7 +73,6 @@ TELEMETRY_FIELDS: tuple[str, ...] = (
     "temperature_c",
     "humidity_pct",
     "gas_ppm",
-    "motion",
     "range_cm",
     "pan_angle",
     "tilt_angle",
@@ -88,7 +87,6 @@ TELEMETRY_FIELD_TYPES: dict[str, type] = {
     "temperature_c": float,
     "humidity_pct": float,
     "gas_ppm": int,
-    "motion": int,
     "range_cm": int,
     "pan_angle": int,
     "tilt_angle": int,
@@ -101,7 +99,6 @@ TELEMETRY_FIELD_RANGES: dict[str, tuple[float, float]] = {
     "temperature_c": (-40.0, 125.0),
     "humidity_pct": (0.0, 100.0),
     "gas_ppm": (0, 10000),
-    "motion": (0, 1),
     "range_cm": (0, 500),
     "pan_angle": (0, 180),
     "tilt_angle": (0, 180),
@@ -189,7 +186,7 @@ ALERT_BITS = {
     "gas_crit": 3,
     "range_warn": 4,
     "range_crit": 5,
-    "motion": 6,
+    # Bit 6 was the PIR motion flag; left unused so older logs still decode.
     "gps_lost": 7,
 }
 
@@ -209,7 +206,6 @@ class TelemetrySnapshot:
     temperature_c: float = 0.0
     humidity_pct: float = 0.0
     gas_ppm: int = 0
-    motion: int = 0
     range_cm: int = 0
     pan_angle: int = 90
     tilt_angle: int = 90
@@ -342,8 +338,6 @@ def compute_alert_flags(snapshot: dict[str, Any], thresholds: dict[str, dict[str
         elif "warn" in limits and rng <= limits["warn"]:
             _set("range_warn")
 
-    if snapshot.get("motion"):
-        _set("motion")
     if not snapshot.get("gps_fix"):
         _set("gps_lost")
 

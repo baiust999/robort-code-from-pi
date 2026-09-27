@@ -10,9 +10,9 @@ flowchart TB
         A_UART["UART parser\n4-stage validation"]
         A_DM["Dead-man timer\n2000 ms"]
         A_SM["State machine\nARMED / DRIVING / STOPPED"]
-        A_SENS["Sensors\nSonar(ISR) · PIR(ISR)\nGas · Temp/Hum"]
+        A_SENS["Sensors\nSonar(ISR)\nGas · Temp/Hum"]
         A_ACT["Actuators\nMotors (BTS7960) · Servos"]
-        A_TX["Telemetry CSV\n9 fields @200ms"]
+        A_TX["Telemetry CSV\n8 fields @200ms"]
         A_UART --> A_DM --> A_SM --> A_ACT
         A_SENS --> A_TX
     end

@@ -6,7 +6,6 @@
  *
  * Sensors:
  *   - HC-SR04  ultrasonic distance   (fast poll, non-blocking pulseIn)
- *   - HC-SR501 PIR motion            (interrupt driven, INT0)
  *   - DHT11    temperature/humidity  (slow poll)
  *   - MQ-136   gas                   (slow poll, analog)
  * -----------------------------------------------------------------------------
@@ -21,17 +20,14 @@ class Sensors {
  public:
   Sensors();
 
-  /* Configure sensor pins and attach the PIR interrupt. */
+  /* Configure sensor pins. */
   void init();
 
-  /* Fast sensor group: ultrasonic + IR. Call from the fast scheduler task. */
+  /* Fast sensor group: ultrasonic. Call from the fast scheduler task. */
   void serviceFast();
 
   /* Slow sensor group: DHT11 + gas. Call from the slow scheduler task. */
   void serviceSlow();
-
-  /* ISR entry point for the PIR motion sensor (called from a free function). */
-  static void onMotionISR();
 
  private:
   uint16_t readUltrasonicCm();
@@ -44,8 +40,5 @@ class Sensors {
 };
 
 extern Sensors g_sensors;
-
-/* Volatile flag set by the PIR ISR, consumed in serviceFast(). */
-extern volatile bool g_motionFlag;
 
 #endif /* SENSORS_H */

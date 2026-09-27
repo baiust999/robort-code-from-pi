@@ -42,14 +42,12 @@ class MockArduino:
         self._last_command_ms = _now_ms() - (protocol.DEADMAN_MS + 1)
         self._deadman_tripped = True
         self._last_telemetry_ms = 0.0
-        self._motion_latch = 0
 
         # Simulated environment.
         self._temperature = 24.5
         self._humidity = 55.0
         self._gas = 3
         self._range_cm = 180
-        self._next_motion_ms = _now_ms() + self._rng.uniform(4000, 12000)
 
         self._tx.extend((protocol.READY_TOKEN + "\n").encode())
 
@@ -110,16 +108,11 @@ class MockArduino:
         else:
             self._range_cm = int(min(400, self._range_cm + 2))
 
-        if now >= self._next_motion_ms:
-            self._motion_latch = 1
-            self._next_motion_ms = now + self._rng.uniform(6000, 20000)
-
     def _emit_telemetry(self, now: float) -> None:
         values = {
             "temperature_c": self._temperature,
             "humidity_pct": self._humidity,
             "gas_ppm": self._gas,
-            "motion": self._motion_latch,
             "range_cm": self._range_cm,
             "pan_angle": self._pan,
             "tilt_angle": self._tilt,
@@ -128,7 +121,6 @@ class MockArduino:
         }
         line = protocol.format_telemetry_line(values)
         self._tx.extend((line + "\n").encode())
-        self._motion_latch = 0
 
     # --- command pipeline (mirrors command_parser.cpp) ----------------------
 

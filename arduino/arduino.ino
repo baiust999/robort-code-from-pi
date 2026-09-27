@@ -23,7 +23,7 @@
  *   scheduler         cooperative millis() scheduler
  *   motors            BTS7960 differential drive
  *   servos            pan/tilt gimbal
- *   sensors           acquisition (HC-SR04, PIR, DHT11, MQ-136)
+ *   sensors           acquisition (HC-SR04, DHT11, MQ-136)
  *   protocol          UART wire format
  *   command_parser    RX framing + 4-stage validation
  *   telemetry         outbound messages
@@ -130,7 +130,7 @@ void setup() {
 
   /* 5. Peripherals. */
   g_servos.init();       /* centre pan/tilt                                */
-  g_sensors.init();      /* pins + PIR interrupt                           */
+  g_sensors.init();      /* sensor pins                                    */
   g_parser.init();
 
   /* 6. Register scheduled tasks. */

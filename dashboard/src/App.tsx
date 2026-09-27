@@ -10,7 +10,7 @@ import { MapPanel } from './components/MapPanel';
 import { SensorCardGrid } from './components/SensorCardGrid';
 import { GpsStatusCard } from './components/GpsStatusCard';
 import { AlertLog } from './components/AlertLog';
-import { deriveMissionState, FW_STATE_STOPPED } from './lib/protocol';
+import { deriveMissionState, FW_STATE_DRIVING } from './lib/protocol';
 
 function App() {
   const { connected, role, telemetry, lastAckMs, alerts, sendMotor, sendServo, sendStopAll } =
@@ -24,9 +24,7 @@ function App() {
         videoActive: true,
         meshOk: true,
         lastCmdAckMs: lastAckMs,
-        commandActive: telemetry
-          ? telemetry.fw_state !== FW_STATE_STOPPED && telemetry.motion === 1
-          : false,
+        commandActive: telemetry?.fw_state === FW_STATE_DRIVING,
       }),
     [connected, telemetry, lastAckMs],
   );

@@ -195,7 +195,7 @@ SUBSYSTEM 4: MOBILE UNIT
 ├─ 4WD chassis: ~300mm × 200mm × 150mm
 ├─ Motor control: 4× DC motors, BTS7960 H-bridge
 ├─ Servo control: 2× SG90 (180° horizontal, 90° vertical)
-├─ Sensors: DHT11, MQ-136, HC-SR501, HC-SR04, GPS
+├─ Sensors: DHT11, MQ-136, HC-SR04, GPS
 ├─ Camera: Logitech C270 (640×480, 10 fps)
 ├─ Audio: USB mic + speaker (48 kHz, bidirectional)
 ├─ Battery: 24V Li-Po, BEC 5V for Pi/sensors
@@ -249,7 +249,6 @@ SUBSYSTEM 5: FAULT-TOLERANCE
 |--------|-------|-------------|-------|------------|
 | Temperature/Humidity | DHT11 | Ambient conditions | 0-50°C, 20-95% RH | 1 Hz |
 | Gas Detection | MQ-136 | Hydrogen sulfide (H₂S) | 0-100+ ppm | Continuous |
-| Motion Detection | HC-SR501 PIR | Occupancy/movement | 5-20m | Event-driven |
 | Distance (Ultrasonic) | HC-SR04 | Obstacle range | 2-400 cm | 40 Hz |
 | GPS Receiver | NEO-6M | Absolute position | NMEA @ 5 Hz | Real-time |
 
@@ -334,7 +333,7 @@ Key Design: No system calls, no OS overhead.
 | Framework | FastAPI + uvicorn |
 | Port | TCP 8080 |
 | Owned Resources | UART device /dev/ttyAMA0 (exclusive fcntl lock) |
-| Ring Buffer | 300 snapshots × 86 bytes = 25.8 KB (60 sec history) |
+| Ring Buffer | 300 snapshots × 85 bytes = 25.5 KB (60 sec history) |
 | Telemetry Cadence | 200 ms (from Arduino) |
 | GPS Parsing | NMEA sentence parsing, position tracking |
 | WebSocket | Broadcast telemetry to all connected operators |
@@ -414,7 +413,6 @@ Motor Commands:
 | Temperature | 2 sec (DHT11) | ≥ 50°C | ≥ 70°C |
 | Humidity | 2 sec (DHT11) | INFO only | INFO only |
 | Gas (H₂S) | Continuous (ADC) | ≥ 10 ppm | ≥ 20 ppm |
-| Motion (PIR) | Event-driven | NOTICE (confirmatory) | — |
 | Range (Ultrasonic) | Continuous (trigger) | < 30 cm | < 20 cm (critical alert) |
 | GPS Position | 200 ms (NMEA) | Fix loss = WARNING | — |
 
@@ -638,11 +636,11 @@ ping -c 10 192.168.10.10  # Target: Robot Pi
 
 ```
 CSV Format, 200 ms cadence:
-temp_c, humidity_pct, gas_ppm, motion, range_cm,
+temp_c, humidity_pct, gas_ppm, range_cm,
 pan_angle, tilt_angle, fw_state, uptime_ms
 
 Example:
-28.4, 62.1, 3, 0, 47, 90, 60, 2, 184320
+28.4, 62.1, 3, 47, 90, 60, 2, 184320
 ```
 
 **Validation Pipeline (4 Stages):**
@@ -702,7 +700,6 @@ never rejects or blocks a motor command.
   "temperature_c": 28.4,
   "humidity_pct": 62.1,
   "gas_ppm": 3,
-  "motion_detected": false,
   "range_cm": 47,
   "pan_angle": 90,
   "tilt_angle": 60,
@@ -1046,8 +1043,7 @@ Arduino (Real-Time)
   │  ├─ DHT11 (temp/humidity)
   │  ├─ MQ-136 (gas)
   │  ├─ HC-SR04 (range)
-  │  ├─ GPS (position)
-  │  └─ PIR (motion)
+  │  └─ GPS (position)
   │
   └─ Telemetry TX (200 ms cadence)
      └─ UART 115,200 baud → Pi
@@ -1099,18 +1095,17 @@ Arduino Sensors
 ```
 Memory Layout (P1 Process Heap):
 ├─ Capacity: 300 snapshots
-├─ Snapshot size: 86 bytes (struct TelemetrySnapshot)
-├─ Total: 25.8 KB (volatile, RAM only)
+├─ Snapshot size: 85 bytes (struct TelemetrySnapshot)
+├─ Total: 25.5 KB (volatile, RAM only)
 ├─ Lifespan: P1 process lifetime (lost on restart)
 ├─ Cadence: Update every 200 ms (from Arduino)
 └─ Overflow: Circular (oldest overwritten when capacity exceeded)
 
-Snapshot Structure (86 bytes):
+Snapshot Structure (85 bytes):
 ├─ timestamp_ms: 4 bytes (uint32)
 ├─ temperature_c: 4 bytes (float)
 ├─ humidity_pct: 4 bytes (float)
 ├─ gas_ppm: 2 bytes (uint16)
-├─ motion_detected: 1 byte (uint8)
 ├─ range_cm: 2 bytes (uint16)
 ├─ pan_angle, tilt_angle: 2 bytes (uint8 × 2)
 ├─ lat, lon: 16 bytes (double × 2)
@@ -1158,7 +1153,7 @@ Browser Processes Recovery_Batch:
 
 ```
 Arduino Captures Sensors (every 200 ms):
-└─ DHT11, MQ-136, HC-SR04, PIR, GPS
+└─ DHT11, MQ-136, HC-SR04, GPS
    └─ Package into TelemetrySnapshot
 
 Arduino TX via UART (200 ms):
@@ -1194,7 +1189,6 @@ One Full Cycle: 200 ms (200 ms Arduino sample period)
 | Temperature | "28.4°C" | ≥ 50°C | ≥ 70°C |
 | Humidity | "62.1% RH" | INFO only | INFO only |
 | Gas | "3 ppm" | ≥ 10 ppm | ≥ 20 ppm |
-| Motion | "Motion detected" | NOTICE (confirmatory) | — |
 | Range | "47 cm" | < 30 cm | < 20 cm (critical obstacle-distance warning; operator action required) |
 | GPS | "40.7128, -74.0060" | Fix loss | — |
 
@@ -1527,7 +1521,6 @@ Operator Action During Pi Offline:
 | Level | Visual | Audio | Display | Trigger |
 |-------|--------|-------|---------|---------|
 | **INFO** | Plain text | None | Routine value | Humidity, uptime, sat count |
-| **NOTICE** | 🟢 Green tint | Confirmatory | "Motion detected" | PIR active |
 | **WARNING** | 🟡 Amber banner | Single tone | "Temp 52°C ⚠" | Temp ≥ 50°C, gas ≥ 10 ppm, range < 30 cm, GPS loss |
 | **CRITICAL** | 🔴 Flashing red | Repeating tone | "RANGE 18 CM ⚠⚠" | Temp ≥ 70°C, gas ≥ 20 ppm, range < 20 cm |
 | **TRANSPORT** | 🔴 Indicator RED | Disconnect tone | "Command channel down" | WebSocket/WebRTC/Mesh loss |
@@ -1758,7 +1751,7 @@ WantedBy=multi-user.target
 ROBOT UNIT:
   ☐ 4WD chassis assembled, motors tested
   ☐ Pan-tilt camera assembly (SG90 servos) mounted, range tested
-  ☐ Sensor wiring (DHT11, MQ-136, HC-SR501, HC-SR04) connected
+  ☐ Sensor wiring (DHT11, MQ-136, HC-SR04) connected
   ☐ GPS receiver (NEO-6M) connected to Arduino
   ☐ USB camera focused, mounted on pan-tilt (aim center)
   ☐ USB microphone & speaker mounted, audio levels set

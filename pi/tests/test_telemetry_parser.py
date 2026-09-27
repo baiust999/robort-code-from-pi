@@ -8,7 +8,6 @@ def _valid_values() -> dict:
         "temperature_c": 24.5,
         "humidity_pct": 55.0,
         "gas_ppm": 3,
-        "motion": 0,
         "range_cm": 180,
         "pan_angle": 90,
         "tilt_angle": 45,
@@ -25,7 +24,7 @@ def test_round_trip():
 
 
 def test_wrong_field_count_rejected():
-    line = "24.5,55.0,3,0,180,90,45,1"  # missing uptime_ms
+    line = "24.5,55.0,3,180,90,45,1"  # missing uptime_ms
     assert protocol.parse_telemetry_line(line) is None
 
 
@@ -35,7 +34,7 @@ def test_extra_field_rejected():
 
 
 def test_non_numeric_field_rejected():
-    line = "abc,55.0,3,0,180,90,45,1,123456"
+    line = "abc,55.0,3,180,90,45,1,123456"
     assert protocol.parse_telemetry_line(line) is None
 
 

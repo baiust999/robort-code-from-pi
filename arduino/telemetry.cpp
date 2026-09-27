@@ -6,7 +6,7 @@
  *
  * Telemetry line format: untagged CSV, positional fields (Section 8.7.5),
  * parsed by pi/common/protocol.py:parse_telemetry_line:
- *   temperature_c,humidity_pct,gas_ppm,motion,range_cm,
+ *   temperature_c,humidity_pct,gas_ppm,range_cm,
  *   pan_angle,tilt_angle,fw_state,uptime_ms
  * -----------------------------------------------------------------------------
  */
@@ -73,7 +73,6 @@ void Telemetry::sendTelemetry() {
   Serial.print((int)s.temperatureC);   Serial.print(',');
   Serial.print(s.humidity);            Serial.print(',');
   Serial.print(s.gasRaw);              Serial.print(',');
-  Serial.print(s.motion ? 1 : 0);      Serial.print(',');
   Serial.print(s.distanceCm);          Serial.print(',');
   Serial.print(g_servos.pan());        Serial.print(',');
   Serial.print(g_servos.tilt());       Serial.print(',');
@@ -101,7 +100,6 @@ void Telemetry::sendStatus() {
   Serial.print(";DIR=");   Serial.print(directionString(g_motors.direction()));
   Serial.print(";SPD=");   Serial.print(g_motors.targetSpeed());
   Serial.print(";DIST=");  Serial.print(s.distanceCm);
-  Serial.print(";MOT=");   Serial.print(s.motion ? 1 : 0);
   Serial.print(";T=");     Serial.print(s.dhtValid ? (int)s.temperatureC : -99);
   Serial.print(";H=");     Serial.print(s.dhtValid ? (int)s.humidity : 0);
   Serial.print(";GAS=");   Serial.print(s.gasRaw);
