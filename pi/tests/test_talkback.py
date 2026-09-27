@@ -1,0 +1,179 @@
+"""Talk-to-victim floor control and message routing, Section 16."""
+
+import asyncio
+import json
+import logging
+
+import pytest
+
+from common.logging_setup import EventLogger
+from p2_media.talkback import (
+    SCREEN_TEXT_MAX,
+    ScreenAudioTrack,
+    ScreenHub,
+    ScreenVideoTrack,
+    parse_operator_message,
+)
+
+
+class FakeChannel:
+    def __init__(self) -> None:
+        self.readyState = "open"
+        self.sent: list[dict] = []
+
+    def send(self, data: str) -> None:
+        self.sent.append(json.loads(data))
+
+    def of_type(self, kind: str) -> list[dict]:
+        return [m for m in self.sent if m["type"] == kind]
+
+
+@pytest.fixture
+def hub() -> ScreenHub:
+    return ScreenHub(EventLogger(logging.getLogger("test-talkback")))
+
+
+def _msg(**fields) -> str:
+    return json.dumps(fields)
+
+
+# --- parse_operator_message -------------------------------------------------
+
+
+def test_parse_rejects_malformed():
+    assert parse_operator_message("not json") is None
+    assert parse_operator_message("[1, 2]") is None
+    assert parse_operator_message(b"{}") is None
+    assert parse_operator_message(_msg(type="unknown")) is None
+    assert parse_operator_message(_msg(type="screen_text", text=5)) is None
+    assert parse_operator_message(_msg(type="screen_text", text="   ")) is None
+    assert parse_operator_message(_msg(type="media_state", video="webcam")) is None
+
+
+def test_parse_trims_and_caps_text():
+    msg = parse_operator_message(_msg(type="screen_text", text="  " + "x" * 500 + "  ", ts=7))
+    assert msg == {"type": "screen_text", "text": "x" * SCREEN_TEXT_MAX, "ts": 7}
+
+
+def test_parse_media_state_defaults():
+    assert parse_operator_message(_msg(type="media_state")) == {
+        "type": "media_state",
+        "talking": False,
+        "video": "none",
+    }
+
+
+# --- floor control ----------------------------------------------------------
+
+
+def test_first_sender_claims_floor_and_others_are_denied(hub):
+    a, b = FakeChannel(), FakeChannel()
+    hub.operator_connected("s1", a)
+    hub.operator_connected("s2", b)
+    assert a.of_type("talk_status")[-1]["floor"] == "free"
+
+    hub.handle_operator_message("s1", _msg(type="media_state", talking=True, video="none"))
+    assert hub.floor_holder == "s1"
+    assert a.of_type("talk_status")[-1]["floor"] == "you"
+    assert b.of_type("talk_status")[-1]["floor"] == "other"
+
+    hub.handle_operator_message("s2", _msg(type="screen_text", text="hello"))
+    assert hub.floor_holder == "s1"
+    assert b.of_type("floor_denied")
+    assert hub.current_text is None
+
+
+def test_release_and_disconnect_free_the_floor(hub):
+    a, b, screen = FakeChannel(), FakeChannel(), FakeChannel()
+    hub.operator_connected("s1", a)
+    hub.operator_connected("s2", b)
+    hub.screen_attached(screen)
+
+    hub.handle_operator_message("s1", _msg(type="screen_text", text="stay calm"))
+    hub.handle_operator_message("s1", _msg(type="floor_release"))
+    assert hub.floor_holder is None
+    assert hub.current_text is None
+    assert screen.sent[-1]["type"] == "screen_state" and screen.sent[-1]["operator"] is False
+
+    hub.handle_operator_message("s2", _msg(type="media_state", video="camera"))
+    assert hub.floor_holder == "s2"
+    hub.operator_closed("s2")
+    assert hub.floor_holder is None
+    assert a.of_type("talk_status")[-1]["floor"] == "free"
+
+
+def test_release_by_non_holder_is_ignored(hub):
+    hub.operator_connected("s1", FakeChannel())
+    hub.operator_connected("s2", FakeChannel())
+    hub.handle_operator_message("s1", _msg(type="screen_clear"))
+    hub.handle_operator_message("s2", _msg(type="floor_release"))
+    assert hub.floor_holder == "s1"
+
+
+# --- screen routing ---------------------------------------------------------
+
+
+def test_messages_and_state_reach_screen(hub):
+    op, screen = FakeChannel(), FakeChannel()
+    hub.operator_connected("s1", op)
+    hub.screen_attached(screen)
+    assert op.of_type("talk_status")[-1]["screen_online"] is True
+
+    hub.handle_operator_message("s1", _msg(type="media_state", talking=True, video="image"))
+    assert screen.of_type("screen_state")[-1] == {
+        "type": "screen_state",
+        "operator": True,
+        "talking": True,
+        "video": "image",
+    }
+
+    hub.handle_operator_message("s1", _msg(type="screen_text", text="Help is coming", ts=42))
+    assert screen.of_type("screen_text")[-1]["text"] == "Help is coming"
+
+    hub.handle_screen_message(_msg(type="screen_ack", ts=42))
+    assert op.of_type("screen_ack") == [{"type": "screen_ack", "ts": 42}]
+
+
+def test_reconnecting_screen_gets_current_text(hub):
+    hub.operator_connected("s1", FakeChannel())
+    hub.handle_operator_message("s1", _msg(type="screen_text", text="We see you"))
+    screen = FakeChannel()
+    hub.screen_attached(screen)
+    assert screen.of_type("screen_text")[-1]["text"] == "We see you"
+
+
+def test_stale_screen_close_does_not_detach_new_screen(hub):
+    old, new = FakeChannel(), FakeChannel()
+    hub.screen_attached(old)
+    hub.screen_attached(new)
+    hub.screen_detached(old)
+    assert hub.screen_connected is True
+    hub.screen_detached(new)
+    assert hub.screen_connected is False
+
+
+def test_closed_channel_is_not_written(hub):
+    op = FakeChannel()
+    op.readyState = "closing"
+    hub.operator_connected("s1", op)
+    assert op.sent == []
+
+
+# --- outbound tracks --------------------------------------------------------
+
+
+def test_idle_tracks_produce_black_video_and_silence(hub, monkeypatch):
+    monkeypatch.setattr("p2_media.talkback.VIDEO_REPEAT_S", 0.01)
+
+    async def run():
+        video = await ScreenVideoTrack(hub).recv()
+        audio_track = ScreenAudioTrack(hub)
+        a1 = await audio_track.recv()
+        a2 = await audio_track.recv()
+        return video, a1, a2
+
+    video, a1, a2 = asyncio.run(run())
+    assert (video.width, video.height) == (640, 480)
+    assert a1.samples == 960 and a1.sample_rate == 48000
+    assert a2.pts - a1.pts == 960
+    assert not any(a1.to_ndarray().ravel())

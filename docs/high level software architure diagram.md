@@ -36,7 +36,9 @@ flowchart TB
             direction TB
             P2_SIG["signaling\nPOST /webrtc/offer → SDP"]
             P2_MED["media\nH.264 video 640x480@10fps\n+ Opus audio"]
+            P2_RLY["talkback relay\noperator video/audio + text\n→ Robot Screen"]
             P2_SIG --> P2_MED
+            P2_SIG -.-> P2_RLY
         end
 
         subgraph P3["P3 · Watchdog — process supervisor"]
@@ -48,6 +50,9 @@ flowchart TB
 
         P3 -.spawns / monitors.-> P1
         P3 -.spawns / monitors.-> P2
+
+        SCREEN["Robot Screen\nChromium kiosk\nlocalhost:8443/screen"]
+        P2_RLY -.-> SCREEN
     end
 
     subgraph MESH["IEEE 802.11s MESH — SSID robot-mesh"]
@@ -61,7 +66,7 @@ flowchart TB
     subgraph DASH["REACT DASHBOARD — Vite + TS + Tailwind + Leaflet"]
         direction TB
         D_WS["WebSocket client\nheartbeat 500ms · backoff 1→30s\nhello + resume_from"]
-        D_RTC["WebRTC client\nice-config from P1"]
+        D_RTC["WebRTC client (two-way)\npush-to-talk · camera/image/screen\nmessages to robot screen"]
         D_ALERT["Alert engine\ntemp/gas/range thresholds"]
         D_MSTATE["Mission state\nSTOP / LIMITED / READY / DRIVING"]
         D_UI["3-region UI\nDriveControl+EStop | Video+Map | Sensors+Alerts"]
@@ -72,6 +77,7 @@ flowchart TB
 
     GPSHW[("GPS module")] --> P1_GPS
     CAMHW[("Pi camera + mic")] --> P2_MED
+    SCREEN -.-> DISPHW[("Robot display + speaker")]
 
     A_TX <-->|"UART 115200 baud\ncommand grammar F/R/L/S/T/H/P/?"| P1_SB
     P1 <==>|WebSocket JSON| MESH
@@ -86,6 +92,8 @@ flowchart TB
     class P1,P1_SB,P1_SAF,P1_GPS,P1_RING,P1_WS,P1_API,P2,P2_SIG,P2_MED,DASH,D_WS,D_RTC,D_MSTATE,D_UI app
     class P3,P3_SUP,P3_HLT,D_ALERT safety
     class MESH,M_R,M_R2,M_R1 net
+    classDef talk fill:#fff,color:#12181A,stroke:#B7791F,stroke-dasharray:5 4
+    class P2_RLY,SCREEN,DISPHW talk
 ```
 
 ## Legend
@@ -96,6 +104,7 @@ flowchart TB
 | 🟦 Indigo | Application services (control, media, dashboard) |
 | 🟧 Rust | Safety & supervision (watchdog, dead-man, alerts) |
 | ⬜ Grey | Mesh network infrastructure |
+| ⬚ Dashed | Talk-to-victim path (operator → robot display + speaker) |
 
 **Data path:** Sensors/commands ↔ Arduino ↔ UART ↔ P1 (Pi) ↔ WebSocket/WebRTC ↔ Mesh ↔ Dashboard. P3 supervises P1/P2 independently of the data path.
 

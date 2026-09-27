@@ -27,14 +27,14 @@
 **PART 4: COMMUNICATION PROTOCOLS (Pages 36-45)**
 14. UART Serial Protocol (Arduino Link)
 15. WebSocket Protocol (Command & Telemetry)
-16. WebRTC Media Interface (Video & Audio)
+16. WebRTC Media Interface (Two-Way Video, Audio & Messaging)
 17. REST Endpoints & Health Checks
 18. Protocol Interoperability & Error Handling
 
 **PART 5: EMBEDDED SOFTWARE ARCHITECTURE (Pages 46-60)**
 19. Raspberry Pi Process Architecture (P1, P2, P3)
 20. P1: Control Server (FastAPI/UART/WebSocket)
-21. P2: Media Server (aiortc/WebRTC)
+21. P2: Media Server (aiortc/WebRTC) & Robot Screen
 22. P3: Watchdog & Process Supervision
 23. Fault-Tolerance Mechanisms
 24. System Integration & Data Flow
@@ -87,10 +87,10 @@
              │
     100 Mbps Ethernet
              │
-         ┌───▼──────────────┐
-         │ Raspberry Pi 4   │
-         │ P1, P2, P3       │
-         └───┬──────────────┘
+         ┌───▼──────────────┐     ┌──────────────────────┐
+         │ Raspberry Pi 4   │────▶│ ROBOT DISPLAY +      │
+         │ P1, P2, P3       │     │ SPEAKER (victim-side)│
+         └───┬──────────────┘     └──────────────────────┘
              │
      UART 115,200 baud
              │
@@ -107,7 +107,7 @@
 1. OPERATOR CONTROL
    ├─ React SPA (TypeScript, Tailwind)
    ├─ WebSocket client (motor commands)
-   └─ WebRTC client (video/audio)
+   └─ WebRTC client (two-way video/audio + text messages)
 
 2. MESH NETWORK
    ├─ 3× OpenWrt routers (IEEE 802.11s)
@@ -117,14 +117,16 @@
 3. EMBEDDED STACK
    ├─ Raspberry Pi 4 (Debian, systemd)
    ├─ P1: Control (FastAPI/UART/WebSocket)
-   ├─ P2: Media (aiortc/WebRTC/H.264)
+   ├─ P2: Media (aiortc/WebRTC/H.264) + Robot Screen relay
+   ├─ Robot Screen: Chromium kiosk on the robot display
    └─ P3: Watchdog (process supervision)
 
 4. MOBILE UNIT
    ├─ 4WD chassis (rubble traversal)
    ├─ Pan-tilt camera (SG90 servos)
    ├─ Sensors (temp, humidity, gas, range, GPS)
-   ├─ USB camera & audio (bidirectional)
+   ├─ USB camera + USB mic (victim → operator)
+   ├─ Robot display + speaker (operator → victim)
    └─ On-board mesh router
 
 5. FAULT-TOLERANCE
@@ -169,8 +171,10 @@ SUBSYSTEM 1: OPERATOR CONTROL
 ├─ Motor control: 4-direction, speed 0-180
 ├─ Servo control: Pan/tilt 0-180°
 ├─ Telemetry display: 9 sensor readings
-├─ Video stream: H.264, 640×480, 10 fps
-├─ Audio: Bidirectional, Opus 32 kbps
+├─ Video stream: H.264, 640×480, 10 fps (robot → operator)
+├─ Audio: Two-way, Opus 32 kbps (push-to-talk operator → victim)
+├─ Talk-to-victim: Operator voice, face (laptop camera), image or
+│  screen share, and text messages shown on the robot display
 └─ Mission state: READY/DRIVING/LIMITED/STOP
 
 SUBSYSTEM 2: MESH NETWORK
@@ -185,7 +189,8 @@ SUBSYSTEM 2: MESH NETWORK
 SUBSYSTEM 3: EMBEDDED COMPUTING
 ├─ Raspberry Pi 4 (4 GB RAM, systemd)
 ├─ P1: WebSocket server, UART control, ring buffer
-├─ P2: WebRTC media server, H.264/Opus
+├─ P2: WebRTC media server, H.264/Opus, operator → robot relay
+├─ Robot Screen: Chromium kiosk page (localhost), fed by P2
 ├─ P3: Process watchdog, health monitoring
 ├─ Arduino UNO: Motor/servo PWM, sensors
 ├─ UART link: 115,200 baud, 8-N-1
@@ -197,7 +202,8 @@ SUBSYSTEM 4: MOBILE UNIT
 ├─ Servo control: 2× SG90 (180° horizontal, 90° vertical)
 ├─ Sensors: DHT11, MQ-136, HC-SR04, GPS
 ├─ Camera: Logitech C270 (640×480, 10 fps)
-├─ Audio: USB mic + speaker (48 kHz, bidirectional)
+├─ Audio: USB mic (48 kHz, victim → operator) + speaker (operator → victim)
+├─ Robot display: 7" HDMI screen facing the victim
 ├─ Battery: 24V Li-Po, BEC 5V for Pi/sensors
 └─ Mesh router: On-board 12V (from main battery)
 
@@ -239,7 +245,8 @@ SUBSYSTEM 5: FAULT-TOLERANCE
 | **Pan-Tilt** | 2× SG90 servos, 180° horizontal, 90° vertical | Camera orientation |
 | **USB Camera** | Logitech C270, 640×480, 10 fps | Video capture |
 | **USB Microphone** | Standard USB, 48 kHz mono | Audio input |
-| **USB Speaker** | Standard USB, stereo output | Audio output |
+| **Speaker** | Powered speaker on Pi 3.5 mm jack (or USB), ≥ 3 W | Operator voice to victim |
+| **Robot Display** | 7" HDMI LCD, 1024×600, facing forward | Operator face / image / text messages to victim |
 | **Battery** | 24V Li-Po, 5000 mAh | Motor power |
 | **BEC** | 24V → 5V, 10A | Pi & sensor power |
 
@@ -319,7 +326,9 @@ Key Design: No system calls, no OS overhead.
 | RAM | 4 GB LPDDR4 |
 | Storage | microSD (32 GB, UHS-I, Class 10) |
 | Ethernet | 100 Mbps (from Robot Mesh Router) |
-| USB | 2× USB 3.0 + 2× USB 2.0 (camera, mic, speaker) |
+| USB | 2× USB 3.0 + 2× USB 2.0 (camera, mic) |
+| HDMI | micro-HDMI 0 → robot display |
+| Audio out | 3.5 mm jack → speaker |
 | GPIO | 40-pin header (UART on GPIO14/15) |
 | OS | Debian (Raspberry Pi OS), systemd init |
 | Boot Time | ~30 sec (power on to services running) |
@@ -347,12 +356,14 @@ Key Design: No system calls, no OS overhead.
 |----------|-------|
 | Framework | aiortc + FFmpeg (av library) |
 | Port | TCP/UDP 8443 |
-| Owned Resources | USB camera (/dev/video0), USB mic/speaker (ALSA) |
+| Owned Resources | USB camera (/dev/video0), USB mic (ALSA capture) |
 | Video Codec | H.264 Baseline (hardware accelerated) |
 | Video Bitrate | ~500 kbps (adaptive) |
 | Audio Codec | Opus, 32 kbps (VBR) |
-| RTP Tracks | 4 (Pi video in, Pi audio in, operator video out, operator audio out) |
-| Signalling | POST /webrtc/offer (SDP exchange) |
+| RTP Tracks | 4 (robot video + audio → operator; operator video + audio → robot) |
+| Data Channel | `screen` (operator text messages → robot display) |
+| Relay | Operator tracks decoded and re-encoded to the Robot Screen peer; messages forwarded (`talkback.ScreenHub`) |
+| Signalling | POST /webrtc/offer (operator), POST /webrtc/screen-offer (Robot Screen, localhost only) |
 | Health Endpoint | GET /health (for P3 supervision) |
 | Supervision | P3 liveness (5 sec) + systemd (5 sec) |
 | Recovery Time | 8-10 sec (P3) + 5 sec (systemd) = 10-15 sec |
@@ -725,7 +736,7 @@ never rejects or blocks a motor command.
 
 ---
 
-# SECTION 16: WEBRTC MEDIA INTERFACE (VIDEO & AUDIO)
+# SECTION 16: WEBRTC MEDIA INTERFACE (TWO-WAY VIDEO, AUDIO & MESSAGING)
 
 ## 16.1 WebRTC Connection
 
@@ -735,6 +746,8 @@ never rejects or blocks a motor command.
 | Ports | TCP/UDP 8443 |
 | Signalling | GET /api/ice-config (STUN), POST /webrtc/offer (SDP) |
 | Media Codec | H.264 Baseline (video), Opus 32 kbps (audio) |
+| Data Channel | SCTP, label `screen`, ordered + reliable |
+| Browser Requirement | Operator page must be a secure context (HTTPS, or Chrome flag for the robot IP) so `getUserMedia` can open the laptop mic/camera |
 
 ## 16.2 RTP Tracks (4 Total)
 
@@ -742,10 +755,41 @@ never rejects or blocks a motor command.
 |-------|-----------|-------|-----------|---------|
 | 1 | Pi → Operator | H.264 video | ~500 kbps | < 150 ms |
 | 2 | Pi → Operator | Opus audio | ~40 kbps | < 150 ms |
-| 3 | Operator → Pi | H.264 video (optional) | ~500 kbps | — |
-| 4 | Operator → Pi | Opus audio (optional) | ~40 kbps | — |
+| 3 | Operator → Robot display | H.264/VP8 video (laptop camera, image or screen share) | ~300 kbps (camera), ~50 kbps (still image) | < 200 ms |
+| 4 | Operator → Robot speaker | Opus audio (push-to-talk) | ~40 kbps while talking | < 200 ms |
 
-## 16.3 Signalling Flow
+Tracks 3 and 4 are optional per session: the operator chooses what to send.
+When nothing is sent, the robot display shows an idle "Help is coming" screen.
+
+**Video source options (Track 3):**
+
+| Source | Browser API | Use |
+|--------|-------------|-----|
+| Laptop camera | `getUserMedia({video})` | Show the operator's face to reassure the victim |
+| Image file | `<canvas>.captureStream(1)` | Show a picture (instructions, map, family photo, etc.) |
+| Screen / window | `getDisplayMedia()` | Show anything on the operator's screen |
+| None | track stopped | Robot display shows idle screen |
+
+**Floor control:** only one operator session at a time may send Tracks 3–4 and
+messages (the first to start talking holds the floor until it stops or
+disconnects). Other viewers remain watch/listen-only.
+
+## 16.3 Data Channel — Robot Screen Messages
+
+| Message | Direction | Example | Effect on robot display |
+|---------|-----------|---------|-------------------------|
+| `screen_text` | Operator → Robot | `{"type":"screen_text","text":"Stay calm, help is coming","ts":1727430000}` | Large text banner (max 280 chars) |
+| `screen_clear` | Operator → Robot | `{"type":"screen_clear"}` | Removes the text banner |
+| `screen_ack` | Robot → Operator | `{"type":"screen_ack","ts":1727430000}` | Confirms the message is on screen |
+| `media_state` | Operator → Robot | `{"type":"media_state","talking":true,"video":"camera"}` | Relayed as `screen_state`; shows "Rescuer is speaking" and hides the idle screen while video is active |
+| `floor_release` | Operator → P2 | `{"type":"floor_release"}` | Frees the robot screen and returns it to idle |
+| `talk_status` | P2 → Operator | `{"type":"talk_status","screen_online":true,"floor":"you"}` | (Dashboard only) robot-screen status and who holds it |
+| `floor_denied` | P2 → Operator | `{"type":"floor_denied"}` | (Dashboard only) another operator holds the screen |
+
+Messages travel through P2, never through P1, so the safety-critical
+command/telemetry path is unaffected by the talk-to-victim feature.
+
+## 16.4 Signalling Flow
 
 ```
 1. Browser: GET /api/ice-config → STUN servers
@@ -755,6 +799,13 @@ never rejects or blocks a motor command.
 5. ICE candidates exchanged (STUN/UDP)
 6. WebRTC connection established
 7. RTP streams flowing (media active)
+8. Operator presses Talk / shares camera → Tracks 3–4 start
+9. P2 relays Tracks 3–4 + `screen` messages to the Robot Screen peer
+
+Robot Screen (on the Pi, at boot):
+1. Chromium kiosk opens http://localhost:8443/screen
+2. Page: POST /webrtc/screen-offer (recv-only video/audio + data channel)
+3. P2 answers; the page shows the idle screen until operator media arrives
 ```
 
 ---
@@ -774,7 +825,9 @@ never rejects or blocks a motor command.
 | Endpoint | Method | Purpose | Response |
 |----------|--------|---------|----------|
 | /health | GET | Liveness (P3 supervision) | 200 OK (text) |
-| /webrtc/offer | POST | WebRTC SDP signalling | 200 OK (JSON SDP answer) |
+| /webrtc/offer | POST | WebRTC SDP signalling (operator) | 200 OK (JSON SDP answer) |
+| /webrtc/screen-offer | POST | WebRTC SDP signalling (Robot Screen, localhost only) | 200 OK (JSON SDP answer) |
+| /screen | GET | Robot Screen kiosk page (static) | 200 OK (HTML) |
 
 ## 17.3 Health Check Semantics
 
@@ -796,7 +849,7 @@ P3 Watchdog Loop:
 ```
 Layer 4: React Dashboard (TypeScript, Vite)
   ├─ WebSocket client (TCP/IP reliable stream)
-  └─ WebRTC client (UDP/RTP best-effort)
+  └─ WebRTC client (UDP/RTP best-effort, two-way + data channel)
 
 Layer 3: Mesh Network (IEEE 802.11s HWMP)
   ├─ Transparent packet forwarding
@@ -805,7 +858,7 @@ Layer 3: Mesh Network (IEEE 802.11s HWMP)
 
 Layer 2: Edge Processing (Pi + Linux)
   ├─ P1: WebSocket server + UART
-  ├─ P2: WebRTC media server
+  ├─ P2: WebRTC media server + Robot Screen relay
   └─ P3: Process supervision
 
 Layer 1: Arduino (Real-time control)
@@ -830,6 +883,8 @@ Failure Isolation:
 | **Motor command timeout** | No motor command for > 2 sec | Arduino dead-man timer | Motors stop (guaranteed) |
 | **P1 crash** | P3 detects liveness loss | P3 SIGKILL + restart | Telemetry resumed (< 15 sec) |
 | **P2 crash** | P3 detects liveness loss | P3 SIGKILL + restart | Video resumed (< 15 sec) |
+| **Operator mic/camera denied** | getUserMedia rejects | Talk button disabled, message shown | Grant permission / use HTTPS |
+| **Robot display/speaker fault** | Robot Screen peer not connected | Dashboard shows "Robot screen offline" | Kiosk relaunched by `robot-screen.sh` |
 | **Arduino hang** | Serial telemetry RX stops | Motors safe (dead-man active) | P3 restarts Pi processes |
 | **Mesh route loss** | No HWMP path | Falls back or uses Wi-Fi Direct | Mesh convergence (1-3 sec) |
 
@@ -852,9 +907,15 @@ Process P1 (FastAPI/UART)
 Process P2 (aiortc/WebRTC)
 ├─ Memory space: Isolated (separate interpreter)
 ├─ PID: Unique (assigned by kernel)
-├─ Resources: USB camera, USB audio, port 8443
+├─ Resources: USB camera, USB mic, port 8443
 ├─ Crash: Detected by P3 (5 sec), auto-restart (< 15 sec)
-└─ Failure effect: Limited to media path
+└─ Failure effect: Limited to media path (incl. talk-to-victim)
+
+Robot Screen (Chromium kiosk, deploy/robot-screen/robot-screen.sh)
+├─ Memory space: Isolated (browser process)
+├─ Resources: HDMI display, speaker (ALSA via browser)
+├─ Crash: Relaunched by its launcher loop (3 sec)
+└─ Failure effect: Victim-side display/speaker only
 
 Process P3 (Watchdog)
 ├─ Memory space: Isolated (separate interpreter)
@@ -908,7 +969,7 @@ Health Endpoint:
 
 ---
 
-# SECTION 21: P2 MEDIA SERVER (AIORTC/WEBRTC)
+# SECTION 21: P2 MEDIA SERVER (AIORTC/WEBRTC) & ROBOT SCREEN
 
 ## 21.1 P2 Responsibilities
 
@@ -920,23 +981,38 @@ USB Camera (Video):
 ├─ Bitrate: ~500 kbps (adaptive to link quality)
 └─ Output: RTP stream (Track 1)
 
-USB Audio (Bidirectional):
-├─ Microphone:
+Audio (Two-Way):
+├─ Microphone (victim → operator):
 │  ├─ Capture: 48 kHz mono (ALSA)
 │  ├─ Encode: Opus 32 kbps (VBR)
 │  └─ Output: RTP stream (Track 2, Pi → Operator)
 │
-├─ Speaker:
-│  ├─ Receive: RTP Opus (Track 4)
-│  ├─ Decode: Opus 32 kbps
-│  └─ Playback: ALSA speaker output
+├─ Speaker (operator → victim):
+│  ├─ Receive: RTP Opus (Track 4, push-to-talk)
+│  ├─ Relay: Decoded, re-encoded to Robot Screen peer
+│  └─ Playback: Robot Screen page → speaker (3.5 mm / ALSA default)
+
+Operator Video & Messages (operator → victim):
+├─ Receive: Track 3 (camera, image or screen share)
+├─ Receive: `screen` data channel messages
+├─ Floor control: first sending operator holds the floor
+└─ Relay: Re-encoded to Robot Screen peer (camera capped at 640×480, 10 fps)
+
+Robot Screen (victim-facing display):
+├─ Runs: Chromium --kiosk http://localhost:8443/screen
+├─ Launcher: robot-screen.sh from desktop autostart (relaunch on exit)
+├─ Connects: POST /webrtc/screen-offer (localhost only)
+├─ Shows: Operator video full-screen, text banner on top
+├─ Plays: Operator voice through the speaker
+└─ Idle: "Help is coming — stay where you are" when no media
 
 WebRTC Media Session:
 ├─ Create peer connection (aiortc)
 ├─ Receive: SDP offer (POST /webrtc/offer)
 ├─ Generate: SDP answer (with media parameters)
 ├─ ICE: Gather candidates (STUN localhost:3478)
-├─ RTP: Stream 4 tracks to operator
+├─ RTP: Send Tracks 1–2 to operator, receive Tracks 3–4
+├─ Data channel: `screen` messages relayed to Robot Screen
 └─ Adapt: Video bitrate to network congestion
 
 Health Endpoint:
@@ -1082,6 +1158,17 @@ Arduino Sensors
   └─ WebRTC → Operator Dashboard
      ├─ Video sink (HTML5 video element)
      └─ Audio sink (HTML5 audio element)
+
+Talk-to-Victim Path (reverse):
+Operator Laptop
+  ├─ Laptop mic (push-to-talk) → Opus → Track 4
+  ├─ Laptop camera / image / screen → Track 3
+  ├─ Message box → `screen` data channel
+  │
+  └─ WebRTC → P2 (floor control) → decode + re-encode
+     └─ Robot Screen (Chromium kiosk on Pi)
+        ├─ Robot display: operator video + text banner
+        └─ Speaker: operator voice
 ```
 
 ---
@@ -1295,7 +1382,8 @@ Estimated SD Card Lifespan:
 | GPIO15 | RXD | Serial | UART RX (from Arduino) |
 | USB 3.0 Port 1 | /dev/video0 | Camera | Logitech C270 camera |
 | USB 2.0 Port 1 | /dev/snd/pcmC0D0c | Audio | USB microphone (ALSA) |
-| USB 2.0 Port 2 | /dev/snd/pcmC0D0p | Audio | USB speaker (ALSA) |
+| 3.5 mm jack | ALSA card "Headphones" | Audio | Speaker (operator voice) |
+| micro-HDMI 0 | HDMI-A-1 | Display | Robot display (Robot Screen kiosk) |
 | Ethernet | eth0 | Network | Robot Mesh Router → Pi |
 
 ---
@@ -1315,7 +1403,8 @@ Capability:
 ├─ Servo control: ✓ Full (pan/tilt 0-180°)
 ├─ Telemetry: ✓ Full (all 9 sensors, 200 ms cadence)
 ├─ Video stream: ✓ Full (H.264, 640×480, 10 fps)
-├─ Audio: ✓ Bidirectional (Opus 32 kbps)
+├─ Audio: ✓ Two-way (Opus 32 kbps, push-to-talk)
+├─ Talk-to-victim: ✓ Operator video/image + text on robot display
 ├─ GPS tracking: ✓ Real-time path visualization
 ├─ Mission recording: ✓ Local logs (telemetry + events)
 └─ Internet dependency: ✗ None (fully local)
@@ -1361,7 +1450,8 @@ Capability:
 ├─ Motor control: ✓ Full (via P1 WebSocket)
 ├─ Telemetry: ✓ Full (all sensors, P1 broadcasts)
 ├─ Video stream: ✗ Unavailable (placeholder on dashboard)
-├─ Audio: ✗ Unavailable
+├─ Audio: ✗ Unavailable (both directions)
+├─ Talk-to-victim: ✗ Unavailable (robot display shows idle screen)
 ├─ GPS tracking: ✓ Continues (GPS in telemetry)
 └─ Duration: Temporary (P3 restarts P2 < 10 sec)
 
@@ -1374,7 +1464,7 @@ Recovery:
 
 Operator Experience:
 ├─ Video placeholder appears ("Video unavailable")
-├─ Audio stops (still has two-way text via console)
+├─ Audio and talk-to-victim stop (no fallback channel)
 ├─ Motor commands still work (high priority, unaffected)
 └─ Auto-recovery message ("Recovering media stream...")
 ```
@@ -1392,7 +1482,8 @@ Capability:
 ├─ Motor control: ✓ Full (direct WebSocket, very low latency)
 ├─ Telemetry: ✓ Full (direct WebSocket)
 ├─ Video stream: ✓ Available (WebRTC direct, P2P)
-├─ Audio: ✓ Bidirectional (WebRTC direct, P2P)
+├─ Audio: ✓ Two-way (WebRTC direct, P2P)
+├─ Talk-to-victim: ✓ Available (robot display + speaker)
 ├─ GPS tracking: ✓ Path tracking continues
 ├─ Range: ~30 m (direct LOS only, no relay amplification)
 └─ Mission state: DRIVING (if within range)
@@ -1407,7 +1498,7 @@ Setup:
 Advantages over Mesh:
 ├─ Lower latency (direct link, no relay hops)
 ├─ Simpler deployment (no intermediate routers needed)
-├─ Full capability retained (all sensors, video, audio)
+├─ Full capability retained (all sensors, video, audio, talk-to-victim)
 └─ Suitable for: Robot stuck nearby, operator within 30 m
 
 Limitations:
@@ -1430,6 +1521,7 @@ Capability:
 ├─ Telemetry: ✗ No wireless output (Arduino internal sensors work)
 ├─ Video stream: ✗ Unavailable (no USB camera)
 ├─ Audio: ✗ Unavailable (no USB audio)
+├─ Robot display: ✗ Blank (no Pi)
 ├─ GPS tracking: ✗ No output (GPS data received but not transmitted)
 └─ Operator control: ✗ None (no wireless communication)
 
@@ -1568,6 +1660,7 @@ Temperature-Based Throttling (Optional):
 | **Arduino hang** | Telemetry RX stops | Motors safe (dead-man) | P3 restarts Pi |
 | **P1 crash** | Liveness loss (5 sec) | P3 restarts | Telemetry resumed (< 15 sec) |
 | **P2 crash** | Liveness loss (5 sec) | P3 restarts | Video resumed (< 15 sec) |
+| **Robot Screen crash** | Chromium exits | Launcher relaunches kiosk | Display back (< 5 sec) |
 | **Mesh link break** | HWMP PERR | Automatic reroute | Convergence (1-3 sec) |
 | **All mesh down** | No packets (> 5 sec) | Falls back to local Wi-Fi Direct | Operator joins SSID (< 30 sec) |
 | **Pi offline** | All transports → DOWN | Arduino autonomous mode | Pi restart + reconnect |
@@ -1623,7 +1716,7 @@ Mesh Disconnection (Automatic):
 | 500 ms | Pi bootloader | U-Boot loading kernel | ⊘ Boot |
 | 1000 ms | systemd | Init system starting | ⊘ Boot |
 | 2000 ms | Network | Ethernet link up (DHCP) | ◐ Partial |
-| 3000 ms | USB stack | Camera, mic, speaker detected | ✓ Ready |
+| 3000 ms | USB/HDMI/ALSA | Camera, mic, display, speaker detected | ✓ Ready |
 | 4000 ms | systemd | P1 service starting | ⊘ Startup |
 | 5000 ms | P1 process | fork + execve, FastAPI init | ✓ Ready |
 | 6000 ms | P1: UART | open("/dev/ttyAMA0"), fcntl lock | ⓧ Handshake |
@@ -1634,6 +1727,7 @@ Mesh Disconnection (Automatic):
 | 10000 ms | P2 process | fork + execve, aiortc init | ⓧ Init |
 | 11000 ms | P2: USB camera | open("/dev/video0"), H.264 encoder | ⓧ Init |
 | 12000 ms | P2: /health | HTTP server ready | ✓ Listening |
+| 12500 ms | Robot Screen | Chromium kiosk → /screen, idle screen shown | ✓ Ready |
 | 13000 ms | systemd: P3 | Service starting | ⊘ Startup |
 | 14000 ms | P3 process | fork + execve, watchdog start | ⓧ Init |
 | 15000 ms | P3: Health check | HTTP GET /health:8080, /health:8443 | ✓ OK |
@@ -1754,7 +1848,9 @@ ROBOT UNIT:
   ☐ Sensor wiring (DHT11, MQ-136, HC-SR04) connected
   ☐ GPS receiver (NEO-6M) connected to Arduino
   ☐ USB camera focused, mounted on pan-tilt (aim center)
-  ☐ USB microphone & speaker mounted, audio levels set
+  ☐ USB microphone mounted, capture level set
+  ☐ Speaker connected (3.5 mm), volume audible at 2 m
+  ☐ Robot display mounted facing forward, visible at victim eye level
   ☐ Mesh router on-board (Archer C7), antenna mounted, power connected
   ☐ Raspberry Pi secured in chassis, cooling ensured (no obstruction)
   ☐ Arduino UNO securely mounted (no loose connections)
@@ -1774,6 +1870,8 @@ MESH ROUTERS:
 OPERATOR LAPTOP:
   ☐ React SPA built (Vite production bundle)
   ☐ Browser: Chrome/Firefox/Safari (modern version, WebRTC support)
+  ☐ Laptop mic + camera working; browser allowed to use them
+    (dashboard over HTTPS, or Chrome flag for the robot IP)
   ☐ Network: Wi-Fi adapter (802.11g at minimum, 5 GHz preferred)
   ☐ Storage: 1 GB free disk space
 ```
@@ -1804,7 +1902,10 @@ OPERATOR LAPTOP:
    ☐ Dashboard loads: React SPA visible, no console errors
    ☐ Telemetry display: All 9 sensors showing live data (200 ms update)
    ☐ Video stream: H.264 video visible (640×480, live)
-   ☐ Audio test: Microphone/speaker working (two-way audio)
+   ☐ Audio test (victim → operator): robot microphone audible on dashboard
+   ☐ Talk test (operator → victim): hold Talk, voice heard from robot speaker
+   ☐ Screen test: laptop camera and an image appear on robot display
+   ☐ Message test: send text → shown on robot display, ack on dashboard
    ☐ Motor test: Forward/Reverse commands → motors move
    ☐ Servo test: Pan/Tilt commands → servos respond
    ☐ GPS test: Position displayed on map (if outdoor with sky view)
@@ -1864,17 +1965,26 @@ Video Stream (P2 → Operator):
 ├─ Bandwidth: 500 Kbps (significant, but within mesh capacity)
 └─ Latency: 50-100 ms (acceptable for monitoring)
 
-Audio Stream (Bidirectional):
+Audio Stream (Two-Way):
 ├─ Codec: Opus VBR
 ├─ Bitrate: 32 Kbps per direction
-├─ Total: 64 Kbps (both directions)
+├─ Total: 64 Kbps (both directions, operator side only while talking)
 └─ Latency: 50-100 ms
 
-Total Bandwidth:
+Operator Video (Operator → Robot display):
+├─ Laptop camera: ~300 Kbps (640×480)
+├─ Still image: ~50 Kbps (1 fps)
+└─ None: 0 Kbps
+
+Robot Screen Messages:
+└─ Negligible (< 1 Kbps, event-driven)
+
+Total Bandwidth (worst case, operator camera on):
 ├─ Telemetry: 8 Kbps
-├─ Video: 500 Kbps
+├─ Video (robot → operator): 500 Kbps
+├─ Video (operator → robot): 300 Kbps
 ├─ Audio: 64 Kbps
-└─ **Total: ~572 Kbps (mesh easily handles this @ 54 Mbps PHY rate)**
+└─ **Total: ~872 Kbps (mesh easily handles this @ 54 Mbps PHY rate)**
 ```
 
 ## 39.3 Reliability Metrics
@@ -1916,9 +2026,14 @@ P1 CONTROL SERVER
   └─ Recovery: Operator reconnects via resume_from
 
 P2 MEDIA SERVER
-  ├─ Depends on: USB camera/audio, Mesh network (WebRTC)
+  ├─ Depends on: USB camera/mic, Mesh network (WebRTC)
   ├─ Failure: P2 crash → P3 detects (5 sec), restarts (< 15 sec total)
   └─ Recovery: Video placeholder during restart, auto-resume
+
+ROBOT SCREEN (victim-facing display + speaker)
+  ├─ Depends on: P2 (relay), HDMI display, speaker
+  ├─ Failure: Kiosk crash → systemd restarts (< 5 sec)
+  └─ Recovery: Idle screen until operator media resumes
 
 P3 WATCHDOG
   ├─ Depends on: systemd (process management)
@@ -1954,6 +2069,7 @@ Architecture: 5 principal subsystems + 4-tier fault-tolerance
 Capabilities:
 ├─ Real-time teleoperation: 110 ms motor command latency
 ├─ Live video + audio: H.264 (500 Kbps) + Opus (32 Kbps)
+├─ Talk-to-victim: operator voice, face/image and text on robot display
 ├─ Environmental monitoring: 9 sensors, 200 ms cadence
 ├─ GPS tracking: Real-time path visualization
 ├─ Disaster resilience: Requires NO internet, local mesh only
@@ -1989,6 +2105,7 @@ Strengths:
 ✓ Zero internet dependency (local operation only)
 ✓ Low-latency teleoperation (110 ms command execution)
 ✓ Real-time video + audio + telemetry (multi-path)
+✓ Two-way communication with the victim (voice, video, text)
 ✓ Comprehensive logging (30-day telemetry history)
 
 Constraints:
@@ -2006,7 +2123,8 @@ watchdog, systemd) ensure reliable operation. Multi-layered fault-tolerance
 internet dependency, critical for post-collapse scenarios. The system achieves
 mission-critical reliability (99.9% uptime, 100% motor safety) while supporting
 real-time teleoperation with video, audio, and comprehensive environmental
-monitoring.
+monitoring, and lets the operator speak to, be seen by, and send messages to
+a trapped victim through the robot's own display and speaker.
 
 Suitable for: Search & rescue, hazmat reconnaissance, collapse zone surveying,
 first-response operations where communication infrastructure is compromised.

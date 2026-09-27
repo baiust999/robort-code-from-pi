@@ -2,7 +2,7 @@
 
 **Document status:** Architecture of the system *as implemented*.
 **Scope:** The complete software stack in `robot/` — Arduino UNO firmware, the Raspberry Pi 4 three-process edge stack, the IEEE 802.11s mesh fabric, and the React operator dashboard.
-**Relationship to the methodology:** The methodology chapters (Sections 8.1–8.15 and the consolidated Sections 1–40) specify the system *as designed*. This document describes the system *as built*, and is numbered independently (A.1–A.10) so that it stands alongside those chapters without renumbering them. Where the implementation resolved a contradiction between the two source documents, or departed from the original design intent, this document states the behaviour of the code and records the divergence explicitly. Every architectural claim is traceable either to a methodology section or to a specific source file.
+**Relationship to the methodology:** The methodology chapters (Sections 8.1–8.15 and the consolidated Sections 1–40) specify the system *as designed*. This document describes the system *as built*, and is numbered independently (A.1–A.11) so that it stands alongside those chapters without renumbering them. Where the implementation resolved a contradiction between the two source documents, or departed from the original design intent, this document states the behaviour of the code and records the divergence explicitly. Every architectural claim is traceable either to a methodology section or to a specific source file.
 
 ---
 
@@ -132,6 +132,8 @@ There is no cloud tier in the deployed configuration. The methodology defines fi
 
 Two transports cross the system boundary during a mission, and the separation between them is architecturally deliberate. Control and telemetry travel over a single persistent WebSocket to P1 on port 8080; video and audio travel over a WebRTC peer connection to P2 on port 8443. They are carried by different protocols, terminate in different processes, and fail independently. A camera failure or a collapse of the video path leaves the control channel fully operational — the mission continues in `DRIVING_LIMITED`, where the operator drives on sensor telemetry alone. This independence is the reason P2 exists as a separate process rather than as a module inside P1.
 
+The WebRTC path is **two-way**. Besides the robot's camera and microphone reaching the operator, the operator's voice, video or a still image, and text messages travel back over the same peer connection to the victim-facing Robot Screen — the robot's own display and speaker. Section A.11 describes that path; it stays inside P2 and never touches the control channel.
+
 ---
 
 ## **A.4  Container View**
@@ -254,6 +256,8 @@ P2 is deliberately the smallest and simplest server component, because a media p
 The signaling design is minimal by intent. There is no separate signaling channel and no trickle-ICE round trip; the dashboard POSTs its offer and receives the answer synchronously. This is sound specifically because of the deployment topology: on a single local mesh subnet with no NAT between the peers, candidate gathering is trivial and the elaborate machinery WebRTC normally requires for internet traversal would add latency and failure modes for no benefit.
 
 The track factory implements a fallback whose architectural value is that it makes two different situations behave identically. `open_camera_track()` and `open_mic_track()` are each wrapped so that *any* capture failure logs the fault and substitutes `SyntheticVideoTrack` or `SilentAudioTrack`. Consequently mock mode on a developer laptop and a real Pi whose camera has been knocked loose in the field follow exactly the same code path — the mission continues with a synthetic stream, and the operator sees plainly that video is not live. `SyntheticVideoTrack` renders a sweeping bar, a slow hue cycle, and a font-free clock encoded as a bar whose width grows with elapsed seconds, deliberately avoiding a fontconfig dependency in the media path.
+
+P2 is also the relay for talking to the victim. The dashboard's transceivers are `sendrecv` and it opens a `screen` data channel; `negotiate()` hands the operator's inbound tracks and that channel to a `ScreenHub`, and a second endpoint, `POST /webrtc/screen-offer`, accepts only localhost connections from the Robot Screen kiosk. Section A.11 covers the design.
 
 ### **A.5.4  P3 Watchdog — Supervision with Cause Discrimination**
 
@@ -503,6 +507,80 @@ Recorded plainly, as the architecture's own account of where it is incomplete:
 4. **P3 is a single point of supervision failure.** If P3 dies, systemd restarts it and it adopts the surviving orphans — but during that window nothing is watching P1 and P2.
 5. **No authentication on either transport.** Any host on the mesh may open a WebSocket and claim the controller role. Security rests entirely on WPA3-SAE at the link layer. For a closed operational mesh this is a defensible posture, but it should be stated rather than assumed.
 6. **The logrotate policy names logs no code writes**, and the empty `src/context/` directory implies a structure that does not exist. Both are housekeeping defects that mislead a reader of the deployment configuration.
+7. **Talk-to-victim is untested on hardware and needs a secure context.** It has been exercised only against mock hardware and headless Chromium, and mic/camera capture on the operator laptop requires HTTPS or a per-laptop Chrome flag (Section A.11).
+
+---
+
+## **A.11  Two-Way Communication with the Victim**
+
+**Status: implemented; not yet tested on robot hardware.** The path has been exercised end to end against mock hardware — aiortc peers standing in for the operator and the Robot Screen, and headless Chromium with fake camera and microphone driving the real dashboard and kiosk page — but not with a physical display, speaker, or microphone attached.
+
+A rescue robot that reaches a conscious victim is more useful if it can reassure and instruct them, not only observe them. The robot carries a victim-facing **robot display** and **speaker**, and the existing WebRTC session is two-way. The operator can push-to-talk, show their face from the laptop camera, show an image or share their screen, and send short text messages that appear in large type on the robot display — which also serves a victim who cannot hear.
+
+```
+  Talk-to-Victim Data Path:
+  ---------------------------------------------------------------
+
+  OPERATOR LAPTOP (dashboard: useTalkback + TalkPanel)
+    laptop mic (push-to-talk) ---> Opus audio   (Track 4)
+    laptop camera | image | screen -> video     (Track 3)
+    message box ------------------> data channel "screen"
+                 |
+                 |  same RTCPeerConnection, WebRTC :8443
+                 v
+  P2 MEDIA SERVER (talkback.ScreenHub)
+    floor control: first sending operator holds the floor
+    decode operator tracks, re-encode on the screen connection
+                 |
+                 |  second RTCPeerConnection (localhost only)
+                 v
+  ROBOT SCREEN  (Chromium --kiosk http://localhost:8443/screen)
+    video element  --> robot display (HDMI, 7")
+    audio element  --> speaker (3.5 mm jack)
+    text banner    <-- "screen" messages
+    idle screen    when no operator media
+```
+***Figure A.11 — Operator-to-Victim Path***
+
+| **Element** | **Implementation** |
+| --- | --- |
+| Dashboard `useWebrtcVideo()` | Transceivers are `sendrecv` and a `screen` data channel is opened; exposes the senders and channel as a `TalkLink` |
+| Dashboard `useTalkback()` | Mic via `getUserMedia`, toggled by the track's `enabled` flag; camera via `getUserMedia`, screen via `getDisplayMedia`, still images via `canvas.captureStream()` repainted every 500 ms; all attached with `replaceTrack`, so no renegotiation |
+| Dashboard `TalkPanel` | Hold-to-talk button, video-source picker with local preview, message box with on-screen acknowledgement, robot-screen status, *Release screen* |
+| Dashboard `VideoSurface` | *Listen to robot mic* toggle — the video element autoplays muted, so the victim's voice was previously never audible |
+| Dashboard `DriveControl` | Drive keys are ignored while typing in a text field, so a message containing "w" cannot move the robot |
+| P2 `talkback.py` | `ScreenHub` (floor control, message validation and routing); `ScreenVideoTrack` / `ScreenAudioTrack`, the outbound tracks on the screen connection |
+| P2 `signaling.py` | `negotiate()` hands inbound operator tracks and the `screen` channel to the hub; `negotiate_screen()` answers the kiosk |
+| P2 endpoints | `POST /webrtc/screen-offer` (403 unless from localhost), `GET /screen`; `/health` adds `screen_connected` and `floor_held` |
+| Robot Screen | `pi/p2_media/screen/index.html`, a dependency-free page; launched by `deploy/robot-screen/robot-screen.sh` from the desktop session's autostart |
+| `install.sh` | Installs Chromium, deploys the launcher, and installs the autostart entry for the desktop user |
+
+***Table A.11 — Implementation by Component***
+
+| **Message** | **Direction** | **Purpose** |
+| --- | --- | --- |
+| `media_state` `{talking, video}` | Dashboard → P2 → screen (as `screen_state`) | What the operator is sending; the screen hides the idle overlay only while a video source is active |
+| `screen_text` `{text, ts}` / `screen_clear` | Dashboard → P2 → screen | Text banner, trimmed and capped at 280 characters |
+| `screen_ack` `{ts}` | Screen → P2 → floor holder | Confirms a message is displayed |
+| `floor_release` | Dashboard → P2 | Gives up the robot screen; also released on disconnect |
+| `talk_status` `{screen_online, floor}` | P2 → every dashboard | Drives the panel's status and enables or disables its controls |
+| `floor_denied` | P2 → dashboard | Another operator holds the screen |
+
+***Table A.11b — `screen` Data-Channel Messages***
+
+Five decisions shape the feature.
+
+**Messages travel through P2, not P1.** P1 owns the safety-critical command path, and nothing about talking to a victim should be able to delay a stop. Carrying messages on a WebRTC data channel keeps the whole feature inside P2's failure domain: if P2 dies, the operator loses video and the ability to talk, but drives on unaffected — exactly the existing `DRIVING_LIMITED` behaviour.
+
+**P2 relays; the browser renders.** aiortc decodes every inbound track, so P2 does decode operator media and re-encode it for the screen connection — a real CPU cost on the Pi, which is why the dashboard caps the laptop camera at 640×480 and 10 fps. What P2 does *not* do is render: Chromium on the robot handles jitter buffering, audio output, and display, and a kiosk crash is contained to the display. The launcher waits for P2's `/health` before starting Chromium and relaunches it three seconds after any exit.
+
+**The screen connection never renegotiates.** `ScreenVideoTrack` and `ScreenAudioTrack` exist for the whole life of a screen connection and read whatever the floor holder currently sends. With nothing new, video repeats the last frame after one second (keeping a still image or idle shared screen alive) and audio emits 20 ms of silence on schedule. All frames are restamped on one monotonic clock, because the operator's RTP timestamps, repeated frames and generated silence would otherwise interleave. Every inbound operator track is drained for its whole life whether or not its session holds the floor, because aiortc queues decoded frames without bound when nobody reads them.
+
+**One talker at a time.** Mirroring the single-controller slot of Driver 6, only one operator session may send media or messages to the robot. The first session to send anything claims the floor and holds it until it releases or disconnects; others are refused with `floor_denied` and stay watch-and-listen only, so a victim never hears two voices at once. Releasing the floor clears the screen back to its idle state.
+
+**Push-to-talk rather than open microphone.** The robot's speaker and microphone sit centimetres apart; an open operator microphone would feed the speaker's output back to the operator as echo. Sending audio only while the Talk button is held, with the browser's own echo cancellation on, removes most feedback without an echo canceller on the Pi.
+
+Two constraints remain. Browsers expose the microphone and camera only in a secure context, and the dashboard is served over plain HTTP at `192.168.10.10:8080`; until it is served over HTTPS, each operator laptop's Chrome must list that origin under `chrome://flags/#unsafely-treat-insecure-origin-as-secure`. Images and text messages need no secure context and work regardless, and the panel says so. And the operator-to-robot video adds roughly 300 kbps to the mesh budget when the camera is on — within capacity, but it should be measured alongside the existing 500 kbps downstream stream.
 
 ---
 

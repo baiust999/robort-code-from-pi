@@ -1,0 +1,157 @@
+<!doctype html>
+<!--
+  Robot Screen, methodology Section 16.
+
+  The victim-facing page shown full-screen on the robot's own display by
+  deploy/robot-screen/robot-screen.sh (Chromium kiosk). It connects to P2 on
+  localhost, shows whatever the operator is sending — their face, an image or
+  a shared screen — plays the operator's voice on the robot speaker, and
+  shows text messages in large type. With no operator active it shows a
+  reassurance screen.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Robot Screen</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; height: 100%; background: #000; color: #fff; overflow: hidden;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; cursor: none; }
+  video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; }
+  .layer { position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; text-align: center; padding: 5vh 6vw; box-sizing: border-box; }
+  #idle { background: #0b2a4a; gap: 3vh; }
+  #idle h1 { margin: 0; font-size: 9vh; line-height: 1.1; }
+  #idle p { margin: 0; font-size: 4.5vh; color: #cfe3ff; max-width: 32ch; }
+  #idle .dot { width: 3vh; height: 3vh; border-radius: 50%; background: #4ade80;
+    animation: pulse 1.6s ease-in-out infinite; }
+  #idle.offline .dot { background: #f59e0b; }
+  @keyframes pulse { 50% { opacity: .25; } }
+  #message { position: absolute; left: 3vw; right: 3vw; bottom: 3vh; padding: 2.5vh 3vw;
+    border-radius: 2vh; background: rgba(255, 255, 255, .95); color: #000;
+    font-size: 6vh; font-weight: 700; line-height: 1.2; text-align: center; overflow-wrap: anywhere; }
+  #talking { position: absolute; top: 3vh; left: 50%; transform: translateX(-50%);
+    padding: 1.2vh 3vw; border-radius: 99px; background: #dc2626; font-size: 3.5vh; font-weight: 700; }
+  #sound { position: absolute; right: 3vw; top: 3vh; padding: 2vh 3vw; font-size: 3.5vh;
+    border-radius: 1.5vh; border: 0; background: #f59e0b; color: #000; font-weight: 700; cursor: pointer; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<video id="video" autoplay playsinline></video>
+<div id="idle" class="layer offline">
+  <div class="dot"></div>
+  <h1>Help is coming</h1>
+  <p id="idle-text">Stay where you are. The rescue team can see and hear you through this robot.</p>
+</div>
+<div id="talking" hidden>🎤 Rescuer is speaking</div>
+<div id="message" hidden></div>
+<button id="sound" type="button" hidden>Tap to turn on sound</button>
+<script>
+'use strict';
+const RETRY_MS = 3000;
+const video = document.getElementById('video');
+const idle = document.getElementById('idle');
+const talking = document.getElementById('talking');
+const message = document.getElementById('message');
+const soundBtn = document.getElementById('sound');
+
+let state = { operator: false, talking: false, video: 'none' };
+let pc = null;
+let retryTimer = null;
+
+function render() {
+  // Show the operator's picture only while they are actually sending one;
+  // otherwise the last frame would sit frozen on screen.
+  idle.hidden = state.operator && state.video !== 'none';
+  talking.hidden = !state.talking;
+}
+
+function setOnline(online) {
+  idle.classList.toggle('offline', !online);
+  if (!online) { state = { operator: false, talking: false, video: 'none' }; render(); }
+}
+
+async function enableSound() {
+  video.muted = false;
+  try { await video.play(); soundBtn.hidden = true; }
+  catch { soundBtn.hidden = false; }  // autoplay blocked outside the kiosk flags
+}
+soundBtn.addEventListener('click', enableSound);
+
+function onMessage(event) {
+  let msg;
+  try { msg = JSON.parse(event.data); } catch { return; }
+  if (msg.type === 'screen_state') {
+    state = { operator: !!msg.operator, talking: !!msg.talking, video: msg.video || 'none' };
+    render();
+  } else if (msg.type === 'screen_text') {
+    message.textContent = msg.text;
+    message.hidden = false;
+    if (msg.ts != null) event.target.send(JSON.stringify({ type: 'screen_ack', ts: msg.ts }));
+  } else if (msg.type === 'screen_clear') {
+    message.hidden = true;
+    message.textContent = '';
+  }
+}
+
+function waitForIce(conn) {
+  if (conn.iceGatheringState === 'complete') return Promise.resolve();
+  return new Promise((resolve) => {
+    const done = () => { if (conn.iceGatheringState === 'complete') resolve(); };
+    conn.addEventListener('icegatheringstatechange', done);
+    setTimeout(resolve, 2000);
+  });
+}
+
+function scheduleRetry() {
+  setOnline(false);
+  if (retryTimer !== null) return;
+  retryTimer = setTimeout(() => { retryTimer = null; connect(); }, RETRY_MS);
+}
+
+async function connect() {
+  if (pc) { pc.close(); pc = null; }
+  const conn = new RTCPeerConnection();
+  pc = conn;
+  conn.addTransceiver('video', { direction: 'recvonly' });
+  conn.addTransceiver('audio', { direction: 'recvonly' });
+  const channel = conn.createDataChannel('screen');
+  channel.onmessage = onMessage;
+  channel.onopen = () => setOnline(true);
+  channel.onclose = () => { if (pc === conn) scheduleRetry(); };
+
+  const stream = new MediaStream();
+  conn.ontrack = (event) => {
+    stream.addTrack(event.track);
+    video.srcObject = stream;
+    enableSound();
+  };
+  conn.onconnectionstatechange = () => {
+    if (pc === conn && (conn.connectionState === 'failed' || conn.connectionState === 'closed')) {
+      scheduleRetry();
+    }
+  };
+
+  try {
+    await conn.setLocalDescription(await conn.createOffer());
+    await waitForIce(conn);
+    const resp = await fetch('/webrtc/screen-offer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sdp: conn.localDescription.sdp, type: conn.localDescription.type }),
+    });
+    if (!resp.ok) throw new Error('screen offer failed: ' + resp.status);
+    await conn.setRemoteDescription(await resp.json());
+  } catch (err) {
+    console.warn(err);
+    if (pc === conn) scheduleRetry();
+  }
+}
+
+render();
+connect();
+</script>
+</body>
+</html>

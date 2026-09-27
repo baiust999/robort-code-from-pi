@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Robot Screen
+Comment=Victim-facing kiosk: operator video, voice and messages (Section 16)
+Exec=/opt/robot/deploy/robot-screen/robot-screen.sh
+X-GNOME-Autostart-enabled=true
+NoDisplay=true

@@ -1,11 +1,14 @@
 import { useMemo } from 'react';
 import { useControlSocket } from './hooks/useControlSocket';
+import { useWebrtcVideo } from './hooks/useWebrtcVideo';
+import { useTalkback } from './hooks/useTalkback';
 import { ConnectionStatusBar } from './components/ConnectionStatusBar';
 import { MissionStateIndicator } from './components/MissionStateIndicator';
 import { DriveControl } from './components/DriveControl';
 import { ServoControl } from './components/ServoControl';
 import { EmergencyStop } from './components/EmergencyStop';
 import { VideoSurface } from './components/VideoSurface';
+import { TalkPanel } from './components/TalkPanel';
 import { MapPanel } from './components/MapPanel';
 import { SensorCardGrid } from './components/SensorCardGrid';
 import { GpsStatusCard } from './components/GpsStatusCard';
@@ -15,6 +18,8 @@ import { deriveMissionState, FW_STATE_DRIVING } from './lib/protocol';
 function App() {
   const { connected, role, telemetry, lastAckMs, alerts, sendMotor, sendServo, sendStopAll } =
     useControlSocket();
+  const video = useWebrtcVideo();
+  const talk = useTalkback(video.talkLink);
 
   const missionState = useMemo(
     () =>
@@ -55,7 +60,8 @@ function App() {
         </aside>
 
         <main className="flex flex-col gap-3 overflow-hidden">
-          <VideoSurface />
+          <VideoSurface video={video} />
+          <TalkPanel talk={talk} linkUp={video.connected} />
           <div className="flex-1 overflow-hidden rounded-lg border border-white/10">
             <MapPanel telemetry={telemetry} />
           </div>

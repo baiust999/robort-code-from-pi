@@ -13,6 +13,9 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 INSTALL_ROOT=/opt/robot
 ROBOT_USER=robot
+# The user who logs in to the Pi desktop; the Robot Screen kiosk runs in
+# their graphical session (Section 16).
+DESKTOP_USER="${DESKTOP_USER:-${SUDO_USER:-pi}}"
 
 if [ "$(id -u)" -ne 0 ]; then
   echo "run as root (sudo ./deploy/install.sh)" >&2
@@ -26,7 +29,13 @@ apt-get install -y \
   libatlas-base-dev \
   ffmpeg libavcodec-dev libavformat-dev \
   gpsd gpsd-clients \
-  logrotate
+  logrotate \
+  curl
+# Robot Screen kiosk. Raspberry Pi OS ships Chromium as chromium-browser
+# (Bookworm) or chromium (later releases).
+if ! command -v chromium >/dev/null && ! command -v chromium-browser >/dev/null; then
+  apt-get install -y chromium-browser || apt-get install -y chromium
+fi
 
 echo "== stage 2: robot user and directories =="
 id -u "$ROBOT_USER" >/dev/null 2>&1 || useradd -r -m -G dialout,video,audio "$ROBOT_USER"
@@ -37,6 +46,8 @@ echo "== stage 3: application code =="
 rsync -a --delete \
   --exclude '.git' --exclude 'node_modules' --exclude '__pycache__' \
   "$REPO_ROOT"/pi "$INSTALL_ROOT"/
+mkdir -p "$INSTALL_ROOT/deploy"
+rsync -a --delete "$REPO_ROOT"/deploy/robot-screen "$INSTALL_ROOT"/deploy/
 if [ -d "$REPO_ROOT/dashboard/dist" ]; then
   rsync -a --delete "$REPO_ROOT"/dashboard/dist/ "$INSTALL_ROOT"/dashboard/dist/
 else
@@ -62,6 +73,16 @@ cp "$REPO_ROOT/deploy/systemd/robot-watchdog.service" /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable robot-watchdog.service
 
+if id -u "$DESKTOP_USER" >/dev/null 2>&1; then
+  autostart_dir="$(getent passwd "$DESKTOP_USER" | cut -d: -f6)/.config/autostart"
+  install -d -o "$DESKTOP_USER" -g "$DESKTOP_USER" "$autostart_dir"
+  install -m 644 -o "$DESKTOP_USER" -g "$DESKTOP_USER" \
+    "$REPO_ROOT/deploy/robot-screen/robot-screen.desktop" "$autostart_dir/robot-screen.desktop"
+  echo "Robot Screen kiosk will start in $DESKTOP_USER's desktop session"
+else
+  echo "note: desktop user '$DESKTOP_USER' not found; set DESKTOP_USER to enable the Robot Screen kiosk" >&2
+fi
+
 echo "== stage 7: logrotate =="
 cp "$REPO_ROOT/deploy/logrotate/robot" /etc/logrotate.d/robot
 
@@ -81,6 +102,16 @@ Remaining manual steps (Section 8.14.4, Stage 5):
      then: sudo systemctl restart dhcpcd
   5. Flash and provision the three mesh routers with deploy/mesh/*.sh
      (Section 8.14.5.1).
+  6. Robot Screen (talk-to-victim, Section 16):
+       - Enable desktop autologin so the kiosk starts at boot:
+           sudo raspi-config nonint do_boot_behaviour B4
+       - Connect the robot display (HDMI 0) and the speaker (3.5 mm jack),
+         then make the jack the default audio output:
+           wpctl status            # find the "Built-in Audio" sink id
+           wpctl set-default <id>
+       - Operator laptops need a secure context for mic/camera: open Chrome
+         with chrome://flags/#unsafely-treat-insecure-origin-as-secure set to
+         http://192.168.10.10:8080 (images and text messages work without it).
 
 Then start the stack:
   sudo systemctl start robot-watchdog.service

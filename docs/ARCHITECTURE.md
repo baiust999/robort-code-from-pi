@@ -52,6 +52,9 @@ telemetry) and **WebRTC :8443** (video + audio). They fail independently — a
 camera failure never touches the control path. The only outbound internet
 dependency is OSM map tiles, and it is not mission-critical.
 
+WebRTC is two-way: the same connection carries the operator's voice, video
+and messages back to the victim-facing Robot Screen — see §14.
+
 ---
 
 ## 2. Container View
@@ -580,6 +583,98 @@ flowchart LR
 | Dead-man: `millis()` vs Timer1 ISR | Software check — Timer1 owned by Servo lib | `DEADMAN_MS` |
 | Telemetry field count (12/22/26) | 20-key schema of §8.10.1.2 | `pi/common/protocol.py` |
 | Operational mode count | Mode 2, Local Mesh Only (§8.11.6) | `p3.env: ENABLE_OVERLAY=0` |
+
+---
+
+## 14. Two-Way Communication with the Victim
+
+**Status: implemented; not yet tested on robot hardware.** Full rationale in
+[`SOFTWARE_ARCHITECTURE.md` §A.11](./SOFTWARE_ARCHITECTURE.md); protocol
+details in `CAPSTONE_METHODOLOGY_FINAL.md` §16.
+
+### 14.1 Context — who sees and hears whom
+
+```mermaid
+flowchart LR
+    operator["🧑 Operator<br/>laptop mic + camera"]
+    victim["🧍 Victim<br/>(in front of robot)"]
+
+    subgraph robot["ROBOT"]
+        cam["USB camera + mic"]
+        p2["P2 Media<br/>:8443<br/>floor control + relay"]
+        screen["Robot Screen<br/>Chromium kiosk<br/>localhost:8443/screen"]
+        disp["Robot display<br/>7in HDMI"]
+        spk["Speaker<br/>3.5 mm jack"]
+    end
+
+    dash["Dashboard"]
+
+    victim -- "face + voice" --> cam --> p2
+    p2 -- "Tracks 1-2: video + audio" --> dash --> operator
+    operator -- "push-to-talk, camera / image / screen, text" --> dash
+    dash -- "Tracks 3-4 + data channel 'screen'" --> p2
+    p2 -- "decode + re-encode<br/>(localhost peer)" --> screen
+    screen --> disp -- "operator face / image + text" --> victim
+    screen --> spk -- "operator voice" --> victim
+
+    classDef added fill:#fff,stroke:#B7791F,stroke-dasharray:5 4,color:#12181A;
+    classDef core fill:#fff,stroke:#2F7C9E,color:#12181A;
+    classDef ext fill:#eef2ee,stroke:#7C8A7E,color:#12181A;
+    class screen,disp,spk added;
+    class cam,p2,dash core;
+    class operator,victim ext;
+```
+
+Dashed boxes are the victim-facing additions. Messages go through P2's data channel, **never P1**, so
+the talk-to-victim feature stays out of the safety-critical command path.
+
+### 14.2 Sequence — operator talks and sends a message
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant K as Robot Screen (kiosk)
+    participant P2 as P2 Media
+    participant D as Dashboard
+    actor O as Operator
+
+    Note over K,P2: At boot
+    K->>P2: POST /webrtc/screen-offer (recv-only + data channel)
+    P2-->>K: SDP answer
+    K->>K: show idle screen "Help is coming"
+
+    Note over D,P2: Existing session (Tracks 1-2 already flowing)
+    O->>D: hold Talk
+    D->>D: getUserMedia(audio) → enable Track 4
+    D->>P2: Track 4 (Opus)
+    P2->>P2: floor free? → grant to this session
+    P2->>K: relay Track 4
+    K->>K: play on speaker
+
+    O->>D: pick "Camera" / "Image"
+    D->>P2: Track 3 (video)
+    P2->>K: relay Track 3
+    K->>K: show full-screen on robot display
+
+    O->>D: type "Stay calm, help is coming"
+    D->>P2: data channel {"type":"screen_text", ...}
+    P2->>K: relay message
+    K-->>P2: {"type":"screen_ack"}
+    P2-->>D: ack → dashboard shows "on screen ✓"
+
+    O->>D: release Talk
+    D->>D: disable Track 4 (floor released on disconnect or stop)
+```
+
+### 14.3 New failure modes
+
+| Fault | Detection | Response |
+|---|---|---|
+| Operator denies mic/camera, or page not HTTPS | `getUserMedia` rejects | Talk / camera buttons disabled with reason shown |
+| Robot Screen kiosk crashes | Chromium exits | `robot-screen.sh` relaunches it after 3 s; idle screen returns |
+| Display or speaker unplugged | Screen peer connected, no output | Operator sees no ack for messages; pre-mission checklist catches it |
+| P2 crash | P3 (existing) | Video **and** talk-to-victim lost; driving unaffected (`DRIVING_LIMITED`) |
+| Second operator tries to talk | P2 floor control | Request refused; that session stays listen-only |
 
 ---
 

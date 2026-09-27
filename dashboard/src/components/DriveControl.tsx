@@ -11,6 +11,13 @@ const KEY_TO_DIR: Record<string, 'F' | 'R' | 'L' | 'G'> = {
   d: 'G',
 };
 
+function isTextEntry(target: EventTarget | null): boolean {
+  return (
+    target instanceof HTMLElement &&
+    (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
+  );
+}
+
 export function DriveControl(props: {
   onDrive: (dir: 'F' | 'R' | 'L' | 'G', speed: number) => void;
   onStop: () => void;
@@ -22,6 +29,8 @@ export function DriveControl(props: {
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
+      // Typing a message to the victim must not drive the robot.
+      if (isTextEntry(e.target)) return;
       const dir = KEY_TO_DIR[e.key];
       if (!dir || disabled || activeDir.current === dir) return;
       activeDir.current = dir;

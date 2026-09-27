@@ -4,6 +4,17 @@ import { negotiateWebrtc } from '../lib/api';
 /** Delay between attempts while P2 is still starting (e.g. right after Pi boot). */
 const STARTUP_RETRY_MS = 3000;
 
+/**
+ * The operator-to-robot half of the peer connection (Section 16): senders the
+ * talk-back hook attaches the laptop mic / video source to, and the data
+ * channel carrying messages for the Robot Screen.
+ */
+export interface TalkLink {
+  audioSender: RTCRtpSender;
+  videoSender: RTCRtpSender;
+  channel: RTCDataChannel;
+}
+
 export interface WebrtcVideoState {
   videoRef: React.RefObject<HTMLVideoElement | null>;
   connected: boolean;
@@ -12,10 +23,16 @@ export interface WebrtcVideoState {
   waiting: boolean;
   /** Operator-initiated reconnect after the stream has failed. */
   retry: () => void;
+  /** Present while a peer connection exists; replaced on every reconnect. */
+  talkLink: TalkLink | null;
 }
 
 /**
  * Negotiates one WebRTC connection to P2 and attaches inbound tracks to a <video>.
+ *
+ * The transceivers are sendrecv so the same connection can carry the
+ * operator's voice and video back to the robot; nothing is sent until the
+ * talk-back hook attaches a track to a sender.
  *
  * Until the first connection succeeds, failures are retried automatically: P2
  * takes several seconds longer than P1 to start, so a dashboard opened during
@@ -30,6 +47,7 @@ export function useWebrtcVideo(): WebrtcVideoState {
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [waiting, setWaiting] = useState(false);
+  const [talkLink, setTalkLink] = useState<TalkLink | null>(null);
 
   const retry = useCallback(() => {
     everConnected.current = false;
@@ -60,8 +78,10 @@ export function useWebrtcVideo(): WebrtcVideoState {
     async function start() {
       try {
         pc = new RTCPeerConnection();
-        pc.addTransceiver('video', { direction: 'recvonly' });
-        pc.addTransceiver('audio', { direction: 'recvonly' });
+        const videoTx = pc.addTransceiver('video', { direction: 'sendrecv' });
+        const audioTx = pc.addTransceiver('audio', { direction: 'sendrecv' });
+        const channel = pc.createDataChannel('screen');
+        setTalkLink({ audioSender: audioTx.sender, videoSender: videoTx.sender, channel });
 
         const stream = new MediaStream();
         pc.ontrack = (event) => {
@@ -100,8 +120,9 @@ export function useWebrtcVideo(): WebrtcVideoState {
       cancelled = true;
       if (retryTimer !== null) clearTimeout(retryTimer);
       pc?.close();
+      setTalkLink(null);
     };
   }, [attempt]);
 
-  return { videoRef, connected, error, waiting, retry };
+  return { videoRef, connected, error, waiting, retry, talkLink };
 }
