@@ -114,7 +114,7 @@ export function TalkPanel(props: { talk: TalkbackState; linkUp: boolean }) {
             talk.talking ? 'bg-red-600 text-white' : 'bg-white/10 hover:bg-white/20'
           }`}
         >
-          {talk.talking ? '🎤 Talking…' : '🎤 Hold to talk'}
+          {talk.talking ? '🎤 Talking…' : talk.micReady ? '🎤 Hold to talk' : '🎤 Enable mic'}
         </button>
 
         <div className="flex flex-1 flex-col gap-1">

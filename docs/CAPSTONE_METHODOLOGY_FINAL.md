@@ -903,7 +903,7 @@ Failure Isolation:
 | **Motor command timeout** | No motor command for > 2 sec | Arduino dead-man timer | Motors stop (guaranteed) |
 | **P1 crash** | P3 detects liveness loss | P3 SIGKILL + restart | Telemetry resumed (< 15 sec) |
 | **P2 crash** | P3 detects liveness loss | P3 SIGKILL + restart | Video resumed (< 15 sec) |
-| **Operator mic/camera denied** | getUserMedia rejects | Talk button disabled, message shown | Grant permission / use HTTPS |
+| **Operator mic/camera denied** | getUserMedia rejects | Error shown; Talk button stays *Enable mic* (disabled without HTTPS) | Grant permission / use HTTPS |
 | **Robot display/speaker fault** | Robot Screen peer not connected | Dashboard shows "Robot screen offline" | Kiosk relaunched by `robot-screen.sh` |
 | **Arduino hang** | Serial telemetry RX stops | Motors safe (dead-man active) | P3 restarts Pi processes |
 | **Mesh route loss** | No HWMP path | Falls back or uses Wi-Fi Direct | Mesh convergence (1-3 sec) |
@@ -1004,13 +1004,14 @@ USB Camera (Video):
 Audio (Two-Way):
 ├─ Microphone (victim → operator):
 │  ├─ Capture: 48 kHz mono (ALSA, via p2_media/alsa.conf)
+│  ├─ Shared: one open device fanned out to every session (MediaRelay)
 │  ├─ Encode: Opus 32 kbps (VBR)
 │  └─ Output: RTP stream (Track 2, Pi → Operator)
 │
 ├─ Speaker (operator → victim):
 │  ├─ Receive: RTP Opus (Track 4, push-to-talk)
 │  ├─ Relay: Decoded, re-encoded to Robot Screen peer
-│  └─ Playback: Robot Screen page → speaker (3.5 mm / ALSA default)
+│  └─ Playback: Robot Screen page → speaker (3.5 mm jack, the default PipeWire sink)
 
 Operator Video & Messages (operator → victim):
 ├─ Receive: Track 3 (camera, image or screen share)

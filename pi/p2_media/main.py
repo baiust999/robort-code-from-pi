@@ -1,9 +1,10 @@
 """P2 entrypoint: WebRTC media server, Section 8.8.2.
 
 Exposes ``POST /webrtc/offer`` (SDP offer in, SDP answer out) and
-``GET /health``. Unlike P1, P2 does not own an exclusive hardware lock: the
-camera/mic devices are opened per-session and multiple simultaneous viewers
-are permitted (each gets its own PeerConnection and encoder).
+``GET /health``. Unlike P1, P2 does not own an exclusive hardware lock:
+multiple simultaneous viewers are permitted, each with its own
+PeerConnection and encoder, all fed from one shared camera and mic
+(``SharedCapture``) since the devices themselves can only be opened once.
 
 It also serves the Robot Screen (Section 16): ``GET /screen`` is the kiosk
 page shown on the robot's own display, and ``POST /webrtc/screen-offer``
@@ -31,7 +32,7 @@ from pydantic import BaseModel
 from common.config import P2Config
 from common.logging_setup import EventLogger, setup_logging
 
-from .media import open_camera_track, open_mic_track
+from .media import SharedCapture, open_camera_track, open_mic_track
 from .signaling import PeerSession, TrackFactory, default_track_factory, negotiate, negotiate_screen
 from .talkback import DISPLAY_MODES, ScreenHub
 
@@ -75,14 +76,22 @@ class MediaServer:
                 self.config.width, self.config.height, self.config.framerate
             )
 
+        camera = SharedCapture(
+            lambda: open_camera_track(
+                self.config.video_device,
+                self.config.width,
+                self.config.height,
+                self.config.framerate,
+            ),
+            # Each viewer only needs the newest picture.
+            buffered=False,
+        )
+        # Every audio frame matters, so each session gets its own queue.
+        mic = SharedCapture(lambda: open_mic_track(self.config.audio_device), buffered=True)
+
         def make_video():
             try:
-                return open_camera_track(
-                    self.config.video_device,
-                    self.config.width,
-                    self.config.height,
-                    self.config.framerate,
-                )
+                return camera.subscribe()
             except Exception as exc:  # noqa: BLE001 - fall back to synthetic on any capture failure
                 self.log.warning("CAMERA_OPEN_FAIL", str(exc), device=self.config.video_device)
                 from .media import SyntheticVideoTrack
@@ -93,7 +102,7 @@ class MediaServer:
 
         def make_audio():
             try:
-                return open_mic_track(self.config.audio_device)
+                return mic.subscribe()
             except Exception as exc:  # noqa: BLE001
                 self.log.warning("MIC_OPEN_FAIL", str(exc), device=self.config.audio_device)
                 from .media import SilentAudioTrack

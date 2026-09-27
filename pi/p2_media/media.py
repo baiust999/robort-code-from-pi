@@ -11,12 +11,13 @@ from __future__ import annotations
 import fractions
 import os
 import time
+from collections.abc import Callable
 from pathlib import Path
 
 import av
 import numpy as np
 from aiortc import AudioStreamTrack, VideoStreamTrack
-from aiortc.mediastreams import MediaStreamError
+from aiortc.mediastreams import MediaStreamError, MediaStreamTrack
 
 VIDEO_CLOCK_RATE = 90000
 AUDIO_CLOCK_RATE = 48000
@@ -128,6 +129,46 @@ def open_camera_track(device: str, width: int, height: int, framerate: int) -> V
     if player.video is None:
         raise MediaStreamError("camera device produced no video track")
     return player.video
+
+
+class SharedCapture:
+    """One capture device fanned out to every session through a MediaRelay.
+
+    ALSA and V4L2 devices can only be opened once, so opening them per
+    session left every session after the first (a second viewer, or a page
+    reload that arrives before the old connection has timed out) with a
+    busy device and a silent/synthetic fallback. The device is opened on
+    first use and closed again when the last session's track ends.
+    """
+
+    def __init__(self, open_track: Callable[[], MediaStreamTrack], buffered: bool) -> None:
+        from aiortc.contrib.media import MediaRelay
+
+        self._open = open_track
+        self._buffered = buffered
+        self._relay = MediaRelay()
+        self._source: MediaStreamTrack | None = None
+        self._users = 0
+
+    def subscribe(self) -> MediaStreamTrack:
+        """A new consumer track; raises if the device can't be opened."""
+        if self._source is None or self._source.readyState != "live":
+            self._source = self._open()
+            self._users = 0
+        source = self._source
+        proxy = self._relay.subscribe(source, buffered=self._buffered)
+        self._users += 1
+
+        @proxy.on("ended")
+        def _ended() -> None:
+            if source is not self._source:
+                return  # a consumer of a source that was already replaced
+            self._users -= 1
+            if self._users <= 0:
+                self._source = None
+                source.stop()
+
+        return proxy
 
 
 ALSA_CONF = Path(__file__).with_name("alsa.conf")

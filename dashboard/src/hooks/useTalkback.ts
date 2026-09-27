@@ -26,6 +26,8 @@ export interface TalkbackState {
   /** As reported by P2, so it reflects switches made on the robot too. */
   displayMode: DisplayMode;
   talking: boolean;
+  /** The laptop mic is open and attached; until then a press only enables it. */
+  micReady: boolean;
   videoSource: VideoSource;
   /** The outgoing video track, for a local preview. */
   previewStream: MediaStream | null;
@@ -83,12 +85,17 @@ export function useTalkback(link: TalkLink | null): TalkbackState {
   const [floor, setFloor] = useState<Floor>('free');
   const [displayMode, setDisplayModeState] = useState<DisplayMode>('robot');
   const [talking, setTalking] = useState(false);
+  const [micReady, setMicReady] = useState(false);
   const [videoSource, setVideoSource] = useState<VideoSource>('none');
   const [previewStream, setPreviewStream] = useState<MediaStream | null>(null);
   const [lastAckTs, setLastAckTs] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const micRef = useRef<MediaStreamTrack | null>(null);
+  const micRequest = useRef<Promise<void> | null>(null);
+  // Bumped when the connection is torn down, so a getUserMedia that
+  // resolves afterwards doesn't attach its track to the new connection.
+  const micGeneration = useRef(0);
   const videoTrackRef = useRef<MediaStreamTrack | null>(null);
   const repaintTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const talkingRef = useRef(false);
@@ -157,8 +164,11 @@ export function useTalkback(link: TalkLink | null): TalkbackState {
   // A new connection starts from nothing: drop local media and state.
   useEffect(() => {
     return () => {
+      micGeneration.current++;
+      micRequest.current = null;
       micRef.current?.stop();
       micRef.current = null;
+      setMicReady(false);
       stopVideoTrack();
       talkingRef.current = false;
       sourceRef.current = 'none';
@@ -171,6 +181,47 @@ export function useTalkback(link: TalkLink | null): TalkbackState {
     };
   }, [link, stopVideoTrack]);
 
+  // Opens the laptop mic (muted) and attaches it to the connection. Only
+  // one request runs at a time.
+  const acquireMic = useCallback(() => {
+    if (!link) return Promise.resolve();
+    if (!micRequest.current) {
+      const generation = micGeneration.current;
+      micRequest.current = (async () => {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+          });
+          const track = stream.getAudioTracks()[0];
+          if (generation !== micGeneration.current) {
+            track.stop();
+            return;
+          }
+          track.enabled = false;
+          await link.audioSender.replaceTrack(track);
+          micRef.current = track;
+          setMicReady(true);
+        } catch (err) {
+          if (generation === micGeneration.current) micRequest.current = null;
+          throw err;
+        }
+      })();
+    }
+    return micRequest.current;
+  }, [link]);
+
+  // If the browser already allows the mic, open it as soon as the link is
+  // up, so the very first press talks instead of waiting on getUserMedia.
+  useEffect(() => {
+    if (!link || !mediaDevicesAvailable || !navigator.permissions) return;
+    navigator.permissions
+      .query({ name: 'microphone' as PermissionName })
+      .then((status) => {
+        if (status.state === 'granted') return acquireMic();
+      })
+      .catch(() => {}); // unsupported query or mic failure: the first press will ask
+  }, [link, mediaDevicesAvailable, acquireMic]);
+
   const startTalking = useCallback(async () => {
     if (!link) return;
     if (!mediaDevicesAvailable) {
@@ -178,25 +229,21 @@ export function useTalkback(link: TalkLink | null): TalkbackState {
       return;
     }
     setError(null);
+    if (!micRef.current) {
+      // The permission prompt takes focus from the button and cancels the
+      // hold, so this press only enables the mic; the next one talks.
+      try {
+        await acquireMic();
+      } catch (err) {
+        setError(err instanceof Error ? `Microphone: ${err.message}` : 'Microphone unavailable');
+      }
+      return;
+    }
     talkingRef.current = true;
     setTalking(true);
-    try {
-      if (!micRef.current) {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-        });
-        micRef.current = stream.getAudioTracks()[0];
-        await link.audioSender.replaceTrack(micRef.current);
-      }
-      // Released before the permission prompt was answered.
-      micRef.current.enabled = talkingRef.current;
-      sendMediaState();
-    } catch (err) {
-      talkingRef.current = false;
-      setTalking(false);
-      setError(err instanceof Error ? `Microphone: ${err.message}` : 'Microphone unavailable');
-    }
-  }, [link, mediaDevicesAvailable, sendMediaState]);
+    micRef.current.enabled = true;
+    sendMediaState();
+  }, [link, mediaDevicesAvailable, acquireMic, sendMediaState]);
 
   const stopTalking = useCallback(() => {
     if (!talkingRef.current) return;
@@ -313,6 +360,7 @@ export function useTalkback(link: TalkLink | null): TalkbackState {
     floor,
     displayMode,
     talking,
+    micReady,
     videoSource,
     previewStream,
     lastAckTs,
