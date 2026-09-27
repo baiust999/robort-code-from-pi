@@ -191,7 +191,11 @@ def create_app(server: MediaServer) -> FastAPI:
             raise HTTPException(status_code=403, detail="display mode is set locally or via the dashboard")
         if body.mode not in DISPLAY_MODES:
             raise HTTPException(status_code=422, detail=f"mode must be one of {DISPLAY_MODES}")
-        server.hub.set_display_mode(body.mode, source=f"local:{request.client.host}")
+        # The kiosk page (a browser) and the launcher/shortcut (curl) both
+        # switch locally; name which one so a surprise switch can be traced.
+        agent = request.headers.get("user-agent", "")
+        via = "kiosk" if "Mozilla" in agent else (agent.split("/", 1)[0] or "unknown")
+        server.hub.set_display_mode(body.mode, source=f"local:{request.client.host}:{via}")
         return DisplayMode(mode=server.hub.display_mode)
 
     return app
