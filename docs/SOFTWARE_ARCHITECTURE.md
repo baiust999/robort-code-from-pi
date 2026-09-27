@@ -546,14 +546,14 @@ A rescue robot that reaches a conscious victim is more useful if it can reassure
 | --- | --- |
 | Dashboard `useWebrtcVideo()` | Transceivers are `sendrecv` and a `screen` data channel is opened; exposes the senders and channel as a `TalkLink` |
 | Dashboard `useTalkback()` | Mic via `getUserMedia`, toggled by the track's `enabled` flag; camera via `getUserMedia`, screen via `getDisplayMedia`, still images via `canvas.captureStream()` repainted every 500 ms; all attached with `replaceTrack`, so no renegotiation |
-| Dashboard `TalkPanel` | Hold-to-talk button, video-source picker with local preview, message box with on-screen acknowledgement, robot-screen status, *Release screen* |
+| Dashboard `TalkPanel` | Hold-to-talk button, video-source picker with local preview, message box with on-screen acknowledgement, robot-screen status, *Release screen*, and the *Robot Display / VNC Mode* radio buttons with a warning while in VNC mode |
 | Dashboard `VideoSurface` | *Listen to robot mic* toggle — the video element autoplays muted, so the victim's voice was previously never audible |
 | Dashboard `DriveControl` | Drive keys are ignored while typing in a text field, so a message containing "w" cannot move the robot |
-| P2 `talkback.py` | `ScreenHub` (floor control, message validation and routing); `ScreenVideoTrack` / `ScreenAudioTrack`, the outbound tracks on the screen connection |
+| P2 `talkback.py` | `ScreenHub` (floor control, message validation and routing, display mode); `ScreenVideoTrack` / `ScreenAudioTrack`, the outbound tracks on the screen connection |
 | P2 `signaling.py` | `negotiate()` hands inbound operator tracks and the `screen` channel to the hub; `negotiate_screen()` answers the kiosk |
-| P2 endpoints | `POST /webrtc/screen-offer` (403 unless from localhost), `GET /screen`; `/health` adds `screen_connected` and `floor_held` |
-| Robot Screen | `pi/p2_media/screen/index.html`, a dependency-free page; launched by `deploy/robot-screen/robot-screen.sh` from the desktop session's autostart |
-| `install.sh` | Installs Chromium, deploys the launcher, and installs the autostart entry for the desktop user |
+| P2 endpoints | `POST /webrtc/screen-offer` (403 unless from localhost), `GET /screen`, `GET /screen/mode`, `POST /screen/mode` (403 unless from localhost); `/health` adds `screen_connected`, `floor_held` and `display_mode` |
+| Robot Screen | `pi/p2_media/screen/index.html`, a dependency-free page with *Robot screen / VNC* radio buttons in the corner; launched by `deploy/robot-screen/robot-screen.sh` from the desktop session's autostart, which polls the display mode and opens or closes the kiosk to match |
+| `install.sh` | Installs Chromium, deploys the launcher, installs the autostart entry for the desktop user, and adds a *Show Robot Screen* entry to the app menu and desktop |
 
 ***Table A.11 — Implementation by Component***
 
@@ -563,22 +563,25 @@ A rescue robot that reaches a conscious victim is more useful if it can reassure
 | `screen_text` `{text, ts}` / `screen_clear` | Dashboard → P2 → screen | Text banner, trimmed and capped at 280 characters |
 | `screen_ack` `{ts}` | Screen → P2 → floor holder | Confirms a message is displayed |
 | `floor_release` | Dashboard → P2 | Gives up the robot screen; also released on disconnect |
-| `talk_status` `{screen_online, floor}` | P2 → every dashboard | Drives the panel's status and enables or disables its controls |
+| `talk_status` `{screen_online, floor, display_mode}` | P2 → every dashboard | Drives the panel's status, enables or disables its controls, and sets the display-mode radio buttons |
 | `floor_denied` | P2 → dashboard | Another operator holds the screen |
+| `display_mode` `{mode: "robot" \| "vnc"}` | Dashboard → P2 | Shows or hides the Robot Screen kiosk; needs no floor |
 
 ***Table A.11b — `screen` Data-Channel Messages***
 
-Five decisions shape the feature.
+Six decisions shape the feature.
 
 **Messages travel through P2, not P1.** P1 owns the safety-critical command path, and nothing about talking to a victim should be able to delay a stop. Carrying messages on a WebRTC data channel keeps the whole feature inside P2's failure domain: if P2 dies, the operator loses video and the ability to talk, but drives on unaffected — exactly the existing `DRIVING_LIMITED` behaviour.
 
-**P2 relays; the browser renders.** aiortc decodes every inbound track, so P2 does decode operator media and re-encode it for the screen connection — a real CPU cost on the Pi, which is why the dashboard caps the laptop camera at 640×480 and 10 fps. What P2 does *not* do is render: Chromium on the robot handles jitter buffering, audio output, and display, and a kiosk crash is contained to the display. The launcher waits for P2's `/health` before starting Chromium and relaunches it three seconds after any exit.
+**P2 relays; the browser renders.** aiortc decodes every inbound track, so P2 does decode operator media and re-encode it for the screen connection — a real CPU cost on the Pi, which is why the dashboard caps the laptop camera at 640×480 and 10 fps. What P2 does *not* do is render: Chromium on the robot handles jitter buffering, audio output, and display, and a kiosk crash is contained to the display. The launcher waits for P2 before starting Chromium and relaunches it three seconds after a crash.
 
 **The screen connection never renegotiates.** `ScreenVideoTrack` and `ScreenAudioTrack` exist for the whole life of a screen connection and read whatever the floor holder currently sends. With nothing new, video repeats the last frame after one second (keeping a still image or idle shared screen alive) and audio emits 20 ms of silence on schedule. All frames are restamped on one monotonic clock, because the operator's RTP timestamps, repeated frames and generated silence would otherwise interleave. Every inbound operator track is drained for its whole life whether or not its session holds the floor, because aiortc queues decoded frames without bound when nobody reads them.
 
 **One talker at a time.** Mirroring the single-controller slot of Driver 6, only one operator session may send media or messages to the robot. The first session to send anything claims the floor and holds it until it releases or disconnects; others are refused with `floor_denied` and stay watch-and-listen only, so a victim never hears two voices at once. Releasing the floor clears the screen back to its idle state.
 
 **Push-to-talk rather than open microphone.** The robot's speaker and microphone sit centimetres apart; an open operator microphone would feed the speaker's output back to the operator as echo. Sending audio only while the Talk button is held, with the browser's own echo cancellation on, removes most feedback without an echo canceller on the Pi.
+
+**A display mode, because VNC shares the robot display.** The Pi's VNC server (wayvnc) mirrors the physical display rather than providing a separate desktop, so the full-screen kiosk also covered the VNC session and made the Pi unusable for maintenance. P2 therefore holds a display mode, `robot` (kiosk shown) or `vnc` (kiosk closed, Pi desktop usable), and the launcher polls `GET /screen/mode` once a second and opens or closes Chromium to match. The mode can be switched from three places: radio buttons on the dashboard (over the data channel), radio buttons on the kiosk page, and a *Show Robot Screen* menu entry on the Pi (both over `POST /screen/mode`, localhost only). Closing the kiosk by hand with Alt+F4 also counts as switching to `vnc`. Every change is broadcast in `talk_status`, so each control shows the mode the robot is really in, and the dashboard warns that the victim can no longer see the operator while in `vnc` mode. Switching needs no floor, because it is a maintenance action rather than talking to the victim, and the mode resets to `robot` whenever P2 starts so a reboot never leaves the victim facing the Pi desktop. Unlike the rest of this section, this switch has been tested on the robot.
 
 Two constraints remain. Browsers expose the microphone and camera only in a secure context, and the dashboard is served over plain HTTP at `192.168.10.10:8080`; until it is served over HTTPS, each operator laptop's Chrome must list that origin under `chrome://flags/#unsafely-treat-insecure-origin-as-secure`. Images and text messages need no secure context and work regardless, and the panel says so. And the operator-to-robot video adds roughly 300 kbps to the mesh budget when the camera is on — within capacity, but it should be measured alongside the existing 500 kbps downstream stream.
 

@@ -51,7 +51,7 @@ flowchart TB
         P3 -.spawns / monitors.-> P1
         P3 -.spawns / monitors.-> P2
 
-        SCREEN["Robot Screen\nChromium kiosk\nlocalhost:8443/screen"]
+        SCREEN["Robot Screen\nChromium kiosk\nlocalhost:8443/screen\nmode: Robot Display ⇄ VNC"]
         P2_RLY -.-> SCREEN
     end
 
@@ -66,7 +66,7 @@ flowchart TB
     subgraph DASH["REACT DASHBOARD — Vite + TS + Tailwind + Leaflet"]
         direction TB
         D_WS["WebSocket client\nheartbeat 500ms · backoff 1→30s\nhello + resume_from"]
-        D_RTC["WebRTC client (two-way)\npush-to-talk · camera/image/screen\nmessages to robot screen"]
+        D_RTC["WebRTC client (two-way)\npush-to-talk · camera/image/screen\nmessages to robot screen\nRobot Display / VNC switch"]
         D_ALERT["Alert engine\ntemp/gas/range thresholds"]
         D_MSTATE["Mission state\nSTOP / LIMITED / READY / DRIVING"]
         D_UI["3-region UI\nDriveControl+EStop | Video+Map | Sensors+Alerts"]

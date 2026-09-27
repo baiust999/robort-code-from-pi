@@ -8,7 +8,10 @@ are permitted (each gets its own PeerConnection and encoder).
 It also serves the Robot Screen (Section 16): ``GET /screen`` is the kiosk
 page shown on the robot's own display, and ``POST /webrtc/screen-offer``
 connects it — localhost only — so the operator's voice, video and messages
-reach the victim.
+reach the victim. ``GET /screen/mode`` reports whether the display shows
+the kiosk or the Pi desktop (for VNC); the kiosk launcher polls it, and the
+kiosk page and desktop shortcut switch it with ``POST /screen/mode``
+(localhost only; dashboards switch it over their data channel).
 """
 
 from __future__ import annotations
@@ -30,7 +33,7 @@ from common.logging_setup import EventLogger, setup_logging
 
 from .media import open_camera_track, open_mic_track
 from .signaling import PeerSession, TrackFactory, default_track_factory, negotiate, negotiate_screen
-from .talkback import ScreenHub
+from .talkback import DISPLAY_MODES, ScreenHub
 
 EXIT_CONFIG_INVALID = 3
 SCREEN_PAGE = Path(__file__).with_name("screen") / "index.html"
@@ -47,6 +50,10 @@ class OfferRequest(BaseModel):
 class AnswerResponse(BaseModel):
     sdp: str
     type: str
+
+
+class DisplayMode(BaseModel):
+    mode: str
 
 
 class MediaServer:
@@ -173,6 +180,19 @@ def create_app(server: MediaServer) -> FastAPI:
     @app.get("/screen")
     async def screen_page() -> FileResponse:
         return FileResponse(SCREEN_PAGE, media_type="text/html")
+
+    @app.get("/screen/mode", response_model=DisplayMode)
+    async def get_display_mode() -> DisplayMode:
+        return DisplayMode(mode=server.hub.display_mode)
+
+    @app.post("/screen/mode", response_model=DisplayMode)
+    async def set_display_mode(body: DisplayMode, request: Request) -> DisplayMode:
+        if request.client is None or request.client.host not in LOCAL_HOSTS:
+            raise HTTPException(status_code=403, detail="display mode is set locally or via the dashboard")
+        if body.mode not in DISPLAY_MODES:
+            raise HTTPException(status_code=422, detail=f"mode must be one of {DISPLAY_MODES}")
+        server.hub.set_display_mode(body.mode, source=f"local:{request.client.host}")
+        return DisplayMode(mode=server.hub.display_mode)
 
     return app
 

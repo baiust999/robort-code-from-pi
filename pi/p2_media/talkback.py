@@ -38,6 +38,10 @@ from common.logging_setup import EventLogger
 
 SCREEN_TEXT_MAX = 280
 VIDEO_SOURCES = ("none", "camera", "image", "screen")
+# What the robot's display shows: the Robot Screen kiosk ("robot"), or the
+# plain Pi desktop so an operator can work on the Pi over VNC ("vnc"), which
+# mirrors that same display. The launcher closes the kiosk in "vnc" mode.
+DISPLAY_MODES = ("robot", "vnc")
 
 VIDEO_CLOCK_RATE = 90000
 AUDIO_RATE = 48000
@@ -96,6 +100,11 @@ def parse_operator_message(raw: Any) -> dict[str, Any] | None:
         return {"type": "media_state", "talking": bool(msg.get("talking")), "video": video}
     if kind == "floor_release":
         return {"type": "floor_release"}
+    if kind == "display_mode":
+        mode = msg.get("mode")
+        if mode not in DISPLAY_MODES:
+            return None
+        return {"type": "display_mode", "mode": mode}
     return None
 
 
@@ -117,6 +126,9 @@ class ScreenHub:
         self.screen_connected = False
         self.media_state: dict[str, Any] = {"talking": False, "video": "none"}
         self.current_text: str | None = None
+        # Always "robot" after a P2 restart, so a reboot never leaves the
+        # victim looking at the Pi desktop.
+        self.display_mode = "robot"
 
         self._video_latest: av.VideoFrame | None = None
         self._video_event = asyncio.Event()
@@ -147,6 +159,12 @@ class ScreenHub:
         if msg["type"] == "floor_release":
             if self.floor_holder == session_id:
                 self._release_floor()
+            return
+
+        # Switching the display is a maintenance action, not talking to the
+        # victim, so it neither needs nor claims the floor.
+        if msg["type"] == "display_mode":
+            self.set_display_mode(msg["mode"], source=session_id)
             return
 
         if not self._claim_floor(session_id):
@@ -194,12 +212,27 @@ class ScreenHub:
             floor = "other"
         _send(
             self.operators.get(session_id),
-            {"type": "talk_status", "screen_online": self.screen_connected, "floor": floor},
+            {
+                "type": "talk_status",
+                "screen_online": self.screen_connected,
+                "floor": floor,
+                "display_mode": self.display_mode,
+            },
         )
 
     def _broadcast_status(self) -> None:
         for session_id in list(self.operators):
             self._send_status(session_id)
+
+    def set_display_mode(self, mode: str, source: str) -> None:
+        """Switch the robot display between the kiosk and the Pi desktop."""
+        if mode not in DISPLAY_MODES:
+            raise ValueError(f"unknown display mode: {mode}")
+        if mode == self.display_mode:
+            return
+        self.display_mode = mode
+        self.log.info("DISPLAY_MODE", f"robot display switched to {mode}", source=source)
+        self._broadcast_status()
 
     # --- robot screen ------------------------------------------------------
 
@@ -276,7 +309,11 @@ class ScreenHub:
         return self._audio_queue.popleft() if self._audio_queue else None
 
     def health(self) -> dict[str, Any]:
-        return {"screen_connected": self.screen_connected, "floor_held": self.floor_holder is not None}
+        return {
+            "screen_connected": self.screen_connected,
+            "floor_held": self.floor_holder is not None,
+            "display_mode": self.display_mode,
+        }
 
 
 class ScreenVideoTrack(VideoStreamTrack):

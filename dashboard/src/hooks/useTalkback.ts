@@ -7,6 +7,9 @@ export type VideoSource = 'none' | 'camera' | 'image' | 'screen';
 /** Who holds the robot screen: this dashboard, another operator, or nobody. */
 export type Floor = 'free' | 'you' | 'other';
 
+/** What the robot's display shows: the Robot Screen kiosk, or the Pi desktop for VNC. */
+export type DisplayMode = 'robot' | 'vnc';
+
 export const SCREEN_TEXT_MAX = 280;
 
 /** Canvas size for still images, matched to the robot's 1024×600 display. */
@@ -20,6 +23,8 @@ export interface TalkbackState {
   mediaDevicesAvailable: boolean;
   screenOnline: boolean;
   floor: Floor;
+  /** As reported by P2, so it reflects switches made on the robot too. */
+  displayMode: DisplayMode;
   talking: boolean;
   videoSource: VideoSource;
   /** The outgoing video track, for a local preview. */
@@ -34,6 +39,7 @@ export interface TalkbackState {
   sendText: (text: string) => number | null;
   clearText: () => void;
   release: () => void;
+  setDisplayMode: (mode: DisplayMode) => void;
 }
 
 function drawContained(ctx: CanvasRenderingContext2D, img: HTMLImageElement) {
@@ -75,6 +81,7 @@ export function useTalkback(link: TalkLink | null): TalkbackState {
 
   const [screenOnline, setScreenOnline] = useState(false);
   const [floor, setFloor] = useState<Floor>('free');
+  const [displayMode, setDisplayModeState] = useState<DisplayMode>('robot');
   const [talking, setTalking] = useState(false);
   const [videoSource, setVideoSource] = useState<VideoSource>('none');
   const [previewStream, setPreviewStream] = useState<MediaStream | null>(null);
@@ -127,6 +134,7 @@ export function useTalkback(link: TalkLink | null): TalkbackState {
       if (msg.type === 'talk_status') {
         setScreenOnline(Boolean(msg.screen_online));
         setFloor((msg.floor as Floor) ?? 'free');
+        setDisplayModeState(msg.display_mode === 'vnc' ? 'vnc' : 'robot');
       } else if (msg.type === 'screen_ack') {
         setLastAckTs(typeof msg.ts === 'number' ? msg.ts : null);
       } else if (msg.type === 'floor_denied') {
@@ -158,6 +166,7 @@ export function useTalkback(link: TalkLink | null): TalkbackState {
       setVideoSource('none');
       setScreenOnline(false);
       setFloor('free');
+      setDisplayModeState('robot');
       setLastAckTs(null);
     };
   }, [link, stopVideoTrack]);
@@ -289,10 +298,20 @@ export function useTalkback(link: TalkLink | null): TalkbackState {
     send({ type: 'floor_release' });
   }, [link, send, stopTalking, stopVideoTrack]);
 
+  // No optimistic update: the radio follows P2's talk_status, so it only
+  // shows a mode the robot has actually switched to.
+  const setDisplayMode = useCallback(
+    (mode: DisplayMode) => {
+      if (!send({ type: 'display_mode', mode })) setError('Not connected to the robot.');
+    },
+    [send],
+  );
+
   return {
     mediaDevicesAvailable,
     screenOnline,
     floor,
+    displayMode,
     talking,
     videoSource,
     previewStream,
@@ -304,5 +323,6 @@ export function useTalkback(link: TalkLink | null): TalkbackState {
     sendText,
     clearText,
     release,
+    setDisplayMode,
   };
 }

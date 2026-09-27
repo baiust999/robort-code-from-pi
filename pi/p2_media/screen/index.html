@@ -8,6 +8,10 @@
   a shared screen — plays the operator's voice on the robot speaker, and
   shows text messages in large type. With no operator active it shows a
   reassurance screen.
+
+  The radio buttons in the corner switch the display to VNC mode: the
+  launcher then closes this kiosk so the Pi desktop can be used over VNC.
+  "Show Robot Screen" on the desktop, or the dashboard, switches back.
 -->
 <html lang="en">
 <head>
@@ -17,7 +21,13 @@
 <style>
   :root { color-scheme: dark; }
   html, body { margin: 0; height: 100%; background: #000; color: #fff; overflow: hidden;
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; cursor: none; }
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  /* The cursor only shows while the mouse moves (e.g. over VNC). */
+  body.idle-cursor, body.idle-cursor * { cursor: none !important; }
+  #mode { position: absolute; left: 1.5vw; top: 1.5vh; z-index: 10; display: flex; gap: 1.5vw;
+    padding: .8vh 1.2vw; border-radius: 1vh; background: rgba(0, 0, 0, .55); font-size: 2.2vh; }
+  #mode label { display: flex; align-items: center; gap: .5vw; cursor: pointer; }
+  #mode input { width: 2.2vh; height: 2.2vh; margin: 0; cursor: pointer; }
   video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; }
   .layer { position: absolute; inset: 0; display: flex; flex-direction: column;
     align-items: center; justify-content: center; text-align: center; padding: 5vh 6vw; box-sizing: border-box; }
@@ -48,6 +58,10 @@
 <div id="talking" hidden>🎤 Rescuer is speaking</div>
 <div id="message" hidden></div>
 <button id="sound" type="button" hidden>Tap to turn on sound</button>
+<form id="mode">
+  <label><input type="radio" name="mode" value="robot" checked> Robot screen</label>
+  <label><input type="radio" name="mode" value="vnc"> VNC</label>
+</form>
 <script>
 'use strict';
 const RETRY_MS = 3000;
@@ -79,6 +93,33 @@ async function enableSound() {
   catch { soundBtn.hidden = false; }  // autoplay blocked outside the kiosk flags
 }
 soundBtn.addEventListener('click', enableSound);
+
+// This page is only on screen in "robot" mode; picking VNC asks P2 to
+// switch, and the launcher closes the kiosk within a second.
+const modeForm = document.getElementById('mode');
+modeForm.addEventListener('change', async (event) => {
+  const mode = event.target.value;
+  try {
+    const resp = await fetch('/screen/mode', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode }),
+    });
+    if (!resp.ok) throw new Error('mode switch failed: ' + resp.status);
+  } catch (err) {
+    console.warn(err);
+    modeForm.elements.mode.value = 'robot';
+  }
+});
+
+let cursorTimer = null;
+function showCursor() {
+  document.body.classList.remove('idle-cursor');
+  clearTimeout(cursorTimer);
+  cursorTimer = setTimeout(() => document.body.classList.add('idle-cursor'), 3000);
+}
+document.addEventListener('mousemove', showCursor);
+showCursor();
 
 function onMessage(event) {
   let msg;

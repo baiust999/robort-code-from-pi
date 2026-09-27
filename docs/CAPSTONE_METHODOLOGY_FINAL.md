@@ -785,6 +785,24 @@ disconnects). Other viewers remain watch/listen-only.
 | `floor_release` | Operator → P2 | `{"type":"floor_release"}` | Frees the robot screen and returns it to idle |
 | `talk_status` | P2 → Operator | `{"type":"talk_status","screen_online":true,"floor":"you"}` | (Dashboard only) robot-screen status and who holds it |
 | `floor_denied` | P2 → Operator | `{"type":"floor_denied"}` | (Dashboard only) another operator holds the screen |
+| `display_mode` | Operator → P2 | `{"type":"display_mode","mode":"vnc"}` | `vnc` closes the kiosk so the Pi desktop can be used over VNC; `robot` shows it again (no floor needed) |
+
+`talk_status` also carries `"display_mode":"robot"|"vnc"`, so every dashboard
+shows which one is on the robot display.
+
+## 16.3.1 Display Mode — Robot Display ⇄ VNC
+
+VNC on the Pi mirrors the robot display itself, so the full-screen kiosk
+also covers an operator's VNC session. P2 holds a display mode:
+
+| Mode | Robot display shows | Switched by |
+|------|---------------------|-------------|
+| `robot` (default at every P2 start) | Robot Screen kiosk | Dashboard *Robot Display* radio, *Show Robot Screen* menu entry on the Pi, `robot-screen.sh robot` |
+| `vnc` | Pi desktop (kiosk closed) | Dashboard *VNC Mode* radio, *VNC* radio on the kiosk, Alt+F4 on the kiosk |
+
+The kiosk launcher polls `GET /screen/mode` every second and opens or closes
+Chromium to match. While in `vnc` mode the dashboard warns that the victim
+cannot see the operator.
 
 Messages travel through P2, never through P1, so the safety-critical
 command/telemetry path is unaffected by the talk-to-victim feature.
@@ -828,6 +846,8 @@ Robot Screen (on the Pi, at boot):
 | /webrtc/offer | POST | WebRTC SDP signalling (operator) | 200 OK (JSON SDP answer) |
 | /webrtc/screen-offer | POST | WebRTC SDP signalling (Robot Screen, localhost only) | 200 OK (JSON SDP answer) |
 | /screen | GET | Robot Screen kiosk page (static) | 200 OK (HTML) |
+| /screen/mode | GET | Current display mode (`robot` / `vnc`), polled by the kiosk launcher | 200 OK (JSON) |
+| /screen/mode | POST | Switch display mode (kiosk radio, desktop shortcut; localhost only) | 200 OK (JSON) |
 
 ## 17.3 Health Check Semantics
 
@@ -1000,8 +1020,9 @@ Operator Video & Messages (operator → victim):
 
 Robot Screen (victim-facing display):
 ├─ Runs: Chromium --kiosk http://localhost:8443/screen
-├─ Launcher: robot-screen.sh from desktop autostart (relaunch on exit)
+├─ Launcher: robot-screen.sh from desktop autostart (relaunch on crash)
 ├─ Connects: POST /webrtc/screen-offer (localhost only)
+├─ Display mode: shown in `robot` mode, closed in `vnc` mode (Section 16.3.1)
 ├─ Shows: Operator video full-screen, text banner on top
 ├─ Plays: Operator voice through the speaker
 └─ Idle: "Help is coming — stay where you are" when no media

@@ -671,10 +671,44 @@ sequenceDiagram
 | Fault | Detection | Response |
 |---|---|---|
 | Operator denies mic/camera, or page not HTTPS | `getUserMedia` rejects | Talk / camera buttons disabled with reason shown |
-| Robot Screen kiosk crashes | Chromium exits | `robot-screen.sh` relaunches it after 3 s; idle screen returns |
+| Robot Screen kiosk crashes | Chromium exits non-zero | `robot-screen.sh` relaunches it after 3 s; idle screen returns |
 | Display or speaker unplugged | Screen peer connected, no output | Operator sees no ack for messages; pre-mission checklist catches it |
 | P2 crash | P3 (existing) | Video **and** talk-to-victim lost; driving unaffected (`DRIVING_LIMITED`) |
 | Second operator tries to talk | P2 floor control | Request refused; that session stays listen-only |
+| Robot display left in VNC mode | `talk_status.display_mode = "vnc"` | Dashboard shows an orange "robot screen is OFF" warning; P2 restart resets to `robot` |
+
+### 14.4 Display mode — Robot Display ⇄ VNC
+
+**Status: implemented and tested on the robot.** VNC (wayvnc) mirrors the
+robot's own display, so the full-screen kiosk also covers the VNC session.
+P2 therefore holds a display mode, and `robot-screen.sh` opens or closes the
+kiosk to match it.
+
+```mermaid
+stateDiagram-v2
+    [*] --> robot: P2 start (always)
+    robot --> vnc: dashboard radio "VNC Mode"<br/>kiosk radio "VNC"<br/>Alt+F4 on kiosk
+    vnc --> robot: dashboard radio "Robot Display"<br/>"Show Robot Screen" menu entry<br/>robot-screen.sh robot
+
+    note right of robot
+        Kiosk shown full-screen;
+        victim sees and hears operator
+    end note
+    note right of vnc
+        Kiosk closed; Pi desktop
+        usable over VNC
+    end note
+```
+
+| Control | Path to P2 | Access |
+|---|---|---|
+| Dashboard radio buttons (Talk panel) | data channel `{"type":"display_mode","mode":…}` | Any operator session; does not need or claim the floor |
+| Kiosk radio buttons (top-left) | `POST /screen/mode` | Localhost only |
+| "Show Robot Screen" menu entry, `robot-screen.sh robot\|vnc` | `POST /screen/mode` | Localhost only |
+| Launcher loop | `GET /screen/mode` every 1 s | Opens / closes Chromium |
+
+Every change is broadcast to all dashboards in `talk_status`, so the radio
+buttons always show the mode the robot is really in.
 
 ---
 

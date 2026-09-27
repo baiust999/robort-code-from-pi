@@ -159,6 +159,53 @@ def test_closed_channel_is_not_written(hub):
     assert op.sent == []
 
 
+# --- display mode -----------------------------------------------------------
+
+
+def test_parse_display_mode():
+    assert parse_operator_message(_msg(type="display_mode", mode="vnc")) == {
+        "type": "display_mode",
+        "mode": "vnc",
+    }
+    assert parse_operator_message(_msg(type="display_mode", mode="desktop")) is None
+    assert parse_operator_message(_msg(type="display_mode")) is None
+
+
+def test_display_mode_starts_robot_and_is_broadcast(hub):
+    a, b = FakeChannel(), FakeChannel()
+    hub.operator_connected("s1", a)
+    hub.operator_connected("s2", b)
+    assert hub.display_mode == "robot"
+    assert a.of_type("talk_status")[-1]["display_mode"] == "robot"
+
+    hub.handle_operator_message("s1", _msg(type="display_mode", mode="vnc"))
+    assert hub.display_mode == "vnc"
+    assert a.of_type("talk_status")[-1]["display_mode"] == "vnc"
+    assert b.of_type("talk_status")[-1]["display_mode"] == "vnc"
+    assert hub.health()["display_mode"] == "vnc"
+
+
+def test_display_mode_does_not_need_or_claim_floor(hub):
+    hub.operator_connected("s1", FakeChannel())
+    hub.operator_connected("s2", FakeChannel())
+    hub.handle_operator_message("s1", _msg(type="screen_clear"))
+    assert hub.floor_holder == "s1"
+
+    hub.handle_operator_message("s2", _msg(type="display_mode", mode="vnc"))
+    assert hub.display_mode == "vnc"
+    assert hub.floor_holder == "s1"
+
+
+def test_local_switch_reaches_dashboards(hub):
+    op = FakeChannel()
+    hub.operator_connected("s1", op)
+    hub.set_display_mode("vnc", source="local")
+    hub.set_display_mode("robot", source="local")
+    assert [m["display_mode"] for m in op.of_type("talk_status")] == ["robot", "vnc", "robot"]
+    with pytest.raises(ValueError):
+        hub.set_display_mode("desktop", source="local")
+
+
 # --- outbound tracks --------------------------------------------------------
 
 

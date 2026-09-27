@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Show Robot Screen
+Comment=Leave VNC mode and show the Robot Screen to the victim again
+Exec=/opt/robot/deploy/robot-screen/robot-screen.sh robot
+Icon=video-display
+Categories=Utility;

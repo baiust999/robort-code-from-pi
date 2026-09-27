@@ -1,5 +1,15 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { SCREEN_TEXT_MAX, type TalkbackState, type VideoSource } from '../hooks/useTalkback';
+import {
+  SCREEN_TEXT_MAX,
+  type DisplayMode,
+  type TalkbackState,
+  type VideoSource,
+} from '../hooks/useTalkback';
+
+const DISPLAY_MODES: { id: DisplayMode; label: string }[] = [
+  { id: 'robot', label: '🖥 Robot Display' },
+  { id: 'vnc', label: '💻 VNC Mode' },
+];
 
 const SOURCES: { id: VideoSource; label: string }[] = [
   { id: 'none', label: 'Nothing' },
@@ -60,6 +70,30 @@ export function TalkPanel(props: { talk: TalkbackState; linkUp: boolean }) {
           </button>
         )}
       </div>
+
+      <fieldset disabled={!linkUp} className="flex items-center gap-3 text-xs disabled:opacity-40">
+        <legend className="sr-only">Robot display</legend>
+        <span className="text-white/50">Robot display:</span>
+        {DISPLAY_MODES.map((m) => (
+          <label key={m.id} className="flex cursor-pointer items-center gap-1">
+            <input
+              type="radio"
+              name="display-mode"
+              value={m.id}
+              checked={talk.displayMode === m.id}
+              onChange={() => talk.setDisplayMode(m.id)}
+            />
+            {m.label}
+          </label>
+        ))}
+      </fieldset>
+
+      {talk.displayMode === 'vnc' && (
+        <p className="rounded bg-amber-500/20 px-2 py-1 text-xs text-amber-300">
+          VNC mode: the robot screen is OFF. The victim can't see your video, images or messages
+          until you switch back to Robot Display.
+        </p>
+      )}
 
       {talk.floor === 'other' && (
         <p className="text-xs text-amber-300">Another operator is talking to the victim.</p>

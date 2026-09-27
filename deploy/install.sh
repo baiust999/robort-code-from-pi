@@ -74,10 +74,21 @@ systemctl daemon-reload
 systemctl enable robot-watchdog.service
 
 if id -u "$DESKTOP_USER" >/dev/null 2>&1; then
-  autostart_dir="$(getent passwd "$DESKTOP_USER" | cut -d: -f6)/.config/autostart"
+  desktop_home="$(getent passwd "$DESKTOP_USER" | cut -d: -f6)"
+  autostart_dir="$desktop_home/.config/autostart"
   install -d -o "$DESKTOP_USER" -g "$DESKTOP_USER" "$autostart_dir"
   install -m 644 -o "$DESKTOP_USER" -g "$DESKTOP_USER" \
     "$REPO_ROOT/deploy/robot-screen/robot-screen.desktop" "$autostart_dir/robot-screen.desktop"
+  # "Show Robot Screen" in the app menu and on the desktop: the way back
+  # from VNC mode when working on the Pi itself.
+  apps_dir="$desktop_home/.local/share/applications"
+  install -d -o "$DESKTOP_USER" -g "$DESKTOP_USER" "$apps_dir"
+  install -m 644 -o "$DESKTOP_USER" -g "$DESKTOP_USER" \
+    "$REPO_ROOT/deploy/robot-screen/robot-screen-show.desktop" "$apps_dir/robot-screen-show.desktop"
+  if [ -d "$desktop_home/Desktop" ]; then
+    install -m 755 -o "$DESKTOP_USER" -g "$DESKTOP_USER" \
+      "$REPO_ROOT/deploy/robot-screen/robot-screen-show.desktop" "$desktop_home/Desktop/robot-screen-show.desktop"
+  fi
   echo "Robot Screen kiosk will start in $DESKTOP_USER's desktop session"
 else
   echo "note: desktop user '$DESKTOP_USER' not found; set DESKTOP_USER to enable the Robot Screen kiosk" >&2
@@ -105,6 +116,9 @@ Remaining manual steps (Section 8.14.4, Stage 5):
   6. Robot Screen (talk-to-victim, Section 16):
        - Enable desktop autologin so the kiosk starts at boot:
            sudo raspi-config nonint do_boot_behaviour B4
+       - VNC shows the same display as the kiosk. To use the Pi desktop,
+         pick "VNC" on the kiosk's corner radio buttons or on the
+         dashboard; "Show Robot Screen" in the app menu switches back.
        - Connect the robot display (HDMI 0) and the speaker (3.5 mm jack),
          then make the jack the default audio output:
            wpctl status            # find the "Built-in Audio" sink id
