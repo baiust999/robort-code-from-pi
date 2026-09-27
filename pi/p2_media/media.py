@@ -9,7 +9,9 @@ uses PyAV to pull frames from the V4L2 device / ALSA mic on the Pi.
 from __future__ import annotations
 
 import fractions
+import os
 import time
+from pathlib import Path
 
 import av
 import numpy as np
@@ -128,11 +130,42 @@ def open_camera_track(device: str, width: int, height: int, framerate: int) -> V
     return player.video
 
 
+ALSA_CONF = Path(__file__).with_name("alsa.conf")
+
+
+def _first_capture_card() -> str | None:
+    """The ALSA id (e.g. "U20") of the first card that can record, if any."""
+    try:
+        lines = Path("/proc/asound/pcm").read_text().splitlines()
+    except OSError:
+        return None
+    for line in lines:
+        if "capture" in line:
+            card = int(line.split("-", 1)[0])
+            return Path(f"/proc/asound/card{card}/id").read_text().strip()
+    return None
+
+
+def resolve_mic_device(device: str) -> str:
+    """Map AUDIO_DEVICE onto a name PyAV's bundled ALSA can open.
+
+    "default" means the PipeWire/PulseAudio default on a desktop, which P2
+    can't reach (see alsa.conf), so it picks the first capture card instead.
+    """
+    if device != "default":
+        return device
+    card = _first_capture_card()
+    if card is None:
+        raise MediaStreamError("no ALSA capture device found")
+    return f"mic:CARD={card},DEV=0"
+
+
 def open_mic_track(device: str) -> AudioStreamTrack:
     """Open the Pi microphone via PyAV/ALSA, raising if unavailable."""
     from aiortc.contrib.media import MediaPlayer
 
-    player = MediaPlayer(device, format="alsa")
+    os.environ.setdefault("ALSA_CONFIG_PATH", str(ALSA_CONF))
+    player = MediaPlayer(resolve_mic_device(device), format="alsa")
     if player.audio is None:
         raise MediaStreamError("audio device produced no audio track")
     return player.audio
