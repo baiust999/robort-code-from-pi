@@ -83,7 +83,8 @@ export function DriveControl(props: {
           ◀
         </button>
         <button
-          className="rounded bg-red-500/30 py-2 font-semibold hover:bg-red-500/50"
+          className="rounded bg-red-500/30 py-2 font-semibold hover:bg-red-500/50 disabled:opacity-30"
+          disabled={disabled}
           onClick={onStop}
         >
           ■
@@ -116,6 +117,8 @@ export function DriveControl(props: {
           min={0}
           max={180}
           value={speed}
+          disabled={disabled}
+          className="disabled:opacity-30"
           onChange={(e) => setSpeed(Number(e.target.value))}
         />
       </label>
