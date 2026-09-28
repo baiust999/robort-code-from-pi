@@ -20,7 +20,8 @@ services every subsystem without ever calling `delay()` in the main loop.
 - **Four-stage command validation** — framing → syntax → range → state machine.
 - **BTS7960 differential drive** — dual half-bridge, PWM speed control, current-
   friendly ramping, hardware enable line.
-- **Pan / tilt servos** — 0–180° clamped.
+- **Pan / tilt servos** — 0–180° clamped, driven by ServoTimer2Plus on Timer2
+  so Timer1 stays free for right-motor PWM on D9/D10.
 - **Sensor suite** — HC-SR04 ultrasonic,
   DHT11 (bit-banged, no external library), MQ-136 gas.
 - **Safety supervisor** — gas panic, emergency stop,
@@ -45,7 +46,6 @@ unocode/arduino/
 ├── protocol.h / .cpp    UART wire-protocol definitions
 ├── command_parser.h/.cpp RX framing + 4-stage validation pipeline
 ├── telemetry.h / .cpp   Outbound message formatting
-├── platformio.ini       Optional PlatformIO build config
 └── README.md            This file
 ```
 
@@ -60,8 +60,8 @@ unocode/arduino/
 | Right motor RPWM          | D9   | PWM                            |
 | Right motor LPWM          | D10  | PWM                            |
 | Motor driver ENABLE       | D4   | common BTS7960 enable          |
-| Servo PAN                 | D11  |                                |
-| Servo TILT                | D3   | PWM                            |
+| Servo PAN                 | D11  | ServoTimer2Plus (Timer2)       |
+| Servo TILT                | D3   | ServoTimer2Plus (Timer2)       |
 | HC-SR04 TRIG              | D7   |                                |
 | HC-SR04 ECHO              | D8   |                                |
 | DHT11 data                | A2   | bit-banged single wire         |
@@ -164,16 +164,13 @@ Tune all thresholds and timings in `config.h`.
 3. Upload. Open Serial Monitor at **115200 baud** — you should see the
    `READY RESCUE-UNO 1.0.0` banner.
 
-Only the built-in **Servo** library is used (bundled with the Arduino AVR core),
-so no library installation is required.
+One external library is required: **ServoTimer2Plus**
+(<https://github.com/DrHahnchenflugel/ServoTimer2Plus>). Install it into
+`~/Arduino/libraries/ServoTimer2Plus` (or via the Library Manager).
 
-### PlatformIO (optional)
-
-```bash
-pio run              # compile
-pio run -t upload    # flash
-pio device monitor -b 115200
-```
+Do **not** switch to the standard **Servo** library: on the UNO it takes over
+Timer1, which disables `analogWrite()` on D9/D10 and breaks right-motor speed
+control. ServoTimer2Plus uses Timer2 instead, so `tone()` must not be used.
 
 ---
 
