@@ -1,37 +1,44 @@
 # AUTONOMOUS RESCUE ROBOT SYSTEM
-## Final Comprehensive Methodology & Architecture (100 Pages)
+## Final Methodology & Architecture
+
+This document describes the system **as it is built** in this repository:
+the Arduino firmware in `arduino/`, the Raspberry Pi processes in `pi/`, the
+operator dashboard in `dashboard/` and the deployment files in `deploy/`.
+Where a number is a design target that has not yet been measured on the
+robot, it is marked as such; measured results belong in
+[`TEST_REPORT.md`](TEST_REPORT.md).
 
 ---
 
 # TABLE OF CONTENTS
 
-**PART 1: SYSTEM OVERVIEW & ARCHITECTURE (Pages 1-10)**
+**PART 1: SYSTEM OVERVIEW & ARCHITECTURE**
 1. System Overview Diagrams
 2. Four-Layer Architecture
 3. Five Principal Subsystems
 4. Seven Architectural Invariants
 
-**PART 2: HARDWARE & EMBEDDED SYSTEMS (Pages 11-25)**
+**PART 2: HARDWARE & EMBEDDED SYSTEMS**
 5. Hardware Components & Specifications
 6. Arduino UNO Real-Time Controller
 7. Raspberry Pi 4 Edge Processing
 8. Motor & Servo Control Systems
 9. Sensor Suite & Environmental Monitoring
 
-**PART 3: MESH NETWORK ARCHITECTURE (Pages 26-35)**
+**PART 3: MESH NETWORK ARCHITECTURE**
 10. IEEE 802.11s Mesh Network (Overview)
 11. HWMP Routing Protocol
 12. Three-Router Deployment Strategy
 13. Link Quality & Performance Metrics
 
-**PART 4: COMMUNICATION PROTOCOLS (Pages 36-45)**
+**PART 4: COMMUNICATION PROTOCOLS**
 14. UART Serial Protocol (Arduino Link)
 15. WebSocket Protocol (Command & Telemetry)
 16. WebRTC Media Interface (Two-Way Video, Audio & Messaging)
 17. REST Endpoints & Health Checks
 18. Protocol Interoperability & Error Handling
 
-**PART 5: EMBEDDED SOFTWARE ARCHITECTURE (Pages 46-60)**
+**PART 5: EMBEDDED SOFTWARE ARCHITECTURE**
 19. Raspberry Pi Process Architecture (P1, P2, P3)
 20. P1: Control Server (FastAPI/UART/WebSocket)
 21. P2: Media Server (aiortc/WebRTC) & Robot Screen
@@ -39,27 +46,27 @@
 23. Fault-Tolerance Mechanisms
 24. System Integration & Data Flow
 
-**PART 6: DATA MANAGEMENT & STORAGE (Pages 61-70)**
-25. Sensor Ring Buffer & Recovery Mechanism
+**PART 6: DATA MANAGEMENT & STORAGE**
+25. Telemetry Ring Buffer & Recovery Mechanism
 26. Telemetry Pipeline & Visualization
 27. GPS Path Tracking & Mapping
-28. Log Rotation & Storage Reliability
-29. Device Tree & Pin Configuration
+28. Logging, Log Rotation & Storage
+29. Pin Configuration & Device Interfaces
 
-**PART 7: OPERATIONAL MODES & STATES (Pages 71-80)**
-30. Five Operational Modes (Detailed)
+**PART 7: OPERATIONAL MODES & STATES**
+30. Operational Modes
 31. Mission State Machine (4-State)
 32. Alert Classification & Warning System
 33. Graceful Degradation Strategies
 34. Emergency Stop & Safety Procedures
 
-**PART 8: STARTUP, RECOVERY & DEPLOYMENT (Pages 81-100)**
-35. Startup Handshake Procedure (20 sec Timeline)
+**PART 8: STARTUP, RECOVERY & DEPLOYMENT**
+35. Startup Handshake Procedure
 36. Advisory Locking & Process Management
 37. Process Recovery & Auto-Restart
 38. Deployment Checklist & Pre-Mission Verification
 39. Performance Analysis & Benchmarks
-40. System Integration Matrix & Conclusion
+40. System Integration Matrix, Known Limitations & Conclusion
 
 ---
 
@@ -70,70 +77,75 @@
 ## 1.1 High-Level Communication Architecture
 
 ```
-┌──────────────────────────┐
-│  OPERATOR LAPTOP         │
-│  (React Dashboard)       │
-│  WebSocket + WebRTC      │
-└────────────┬─────────────┘
-             │
-    IEEE 802.11s Mesh
-    (3 hops, self-healing)
-             │
-         ┌───┴────┬────────┐
-         │        │        │
-    [Relay 1] [Relay 2] [Robot Router]
-         │        │        │
-         └───┬────┴────────┘
-             │
-    100 Mbps Ethernet
-             │
-         ┌───▼──────────────┐     ┌──────────────────────┐
-         │ Raspberry Pi 4   │────▶│ ROBOT DISPLAY +      │
-         │ P1, P2, P3       │     │ SPEAKER (victim-side)│
-         └───┬──────────────┘     └──────────────────────┘
-             │
-     UART 115,200 baud
-             │
-         ┌───▼──────────────┐
-         │  ARDUINO UNO     │
-         │  Motor Control   │
-         │  Sensors         │
-         └─────────────────┘
+┌──────────────────────────────┐
+│  OPERATOR LAPTOP             │
+│  Browser dashboard (React)   │
+│  WebSocket :8080 + WebRTC    │
+└──────────────┬───────────────┘
+               │ Wi-Fi (SSID robot-mesh-ap)
+       ┌───────▼────────┐
+       │ Relay Router 1 │ 192.168.10.2  (operator access point)
+       └───────┬────────┘
+               │ IEEE 802.11s mesh "robot-mesh"
+       ┌───────▼────────┐
+       │ Relay Router 2 │ 192.168.10.3  (interior relay)
+       └───────┬────────┘
+               │ IEEE 802.11s mesh
+       ┌───────▼────────┐
+       │ Robot Router   │ 192.168.10.1  (on chassis, mesh gateway)
+       └───────┬────────┘
+               │ Ethernet
+       ┌───────▼────────────────────┐     ┌──────────────────────────┐
+       │ Raspberry Pi 4             │────▶│ ROBOT DISPLAY (HDMI) +   │
+       │ 192.168.10.10              │     │ SPEAKER (3.5 mm jack)    │
+       │ P3 → P1 (:8080), P2 (:8443)│     │ victim-facing            │
+       └───┬──────────────┬─────────┘     └──────────────────────────┘
+           │ USB serial   │ GPIO UART (/dev/serial0, 9600 baud)
+           │ 115,200 baud │
+   ┌───────▼────────┐ ┌───▼──────────┐
+   │  ARDUINO UNO   │ │ NEO-6M GPS   │
+   │  Motors, servos│ └──────────────┘
+   │  Sensors       │
+   └────────────────┘
 ```
+
+The mesh is self-forming: any node can reach any other in radio range, so
+the chain above is the planned deployment, not a fixed wiring.
 
 ## 1.2 System Composition (5 Subsystems)
 
 ```
 1. OPERATOR CONTROL
-   ├─ React SPA (TypeScript, Tailwind)
-   ├─ WebSocket client (motor commands)
-   └─ WebRTC client (two-way video/audio + text messages)
+   ├─ React 19 + TypeScript SPA (Vite, Tailwind, Leaflet), served by P1
+   ├─ WebSocket client (motor/servo commands, heartbeat, telemetry)
+   └─ WebRTC client (robot video/audio in; operator voice, video
+      and text messages out to the robot display)
 
 2. MESH NETWORK
-   ├─ 3× OpenWrt routers (IEEE 802.11s)
-   ├─ HWMP routing (self-healing, 1-3 sec convergence)
-   └─ Coverage: 150-300 m (3 hops)
+   ├─ 3× OpenWrt routers, IEEE 802.11s, mesh ID "robot-mesh"
+   ├─ HWMP path selection (802.11s default), WPA3-SAE encryption
+   └─ 2.4 GHz channel 6, 20 MHz (HT20)
 
-3. EMBEDDED STACK
-   ├─ Raspberry Pi 4 (Debian, systemd)
-   ├─ P1: Control (FastAPI/UART/WebSocket)
-   ├─ P2: Media (aiortc/WebRTC/H.264) + Robot Screen relay
-   ├─ Robot Screen: Chromium kiosk on the robot display
-   └─ P3: Watchdog (process supervision)
+3. EMBEDDED STACK (Raspberry Pi 4)
+   ├─ P3: Watchdog — the only systemd-managed process
+   ├─ P1: Control (FastAPI, USB serial to Arduino, GPS, WebSocket)
+   ├─ P2: Media (aiortc WebRTC) + Robot Screen relay
+   └─ Robot Screen: Chromium kiosk on the robot display
 
 4. MOBILE UNIT
-   ├─ 4WD chassis (rubble traversal)
-   ├─ Pan-tilt camera (SG90 servos)
-   ├─ Sensors (temp, humidity, gas, range, GPS)
+   ├─ 4WD chassis, 4 DC motors on 2× BTS7960 drivers
+   ├─ Pan-tilt camera mount (2 servos)
+   ├─ Sensors: DHT11, MQ-136, HC-SR04 (Arduino); NEO-6M GPS (Pi)
    ├─ USB camera + USB mic (victim → operator)
-   ├─ Robot display + speaker (operator → victim)
+   ├─ 7" HDMI display + speaker (operator → victim)
    └─ On-board mesh router
 
 5. FAULT-TOLERANCE
-   ├─ Arduino dead-man timer (2000 ms hardware)
-   ├─ P3 watchdog (5-30 sec process restart)
-   ├─ systemd (5 sec P3 restart)
-   └─ Mesh self-healing (1-3 sec reroute)
+   ├─ Arduino dead-man stop (2000 ms, firmware)
+   ├─ P1 sends stop when the controlling dashboard disconnects
+   ├─ P3 watchdog (restarts crashed or hung P1/P2)
+   ├─ systemd (restarts the watchdog service, 5 s)
+   └─ Mesh path re-selection (802.11s)
 ```
 
 ---
@@ -144,10 +156,10 @@
 
 | Layer | Name | Components | Role | Failure Isolation |
 |-------|------|-----------|------|------------------|
-| **4** | Operator Frontend | React SPA, TypeScript, Vite | Human-machine interface | Browser crash ≠ robot stop |
-| **3** | Mesh Network | OpenWrt routers (3×), IEEE 802.11s, HWMP | Wireless backbone, self-healing | Link loss → reroute (1-3 sec) |
-| **2** | Edge Processing | Pi (P1/P2/P3), Python, Linux, systemd | Application logic, media, supervision | Process crash → auto-restart (< 10 sec) |
-| **1** | Hardware | Arduino, motors, sensors, GPS | Real-time control, safety | Motor stop (2 sec dead-man timer) |
+| **4** | Operator Frontend | React SPA, TypeScript, Vite | Human-machine interface | Browser closes → P1 sends stop; the dead-man stops the motors within 2 s anyway |
+| **3** | Mesh Network | 3× OpenWrt routers, IEEE 802.11s | Wireless backbone | Link loss → path re-selection if another route exists; otherwise the operator link drops and the dead-man stops the robot |
+| **2** | Edge Processing | Pi: P1/P2/P3 (Python 3.11), Debian 12, systemd | Application logic, media, supervision | Process crash → P3 respawns it after a 10 s cooldown |
+| **1** | Hardware | Arduino UNO, motors, servos, sensors | Real-time control, safety | Firmware dead-man stops the motors after 2 s without a command |
 
 ## 2.2 Dependency Flow & Failure Modes
 
@@ -155,10 +167,14 @@
 Layer 4 → Layer 3 → Layer 2 → Layer 1
 
 Failure Scenarios:
-├─ Layer 4 fails: Operator offline, robot safe (dead-man active)
-├─ Layer 3 fails: Mesh reroutes or falls back to local Wi-Fi Direct
-├─ Layer 2 fails: P3 restarts crashed process, or Layer 1 autonomous
-└─ Layer 1 fails: Motors stop (2 sec dead-man timer)
+├─ Layer 4 fails: Operator offline; P1 sends S on disconnect, the
+│                 dead-man stops the motors within 2 s at the latest
+├─ Layer 3 fails: Mesh re-selects a path, or the link is lost (no
+│                 automatic fallback network is implemented)
+├─ Layer 2 fails: P3 respawns the crashed process; if the Pi itself
+│                 is down, commands stop and the dead-man stops the motors
+└─ Layer 1 fails: Arduino hang or reset leaves the motor drivers
+                  without a command; on reset they boot disabled
 ```
 
 ---
@@ -167,51 +183,55 @@ Failure Scenarios:
 
 ```
 SUBSYSTEM 1: OPERATOR CONTROL
-├─ Dashboard: React SPA with Tailwind CSS
-├─ Motor control: 4-direction, speed 0-180
-├─ Servo control: Pan/tilt 0-180°
-├─ Telemetry display: 9 sensor readings
-├─ Video stream: H.264, 640×480, 10 fps (robot → operator)
-├─ Audio: Two-way, Opus 32 kbps (push-to-talk operator → victim)
-├─ Talk-to-victim: Operator voice, face (laptop camera), image or
+├─ Dashboard: React 19 SPA with Tailwind CSS, three-column layout
+├─ Motor control: 4 directions (buttons or arrow keys / WASD),
+│  speed slider 0-180, release to stop
+├─ Servo control: Pan/tilt sliders 0-180°
+├─ Telemetry display: 4 sensor cards (temperature, humidity, gas,
+│  range) + GPS card + connection status bar
+├─ Video: robot camera 640×480 @ 10 fps (robot → operator)
+├─ Audio: robot mic (listen toggle); push-to-talk to the victim
+├─ Talk-to-victim: operator voice, face (laptop camera), image or
 │  screen share, and text messages shown on the robot display
-└─ Mission state: READY/DRIVING/LIMITED/STOP
+└─ Mission state: READY / DRIVING / DRIVING_LIMITED / STOP
 
 SUBSYSTEM 2: MESH NETWORK
-├─ Relay Router 1: Operator-side access point
-├─ Relay Router 2: Interior relay node
-├─ Robot Mesh Router: On-chassis final hop
-├─ Protocol: IEEE 802.11s (HWMP routing)
-├─ Coverage: 150-300 m (LOS dependent)
-├─ Latency: 150-200 ms (3 hops, typical)
-└─ Self-healing: Automatic reroute (1-3 sec)
+├─ Relay Router 1 (192.168.10.2): mesh node + operator access point
+│  "robot-mesh-ap" (WPA2-PSK), DHCP 192.168.10.50-99
+├─ Relay Router 2 (192.168.10.3): interior mesh relay
+├─ Robot Router (192.168.10.1): on-chassis mesh gateway, Ethernet to Pi
+├─ Protocol: IEEE 802.11s, HWMP, mesh forwarding on
+├─ Security: SAE (WPA3) on the mesh link
+└─ Radio: 2.4 GHz channel 6, HT20, peer RSSI threshold −80 dBm
 
 SUBSYSTEM 3: EMBEDDED COMPUTING
-├─ Raspberry Pi 4 (4 GB RAM, systemd)
-├─ P1: WebSocket server, UART control, ring buffer
-├─ P2: WebRTC media server, H.264/Opus, operator → robot relay
+├─ Raspberry Pi 4 Model B (4 GB RAM), Debian 12 (Raspberry Pi OS)
+├─ P3: Watchdog, started by systemd (robot-watchdog.service)
+├─ P1: WebSocket server, serial bridge, GPS reader, ring buffer
+├─ P2: WebRTC media server, operator → Robot Screen relay
 ├─ Robot Screen: Chromium kiosk page (localhost), fed by P2
-├─ P3: Process watchdog, health monitoring
-├─ Arduino UNO: Motor/servo PWM, sensors
-├─ UART link: 115,200 baud, 8-N-1
-└─ Uptime: Supervised by 4-tier fault-tolerance
+├─ Arduino UNO: Motor/servo PWM, sensors, dead-man
+└─ Arduino link: USB serial (/dev/ttyACM0), 115,200 baud, 8-N-1
 
 SUBSYSTEM 4: MOBILE UNIT
-├─ 4WD chassis: ~300mm × 200mm × 150mm
-├─ Motor control: 4× DC motors, BTS7960 H-bridge
-├─ Servo control: 2× SG90 (180° horizontal, 90° vertical)
-├─ Sensors: DHT11, MQ-136, HC-SR04, GPS
-├─ Camera: Logitech C270 (640×480, 10 fps)
-├─ Audio: USB mic (48 kHz, victim → operator) + speaker (operator → victim)
-├─ Robot display: 7" HDMI screen facing the victim
-├─ Battery: 24V Li-Po, BEC 5V for Pi/sensors
-└─ Mesh router: On-board 12V (from main battery)
+├─ 4WD chassis
+├─ Motors: 4× DC motors, left and right pairs, 2× BTS7960 drivers
+├─ Servos: 2× (pan, tilt), 0-180°
+├─ Sensors: DHT11, MQ-136, HC-SR04 (Arduino); NEO-6M GPS (Pi)
+├─ Camera: USB webcam (Logitech C270), captured at 640×480, 10 fps
+├─ Audio: USB mic (victim → operator) + speaker (operator → victim)
+├─ Robot display: 7" HDMI screen (1024×600) facing the victim
+├─ Power: 4S Li-ion pack (14.8 V nominal) with 40 A BMS; buck
+│  converters for the 5 V servo/sensor rails and the Arduino supply;
+│  the Pi runs from its own USB power bank (see hardware diagram)
+└─ Mesh router: on the chassis, Ethernet to the Pi
 
 SUBSYSTEM 5: FAULT-TOLERANCE
-├─ Tier 1: Arduino dead-man (hardware, 2000 ms)
-├─ Tier 2: P3 watchdog (liveness 5 sec, responsiveness 30 sec)
-├─ Tier 3: systemd service manager (5 sec restart)
-└─ Tier 4: IEEE 802.11s (route convergence 1-3 sec)
+├─ Tier 1: Arduino dead-man (firmware, 2000 ms)
+├─ Tier 2: P3 watchdog (1 s crash poll; /health every 10 s,
+│          3 misses = hang; 10 s cooldown before respawn)
+├─ Tier 3: systemd (Restart=on-failure, RestartSec=5)
+└─ Tier 4: IEEE 802.11s path re-selection
 ```
 
 ---
@@ -222,13 +242,13 @@ SUBSYSTEM 5: FAULT-TOLERANCE
 
 | # | Invariant | Enforcement | Verification |
 |---|-----------|-----------|--------------|
-| **I** | Motor safety independent of network | Arduino dead-man timer (hardware registers, 2000 ms) | Motors stop on heartbeat loss |
-| **II** | P1, P2, P3 fully decoupled | Separate Python interpreters, no IPC, no shared memory | One crash doesn't cascade |
-| **III** | Every process supervised | P3 monitors P1/P2; systemd monitors P3 | 5-30 sec detection, auto-restart |
-| **IV** | Communication split across independent paths | TCP (WebSocket 8080) + UDP (WebRTC 8443) | One path failure doesn't block other |
-| **V** | Operator state always simple | Mission State engine (4-state deterministic) | Operator never guesses capability |
-| **VI** | Only one process controls Arduino | Linux fcntl advisory lock + exclusive serial open | No duplicate P1 instances |
-| **VII** | Primary operation requires no internet | Local 802.11s mesh, all protocols run locally | Full function in total internet loss |
+| **I** | Motor safety independent of network | Firmware dead-man: no valid command for 2000 ms → drivers disabled, PWM 0 | Tests H7 / F1: motors stop ~2 s after commands cease |
+| **II** | P1, P2, P3 decoupled | Separate Python processes; P1 and P2 share no memory or IPC. P3 talks to them only through process status and HTTP `/health` | `pkill -9` of one does not stop the other |
+| **III** | Every process supervised | P3 supervises P1 and P2; systemd supervises P3; the kiosk launcher supervises Chromium | Tests F3, F4, F5, F10 |
+| **IV** | Control and media on independent paths | Control: WebSocket (TCP 8080, P1). Media: WebRTC (P2; signalling on TCP 8443, media over UDP on ports chosen by ICE) | Killing P2 leaves driving working |
+| **V** | Operator state always simple | Mission state derived by one pure function (`deriveMissionState`) into 4 states | `pi/tests/test_mission_state.py` |
+| **VI** | Only one process controls the Arduino | `flock` on `/run/robot/p1.lock` + serial port opened with `exclusive=True`; only one WebSocket client holds the controller role | A second P1 exits with code 0 (`LOCK_HELD`) |
+| **VII** | Primary operation needs no internet | Mesh, dashboard, control and media all run on the local network | Works offline, **except map background tiles**, which come from openstreetmap.org (Section 27) |
 
 ---
 
@@ -240,24 +260,33 @@ SUBSYSTEM 5: FAULT-TOLERANCE
 
 | Component | Specification | Function |
 |-----------|---------------|----------|
-| **Chassis** | 4WD ground platform, ~300mm × 200mm × 150mm | Rubble traversal |
-| **DC Motors** | 4× 6V, 100 RPM, BTS7960 43A H-bridge | Drive propulsion |
-| **Pan-Tilt** | 2× SG90 servos, 180° horizontal, 90° vertical | Camera orientation |
-| **USB Camera** | Logitech C270, 640×480, 10 fps | Video capture |
-| **USB Microphone** | Standard USB, 48 kHz mono | Audio input |
-| **Speaker** | Powered speaker on Pi 3.5 mm jack (or USB), ≥ 3 W | Operator voice to victim |
-| **Robot Display** | 7" HDMI LCD, 1024×600, facing forward | Operator face / image / text messages to victim |
-| **Battery** | 24V Li-Po, 5000 mAh | Motor power |
-| **BEC** | 24V → 5V, 10A | Pi & sensor power |
+| **Chassis** | 4WD ground platform | Rubble traversal |
+| **DC Motors** | 4× DC gear motors, wired as left and right pairs | Drive propulsion |
+| **Motor drivers** | 2× BTS7960 (43 A dual half-bridge), one per side | Speed and direction |
+| **Pan-Tilt** | 2× hobby servos, 0-180° | Camera orientation |
+| **USB Camera** | Logitech C270, captured at 640×480, 10 fps | Video to operator |
+| **USB Microphone** | USB audio capture device (e.g. ALSA card "U20") | Victim audio to operator |
+| **Speaker** | On the Pi's 3.5 mm jack (default PipeWire sink) | Operator voice to victim |
+| **Robot Display** | 7" HDMI LCD, 1024×600, facing forward | Operator video / image / text to victim |
+| **Battery** | 4S Li-ion (14.8 V nominal, 16.8 V full) with 4S 40 A BMS | Motor power |
+| **Buck converters** | 5 V rails (servos, sensors); ~8 V to the Arduino barrel jack | Logic power |
+| **Pi power** | Separate USB power bank | Keeps the Pi up when motors draw current |
+
+The firmware accepts motor PWM up to 255, but P1 and the dashboard cap it
+at **180** (`MAX_PWM`), which limits the average motor voltage from the
+14.8 V pack to about 12 V.
 
 ## 5.2 Environmental Sensor Suite
 
-| Sensor | Model | Measurement | Range | Update Rate |
-|--------|-------|-------------|-------|------------|
-| Temperature/Humidity | DHT11 | Ambient conditions | 0-50°C, 20-95% RH | 1 Hz |
-| Gas Detection | MQ-136 | Hydrogen sulfide (H₂S) | 0-100+ ppm | Continuous |
-| Distance (Ultrasonic) | HC-SR04 | Obstacle range | 2-400 cm | 40 Hz |
-| GPS Receiver | NEO-6M | Absolute position | NMEA @ 5 Hz | Real-time |
+| Sensor | Model | Connected to | Measurement | Read by firmware |
+|--------|-------|--------------|-------------|------------------|
+| Temperature/Humidity | DHT11 | Arduino A2 | °C and %RH (integers) | Every 2 s |
+| Gas | MQ-136 (H₂S-sensitive) | Arduino A3 | **Raw ADC count 0-1023** (not calibrated ppm) | Every 2 s |
+| Distance (Ultrasonic) | HC-SR04 | Arduino D7/D8 | Obstacle range, capped at 400 cm | Every 50 ms |
+| GPS Receiver | NEO-6M | Pi GPIO UART (`/dev/serial0`, 9600 baud) | Position, fix, satellites (NMEA RMC/GGA) | Read by P1, not the Arduino |
+
+The telemetry field is named `gas_ppm` for historical reasons, but it carries
+the raw ADC value; no calibration curve exists for the sensor yet.
 
 ---
 
@@ -268,51 +297,82 @@ SUBSYSTEM 5: FAULT-TOLERANCE
 | Parameter | Value |
 |-----------|-------|
 | CPU | ATmega328P, 16 MHz |
-| Flash | 32 KB (28 KB user code) |
-| SRAM | 2 KB |
-| UART | 115,200 baud (to Pi) |
-| PWM pins | D5, D6 (motors), D9, D10 (servos) |
-| GPIO | 14 digital I/O + 6 analog input |
-| Timers | 3 (Timer0, Timer1, Timer2) |
-| Architecture | No OS, cooperative scheduler |
+| Flash / SRAM | 32 KB / 2 KB |
+| Firmware | `RESCUE-UNO` 1.0.0 (`arduino/`) |
+| Link to Pi | USB serial, 115,200 baud, 8-N-1 |
+| Motor PWM pins | D5, D6 (left, Timer0), D9, D10 (right, Timer1) |
+| Servo pins | D11 (pan), D3 (tilt), driven by ServoTimer2Plus on Timer2 |
+| Architecture | No OS; cooperative `millis()` scheduler, no `delay()` in the main loop |
+
+Servos use Timer2 (`ServoTimer2Plus`) rather than the standard Servo
+library, because the standard library takes Timer1 and would disable
+`analogWrite()` on the right motor pins D9/D10.
 
 ## 6.2 Dead-Man Safety Timer
 
+The dead-man is a **software check** in the 10 ms safety task (not a timer
+interrupt):
+
 ```c
-// Timer1: 2000 ms interrupt (hardware-enforced motor stop)
-ISR(TIMER1_COMPA_vect) {
-  // Force motor stop at hardware level
-  PORTD &= ~((1 << 5) | (1 << 6));  // PWM D5, D6 → LOW
-  PORTD &= ~((1 << 7) | (1 << 8));  // Direction D7, D8 → LOW
-  PORTB &= ~((1 << 3) | (1 << 4));  // Direction D11, D12 → LOW
+// arduino/arduino.ino — taskSafety(), every 10 ms
+if ((unsigned long)(now - g_state.lastCommandTime()) >= DEADMAN_TIMEOUT_MS) {   // 2000 ms
+  if (g_state.fault() != FAULT_DEADMAN &&
+      g_state.mode()  != MODE_PANIC    &&
+      g_state.mode()  != MODE_ESTOP) {
+    g_state.setFault(FAULT_DEADMAN);     // mode → PANIC
+    g_motors.emergencyStop();            // PWM 0 on all four pins, EN (D4) LOW
+    g_telemetry.sendPanic();             // "PANIC DEADMAN"
+  }
 }
 ```
 
-**Guarantee:** Motors stop within 2 seconds, regardless of network state.
+- **Any well-formed command** refreshes the timer: `F/R/L/G/S/H/P/T/?`.
+- The dashboard sends a `heartbeat` every 500 ms, which P1 forwards as `H`,
+  so the timer only expires if the dashboard, the network or P1 stops.
+- **Recovery is automatic:** when commands resume, the fault clears
+  (`EVT DEADMAN_CLEARED`) and the drivers are re-enabled.
+
+**Guarantee:** motors stop within 2000 ms (+ at most one 10 ms task period)
+of the last valid command, independent of the network and the Pi.
 
 ## 6.3 Cooperative Scheduler (No OS)
 
 ```
-Main Loop (infinite):
-├─ Unconditional (every iteration)
-│  ├─ UART command parser (< 500 µs)
-│  ├─ Dead-man timer check (< 1 µs)
-│  ├─ Motor PWM update (< 100 µs)
-│  └─ Servo PWM update (< 50 µs)
-│
-├─ Timer-gated (millis() delta)
-│  ├─ Ultrasonic trigger (1 ms)
-│  ├─ Gas ADC read (< 10 µs)
-│  ├─ DHT11 acquisition (25 ms blocking, ~2 sec interval)
-│  ├─ Telemetry TX via UART (2 ms, 200 ms cadence)
-│  └─ LED toggle (100 ms cadence)
-│
-└─ Interrupt-driven (hardware edges)
-   ├─ HC-SR04 echo start (INT0)
-   └─ HC-SR04 echo end (INT1)
+loop() — every iteration:
+├─ g_parser.poll()        read serial bytes, handle complete lines
+└─ g_scheduler.run()      run any task whose period has elapsed
 
-Key Design: No system calls, no OS overhead.
+Scheduled tasks (arduino/arduino.ino):
+├─ taskMotorService    10 ms   ramp PWM toward target (15 steps/tick)
+├─ taskSafety          10 ms   dead-man + gas panic + fault recovery
+├─ taskSensorFast      50 ms   HC-SR04 (pulseIn, ≤ 25 ms timeout)
+├─ taskSensorSlow    2000 ms   DHT11 (~25 ms bit-banged read) + MQ-136 ADC
+├─ taskTelemetry      500 ms   CSV telemetry line
+└─ taskHeartbeat     1000 ms   "HB <mode> <millis>" + toggle LED D13
 ```
+
+The HC-SR04 and DHT11 reads block for up to ~25 ms each; this is bounded
+and well inside the 2000 ms dead-man window.
+
+## 6.4 Firmware State Machine
+
+```
+BOOT ──► READY ──(F/R/L/G)──► ACTIVE
+           ▲                    │
+           └──────── S ─────────┘
+
+any ──► PANIC  (dead-man timeout, or gas raw ADC ≥ 1000)
+PANIC ──► READY (commands resume / gas reading drops below threshold)
+```
+
+| Mode | `fw_state` in telemetry | Motion allowed |
+|------|-------------------------|----------------|
+| READY | 1 (ARMED) | Yes |
+| ACTIVE | 2 (DRIVING) | Yes |
+| BOOT / PANIC / ESTOP | 3 (STOPPED) | No |
+
+An `ESTOP` mode exists in the code, but no command currently enters it; the
+operator's emergency stop is an ordinary `S` (Section 34).
 
 ---
 
@@ -322,63 +382,65 @@ Key Design: No system calls, no OS overhead.
 
 | Parameter | Value |
 |-----------|-------|
+| Board | Raspberry Pi 4 Model B |
 | CPU | ARM Cortex-A72, 4 cores @ 1.5 GHz |
-| RAM | 4 GB LPDDR4 |
-| Storage | microSD (32 GB, UHS-I, Class 10) |
-| Ethernet | 100 Mbps (from Robot Mesh Router) |
-| USB | 2× USB 3.0 + 2× USB 2.0 (camera, mic) |
-| HDMI | micro-HDMI 0 → robot display |
+| RAM | 4 GB |
+| Storage | microSD |
+| Network | Gigabit Ethernet to the Robot Router |
+| USB | Arduino (serial), camera, microphone |
+| HDMI | micro-HDMI → robot display |
 | Audio out | 3.5 mm jack → speaker |
-| GPIO | 40-pin header (UART on GPIO14/15) |
-| OS | Debian (Raspberry Pi OS), systemd init |
-| Boot Time | ~30 sec (power on to services running) |
+| GPIO UART | GPIO14/15 → NEO-6M GPS (`/dev/serial0`) |
+| OS | Debian 12 "bookworm" (Raspberry Pi OS), systemd, desktop session with autologin (needed for the kiosk) |
+| Python | 3.11, in a virtualenv at `/opt/robot/venv` |
 
-## 7.2 Three Independent Python Processes
+## 7.2 Three Python Processes
 
-### P1: Control Server (WebSocket, UART, Telemetry)
+systemd starts only **P3** (`robot-watchdog.service`). P3 spawns P1 and P2
+as child processes and supervises them.
+
+### P1: Control Server (WebSocket, Serial, Telemetry, GPS)
 
 | Property | Value |
 |----------|-------|
+| Module | `pi/p1_control` (`python -m p1_control.main`) |
 | Framework | FastAPI + uvicorn |
-| Port | TCP 8080 |
-| Owned Resources | UART device /dev/ttyAMA0 (exclusive fcntl lock) |
-| Ring Buffer | 300 snapshots × 85 bytes = 25.5 KB (60 sec history) |
-| Telemetry Cadence | 200 ms (from Arduino) |
-| GPS Parsing | NMEA sentence parsing, position tracking |
-| WebSocket | Broadcast telemetry to all connected operators |
-| Health Endpoint | GET /health (for P3 supervision) |
-| Supervision | P3 liveness (5 sec) + systemd (5 sec) |
-| Recovery Time | 8-10 sec (P3) + 5 sec (systemd) = 10-15 sec |
+| Port | TCP 8080 (also serves the built dashboard from `/opt/robot/dashboard/dist`) |
+| Owned resources | Arduino serial port (`SERIAL_PORT`, `/dev/ttyACM0` in `p1.env`), GPS port `/dev/serial0` |
+| Single-instance lock | `flock` on `/run/robot/p1.lock` + exclusive serial open |
+| Telemetry broadcast | Every 200 ms, to all WebSocket clients |
+| Ring buffer | 300 snapshots (60 s at 200 ms), in memory |
+| Disk log | `telemetry.log` CSV at 1 Hz |
+| Health endpoint | `GET /health` (JSON) |
+| Supervision | P3 |
 
-### P2: Media Server (WebRTC, H.264, Opus)
-
-| Property | Value |
-|----------|-------|
-| Framework | aiortc + FFmpeg (av library) |
-| Port | TCP/UDP 8443 |
-| Owned Resources | USB camera (/dev/video0), USB mic (ALSA capture) |
-| Video Codec | H.264 Baseline (hardware accelerated) |
-| Video Bitrate | ~500 kbps (adaptive) |
-| Audio Codec | Opus, 32 kbps (VBR) |
-| RTP Tracks | 4 (robot video + audio → operator; operator video + audio → robot) |
-| Data Channel | `screen` (operator text messages → robot display) |
-| Relay | Operator tracks decoded and re-encoded to the Robot Screen peer; messages forwarded (`talkback.ScreenHub`) |
-| Signalling | POST /webrtc/offer (operator), POST /webrtc/screen-offer (Robot Screen, localhost only) |
-| Health Endpoint | GET /health (for P3 supervision) |
-| Supervision | P3 liveness (5 sec) + systemd (5 sec) |
-| Recovery Time | 8-10 sec (P3) + 5 sec (systemd) = 10-15 sec |
-
-### P3: Watchdog Server (Process Supervision)
+### P2: Media Server (WebRTC)
 
 | Property | Value |
 |----------|-------|
-| Framework | Python asyncio + systemd-python |
-| Monitored Processes | P1 (8080), P2 (8443) |
-| Liveness Check | poll() system call, 5 sec timeout |
-| Responsiveness Check | HTTP GET /health, 30 sec timeout |
-| Recovery Action | SIGKILL + restart, Pi buffer flush, Arduino DTR reset |
-| Restart Window | 8-10 sec (full recovery) |
-| Supervision by systemd | 5 sec restart if P3 crashes |
+| Module | `pi/p2_media` (`python -m p2_media.main`) |
+| Framework | aiortc + PyAV (FFmpeg), FastAPI + uvicorn |
+| Port | TCP 8443 (HTTP signalling); media over UDP ports chosen by ICE |
+| Owned resources | USB camera (`/dev/video0`), USB mic (first ALSA capture card) |
+| Video to operator | 640×480 @ 10 fps, software-encoded by aiortc (VP8 or H.264, whichever the browser's offer prefers; Chrome lists VP8 first) |
+| Audio to operator | Opus (aiortc encoder, 96 kbps) |
+| Shared capture | One open camera and one open mic, fanned out to every viewer (`SharedCapture` / `MediaRelay`) |
+| Relay | Operator audio/video decoded and re-encoded to the Robot Screen peer; `screen` data-channel messages forwarded (`talkback.ScreenHub`) |
+| Signalling | `POST /webrtc/offer` (operator), `POST /webrtc/screen-offer` (Robot Screen, localhost only) |
+| Health endpoint | `GET /health` (JSON) |
+| Supervision | P3 |
+
+### P3: Watchdog (Process Supervision)
+
+| Property | Value |
+|----------|-------|
+| Module | `pi/p3_watchdog` (`python -m p3_watchdog.main`) |
+| Framework | Python asyncio + aiohttp |
+| Supervises | P1 and P2 (spawned with `subprocess.Popen`) |
+| Crash detection | `poll()` on the child every 1 s |
+| Hang detection | `GET /health` every 10 s, 5 s timeout; 3 consecutive misses → kill |
+| Restart | 10 s cooldown, then respawn |
+| Supervised by | systemd, `Restart=on-failure`, `RestartSec=5` |
 
 ---
 
@@ -387,31 +449,40 @@ Key Design: No system calls, no OS overhead.
 ## 8.1 Motor Control Architecture
 
 ```
-Motor Configuration:
-├─ Left pair: Front-left + Rear-left wheels
-└─ Right pair: Front-right + Rear-right wheels
+Motor Configuration (differential drive):
+├─ Left pair:  front-left + rear-left   → BTS7960 #1
+└─ Right pair: front-right + rear-right → BTS7960 #2
 
-All 4 motors controlled via Arduino:
-├─ PWM speed control: D5 (left), D6 (right), 0-255 mapped from 0-180
-├─ Direction control: D7/D8 (left), D11/D12 (right)
-└─ H-bridge: 2× BTS7960 43A (handles inrush current)
+Arduino outputs (arduino/config.h):
+├─ Left:  RPWM D5 (forward), LPWM D6 (reverse)
+├─ Right: RPWM D9 (forward), LPWM D10 (reverse)
+├─ Common enable (both drivers): D4
+└─ Only one of RPWM/LPWM is non-zero at a time (no shoot-through)
+
+Speed:
+├─ Dashboard slider 0-180 → P1 clamps to 0-180 → firmware accepts 0-255
+└─ Ramped: 15 PWM units per 10 ms tick (0 → 180 in 120 ms)
 
 Motor Commands:
-├─ Forward (F): Both motors forward at specified speed
-├─ Reverse (R): Both motors reverse at specified speed
-├─ Left turn (L): Left reverse, right forward (pivot)
-├─ Right turn (G): Right reverse, left forward (pivot)
-└─ Stop (S): All motors to zero PWM
+├─ Forward (F): both sides forward
+├─ Reverse (R): both sides reverse
+├─ Left turn (L): left reverse, right forward (pivot)
+├─ Right turn (G): left forward, right reverse (pivot)
+└─ Stop (S): targets set to 0, ramps down (≤ 120 ms from 180)
+
+Emergency stop (dead-man or gas panic): PWM set to 0 immediately,
+no ramp, and the enable line D4 is driven LOW.
 ```
 
 ## 8.2 Servo Control (Pan-Tilt)
 
-| Servo | Mount | Range | Default | Speed |
-|-------|-------|-------|---------|-------|
-| **Pan** | Horizontal base | 0-180° (left-right) | 90° (center) | 0.1s / 60° |
-| **Tilt** | Vertical arm | 0-180° (up-down) | 90° (level) | 0.1s / 60° |
+| Servo | Pin | Range | Home |
+|-------|-----|-------|------|
+| **Pan** | D11 | 0-180° | 90° |
+| **Tilt** | D3 | 0-180° | 90° |
 
-**Commands:** P090 (pan to 90°), T045 (tilt to 45°)
+**Commands:** `P90` (pan to 90°), `T45` (tilt to 45°). Values are clamped
+to 0-180 in the firmware and in P1. Both servos are centred at boot.
 
 ---
 
@@ -419,33 +490,45 @@ Motor Commands:
 
 ## 9.1 Sensor Data Integration
 
-| Sensor | Reading Interval | Alert Threshold (WARNING) | Alert Threshold (CRITICAL) |
-|--------|-----------------|--------------------------|---------------------------|
-| Temperature | 2 sec (DHT11) | ≥ 50°C | ≥ 70°C |
-| Humidity | 2 sec (DHT11) | INFO only | INFO only |
-| Gas (H₂S) | Continuous (ADC) | ≥ 10 ppm | ≥ 20 ppm |
-| Range (Ultrasonic) | Continuous (trigger) | < 30 cm | < 20 cm (critical alert) |
-| GPS Position | 200 ms (NMEA) | Fix loss = WARNING | — |
+| Sensor | Firmware read interval | WARNING (amber card) | CRITICAL (red card) |
+|--------|-----------------------|--------------------------|---------------------------|
+| Temperature | 2 s (DHT11) | ≥ 50 °C | ≥ 70 °C |
+| Humidity | 2 s (DHT11) | — (display only) | — |
+| Gas (MQ-136, raw ADC) | 2 s | ≥ 450 | ≥ 600 |
+| Range (HC-SR04) | 50 ms | ≤ 30 cm | ≤ 20 cm |
+| GPS | 1 Hz fixes (P1) | "no fix" shown | — |
 
-## 9.2 Sensor Ring Buffer (P1)
+Thresholds come from `/etc/robot/thresholds.json` (template in
+`deploy/etc-robot/`) and the matching defaults in `pi/common/protocol.py`
+and `dashboard/src/lib/protocol.ts`. The dashboard's sensor cards use the
+built-in defaults.
+
+**Firmware gas panic:** independently of the dashboard, the firmware stops
+the motors (`PANIC GAS`) when the raw gas reading is **≥ 1000**
+(`GAS_ALARM_THRESHOLD`), and releases them when it falls back.
+
+**Range is advisory only.** The HC-SR04 reading is shown to the operator; it
+never blocks or rejects a motor command.
+
+## 9.2 Telemetry Ring Buffer (P1)
 
 ```
 Structure:
-├─ Capacity: 300 snapshots
-├─ Size per snapshot: 88 bytes
-├─ Total size: 26.4 KB (volatile, in-process memory)
-├─ Duration: 60 seconds (at 200 ms cadence)
-├─ Purpose: Backfill telemetry on operator reconnect
-└─ Update rate: 200 ms (every Arduino telemetry TX)
+├─ Capacity: 300 snapshots (P1 broadcast snapshots, one per 200 ms)
+├─ Duration: 60 seconds of history
+├─ Storage: in-process memory only (lost when P1 restarts)
+└─ Purpose: replay telemetry to a dashboard that reconnects
 
 Recovery Flow:
-├─ Operator disconnects (WebSocket close)
-├─ Ring buffer continues filling locally
-├─ Operator reconnects (sends "resume_from" timestamp)
-├─ P1 queries buffer: read_since(timestamp)
-├─ P1 sends recovery_batch (all snapshots since timestamp)
-└─ Operator displays historical + live telemetry
+├─ Dashboard WebSocket drops
+├─ Ring buffer keeps filling
+├─ Dashboard reconnects: sends hello, then resume_from {last_ts}
+├─ P1: buffer.since(last_ts) → recovery_batch {entries, gap_ms}
+└─ Dashboard shows the newest entry and logs
+   "recovered N buffered telemetry frames"
 ```
+
+Details are in Section 25.
 
 ---
 
@@ -453,48 +536,45 @@ Recovery Flow:
 
 # SECTION 10: IEEE 802.11s MESH NETWORK (OVERVIEW)
 
-## 10.1 Mesh Standards & Specifications
+## 10.1 Mesh Configuration (as provisioned by `deploy/mesh/*.sh`)
 
 | Feature | Value |
 |---------|-------|
-| Standard | IEEE 802.11s (Mesh Networking, 2011) |
-| Frequency Band | 2.4 GHz (802.11b/g/n), 5 GHz optional |
-| Channel Width | 20 MHz (standard), 40 MHz wide |
-| Max PHY Rate | 54 Mbps (2.4 GHz), 450+ Mbps (5 GHz) |
-| Routing Protocol | HWMP (Hybrid Wireless Mesh Protocol) |
-| Self-Healing | Automatic reroute (1-3 sec convergence) |
-| Node Discovery | Automatic (no mesh controller required) |
-| Multi-Hop | Supports 3+ hops seamlessly |
+| Standard | IEEE 802.11s mesh (OpenWrt, `mode='mesh'`) |
+| Mesh ID | `robot-mesh` |
+| Band / channel | 2.4 GHz, channel 6 |
+| Channel width | 20 MHz (`HT20`) |
+| Encryption | SAE (WPA3) |
+| Forwarding | `mesh_fwding=1` (layer-2 multi-hop) |
+| Peer threshold | `mesh_rssi_threshold=-80` dBm |
+| Routing | HWMP (the 802.11s default path-selection protocol) |
+| Subnet | 192.168.10.0/24 |
+
+The mesh and AP keys are set in the provisioning scripts; change them there
+before deployment rather than using the repository defaults.
 
 ## 10.2 Three-Router Chain Topology
 
 ```
-DEPLOYMENT:
+DEPLOYMENT (addresses from deploy/etc-robot/mesh.conf):
 
-Relay Router 1 (Operator Site)
-├─ Position: Perimeter, elevated
-├─ Role: Mesh access point (gateway)
-├─ Distance to Relay 2: 30-100 m
-└─ Latency per hop: 15 ms (typical)
+Relay Router 1 — 192.168.10.2 (operator site)
+├─ Mesh node
+├─ Access point for the operator laptop: SSID "robot-mesh-ap", WPA2-PSK
+└─ DHCP for operator laptops: 192.168.10.50-99
 
-Relay Router 2 (Interior Point)
-├─ Position: Interior relay, accessible
-├─ Role: Mesh relay node
-├─ Distance from Relay 1: 30-100 m
-├─ Distance to Robot Router: 50-200 m
-└─ Latency per hop: 35-50 ms
+Relay Router 2 — 192.168.10.3 (interior point)
+└─ Mesh relay node only
 
-Robot Mesh Router (On Chassis)
-├─ Position: Robot top (elevated)
-├─ Role: Mesh node + Ethernet bridge to Pi
-├─ Distance from Relay 2: 50-200 m
-└─ Latency per hop: 50 ms (weak link typical)
+Robot Router — 192.168.10.1 (on the chassis)
+├─ Mesh node and gateway for the mesh subnet
+└─ Ethernet to the Raspberry Pi (static 192.168.10.10)
 
-Total Mesh:
-├─ 3 hops: 15 + 35 + 50 = 100 ms (typical)
-├─ With processing: 150-200 ms RTT (realistic)
-└─ Range: 150-300 m (LOS dependent)
+Operator reaches the robot at:  http://192.168.10.10:8080
 ```
+
+Hop latency and range depend on the site; see Section 13 and the network
+tests N1–N8 in `TEST_REPORT.md`.
 
 ---
 
@@ -502,42 +582,44 @@ Total Mesh:
 
 ## 11.1 Hybrid Wireless Mesh Protocol (Route Selection)
 
+HWMP is provided by the Linux mac80211 mesh stack on each OpenWrt router;
+the project does not configure it beyond the defaults. How it works:
+
 ```
-HWMP Path Discovery:
+Reactive (on-demand, the default mode):
+├─ Source broadcasts PREQ (Path Request) for the destination
+├─ Intermediate nodes forward PREQ, accumulating the path metric
+├─ Destination answers with PREP (Path Reply) along the best path
+├─ Paths are cached and refreshed while traffic flows
+└─ A broken link produces PERR (Path Error) and a new discovery
 
-Proactive (Root Announcement):
-├─ Relay Router 1 broadcasts PREQ (Path Request)
-├─ Hop count: 0, Metric: 0 (root)
-├─ TTL: 255 (prevents infinite loops)
-└─ All nodes hear announcement, build routes back to root
-
-Reactive (On-Demand):
-├─ Source broadcasts PREQ (need route to destination)
-├─ Intermediate nodes forward PREQ, update metrics
-├─ Destination responds with PREP (Path Reply)
-├─ Reply follows best path (lowest airtime cost)
-└─ Routes cached (timeout: 600 sec)
+Proactive (root announcements):
+└─ Optional; not enabled by the provisioning scripts
 
 Metric: Airtime Link Metric
-├─ Formula: (O + Bt / r) / s
-├─ O = MAC overhead (100 bits)
-├─ Bt = Test frame length (1024 bits typical)
-├─ r = Effective data rate (Mbps)
-├─ s = Success ratio (accounts for retransmissions)
-└─ Lower metric = better path (selected by HWMP)
+├─ ca = (O + Bt / r) × 1 / (1 − ef)
+├─ O  = channel-access / protocol overhead
+├─ Bt = test frame size (8192 bits)
+├─ r  = data rate in use on the link
+├─ ef = frame error rate
+└─ Lower = better; HWMP picks the path with the lowest sum
 ```
 
-## 11.2 Link Quality Monitoring
+## 11.2 Link Quality Guide
 
-| Link Quality | RSSI | PHY Rate | TSR | Status |
-|--------------|------|----------|-----|--------|
-| **Excellent** | -30 to -50 dBm | 48-54 Mbps | > 95% | Reliable |
-| **Good** | -50 to -65 dBm | 36-48 Mbps | 90-95% | Stable |
-| **Acceptable** | -65 to -75 dBm | 18-36 Mbps | 70-90% | Usable |
-| **Poor** | -75 to -85 dBm | 6-18 Mbps | 30-70% | Weak |
-| **Link Down** | < -90 dBm | 0 Mbps | < 10% | Broken |
+These are general Wi-Fi planning figures, used for site survey; the system
+does not measure them itself (Section 40.3).
 
-**Teleoperation Requirement:** RSSI > -75 dBm, Latency < 300 ms, Packet Loss < 5%
+| Link Quality | RSSI | Status |
+|--------------|------|--------|
+| **Excellent** | −30 to −50 dBm | Reliable |
+| **Good** | −50 to −65 dBm | Stable |
+| **Acceptable** | −65 to −75 dBm | Usable |
+| **Poor** | −75 to −80 dBm | Weak |
+| **Not peered** | below −80 dBm | Below `mesh_rssi_threshold`; no mesh link |
+
+**Planning target for teleoperation:** RSSI better than −75 dBm per hop,
+ping to the Pi under 200 ms, packet loss under 5 %.
 
 ---
 
@@ -549,67 +631,59 @@ Metric: Airtime Link Metric
 CHECKLIST:
 
 Relay Router 1 (Operator Position):
-  ├─ Location: Safe perimeter, elevated position
-  ├─ Height: 1.5-2 m above ground (antenna on tripod)
-  ├─ LOS: Clear line-of-sight toward Relay 2
-  ├─ Power: PoE (Ethernet) or battery + solar
-  ├─ Connectivity: Hardwired to operator laptop
-  └─ Test: Verify broadcasting HWMP announcements
+  ├─ Location: Safe perimeter, elevated
+  ├─ Height: 1.5-2 m (tripod or pole)
+  ├─ LOS: Clear line of sight toward Relay 2
+  ├─ Power: Battery or mains
+  └─ Role: Operator laptop joins its "robot-mesh-ap" network
 
 Relay Router 2 (Interior Point):
-  ├─ Location: Interior relay, accessible by team
-  ├─ Height: Elevated on pole/tripod (2-3 m)
-  ├─ LOS: Line-of-sight to Relay 1 AND Robot Router
-  ├─ Distance: 30-100 m from Relay 1, 50-150 m from Robot Router
-  ├─ Power: Battery + solar panel (8-12 hour capacity)
-  ├─ Antenna: Omnidirectional, vertical polarization
-  └─ Deployment: Install pre-mission, verify mesh join
+  ├─ Location: Where it can see both Relay 1 and the robot's area
+  ├─ Height: Elevated (2-3 m)
+  ├─ Power: Battery sized for the mission
+  └─ Check: Joins the mesh (visible in the peer list)
 
 Robot Mesh Router (On Robot):
-  ├─ Position: Top of robot chassis (elevated)
-  ├─ Mounting: Secure bracket, avoid metal obstruction
-  ├─ Power: Robot main battery (24V → 12V via BEC)
-  ├─ Connectivity: Ethernet to Raspberry Pi (< 2 m cable)
-  ├─ Antenna: Compact on-board, vertical polarization
-  └─ Coverage: Operate within 50-200 m of Relay 2
+  ├─ Position: Top of the chassis, antennas clear of metal
+  ├─ Power: From the robot's supply
+  └─ Connectivity: Ethernet to the Pi
 ```
 
-## 12.2 Link Quality Verification (Pre-Deployment)
+## 12.2 Link Quality Verification
 
 ```bash
-# On each OpenWrt router, verify signal strength:
-iw dev wlan0 link
-# Output: RSSI, TX bitrate, number of retries
+# On an OpenWrt router: list mesh peers with signal and bitrate
+iw dev <mesh-interface> station dump
 
-# Expected baseline:
-├─ Relay 1 ↔ Relay 2: -60 dBm, 36 Mbps
-├─ Relay 2 ↔ Robot Router: -70 dBm, 24 Mbps
-└─ Overall mesh: < 300 ms RTT (3 hops)
-
-# Ping test:
-ping -c 10 192.168.10.10  # Target: Robot Pi
-# Acceptable: < 5% packet loss, latency < 200 ms
+# From the operator laptop:
+ping -c 20 192.168.10.10          # the Pi
+# Target: < 5 % loss, < 200 ms
 ```
 
 ---
 
 # SECTION 13: LINK QUALITY & PERFORMANCE METRICS
 
-## 13.1 Mesh Performance Baseline
+## 13.1 Planning Figures (not yet measured on this robot)
 
-| Metric | Excellent | Good | Acceptable | Poor |
-|--------|-----------|------|-----------|------|
-| **RSSI (dBm)** | -30 to -50 | -50 to -65 | -65 to -75 | -75 to -85 |
-| **PHY Rate (Mbps)** | 48-54 | 36-48 | 18-36 | 6-18 |
-| **TSR (%)** | > 95 | 90-95 | 70-90 | 30-70 |
-| **Latency (ms/hop)** | 10-20 | 20-50 | 50-100 | 100-300 |
-| **3-Hop RTT (ms)** | 30-60 | 60-150 | 150-300 | 300-900 |
-| **Packet Loss (%)** | 0-1 | 1-3 | 3-10 | 10-30 |
+| Metric | Good | Acceptable | Poor |
+|--------|------|-----------|------|
+| **RSSI per hop (dBm)** | > −65 | −65 to −75 | −75 to −80 |
+| **Ping to Pi (ms)** | < 60 | 60-200 | > 200 |
+| **Packet loss (%)** | < 1 | 1-5 | > 5 |
 
-**Alerts:**
-- Yellow (RSSI < -75 dBm): Operator warning ("Signal weak")
-- Red (RSSI < -85 dBm): Critical warning ("Loss likely, prepare to stop")
-- Disconnection (> 5 sec no packets): Mission → STOP
+## 13.2 What the Operator Sees When the Link Degrades
+
+The system has **no signal-strength warning** (Section 40.3). Link problems
+show up as:
+
+| Symptom | Cause | Dashboard |
+|---------|-------|-----------|
+| Video freezes or drops | Media path lost | `DRIVING_LIMITED` (amber) once the WebRTC connection leaves `connected` |
+| No telemetry for > 3 s | Control path stalled | `STOP` (red) |
+| WebSocket closes | Control path lost | `WS offline`, `STOP`; automatic reconnect with backoff 1-30 s |
+
+In every case the robot itself is protected by the dead-man (Section 6.2).
 
 ---
 
@@ -617,52 +691,82 @@ ping -c 10 192.168.10.10  # Target: Robot Pi
 
 # SECTION 14: UART SERIAL PROTOCOL (ARDUINO LINK)
 
-## 14.1 UART Specifications
+## 14.1 Serial Specifications
 
 | Parameter | Value |
 |-----------|-------|
-| Baud Rate | 115,200 bps |
-| Data Bits | 8 |
-| Stop Bits | 1 |
-| Parity | None |
-| Flow Control | None |
-| Direction | Bidirectional (Pi ↔ Arduino) |
-| Cable | USB serial or direct TTL (Pi GPIO14/15 to Arduino RX/TX) |
+| Physical | USB (Arduino UNO's USB-serial), `/dev/ttyACM0` on the Pi |
+| Baud Rate | 115,200 bps, 8-N-1, no flow control |
+| Framing | ASCII lines, terminated by `\n` (`\r` ignored) |
+| Reset | Opening the port toggles DTR, which resets the UNO |
 
 ## 14.2 Command Format (Pi → Arduino)
 
-| Command | Token | Argument | Range | Example | Action |
+| Command | Token | Argument | Firmware range | Example | Action |
 |---------|-------|----------|-------|---------|--------|
-| Forward | F | speed | 0-180 PWM | F120 | Both motors forward |
-| Reverse | R | speed | 0-180 PWM | R090 | Both motors reverse |
-| Left Turn | L | speed | 0-180 PWM | L080 | Left reverse, right forward |
-| Right Turn | G | speed | 0-180 PWM | G080 | Right reverse, left forward |
-| Stop | S | — | — | S | All motors OFF |
-| Heartbeat | H | — | — | H | Re-arm dead-man timer |
-| Pan Servo | P | angle | 0-180° | P090 | Pan to 90° |
-| Tilt Servo | T | angle | 0-180° | T045 | Tilt to 45° |
-| Status | ? | — | — | ? | Request firmware status |
+| Forward | F | speed | 0-255 | `F120` | Both sides forward |
+| Reverse | R | speed | 0-255 | `R90` | Both sides reverse |
+| Left Turn | L | speed | 0-255 | `L80` | Left reverse, right forward |
+| Right Turn | G | speed | 0-255 | `G80` | Left forward, right reverse |
+| Stop | S | — | — | `S` | Motors to zero (ramped) |
+| Heartbeat | H | — | — | `H` | Refresh dead-man |
+| Pan Servo | P | angle | 0-180 | `P90` | Pan to 90° |
+| Tilt Servo | T | angle | 0-180 | `T45` | Tilt to 45° |
+| Status | ? | — | — | `?` | Reply with a `STATUS` line |
 
-## 14.3 Telemetry Format (Arduino → Pi)
+P1 never sends a speed above 180 (Section 5.1).
+
+## 14.3 Messages (Arduino → Pi)
+
+**Telemetry** — untagged CSV every **500 ms**, 8 positional fields:
 
 ```
-CSV Format, 200 ms cadence:
-temp_c, humidity_pct, gas_ppm, range_cm,
-pan_angle, tilt_angle, fw_state, uptime_ms
+temperature_c,humidity_pct,gas_ppm,range_cm,pan_angle,tilt_angle,fw_state,uptime_ms
 
 Example:
-28.4, 62.1, 3, 47, 90, 60, 2, 184320
+28,62,312,47,90,90,1,184320
 ```
 
-**Validation Pipeline (4 Stages):**
-1. Length check (1-8 characters)
-2. Token recognition (F/R/L/G/S/H/P/T/?)
-3. Argument range (0-180 for PWM/servo)
-4. State-machine gate (motion commands rejected while ESTOP/PANIC latched; S always accepted)
+Temperature and humidity are DHT11 integers; `gas_ppm` is the raw ADC
+count; `fw_state` is 1 ARMED, 2 DRIVING, 3 STOPPED; `uptime_ms` is `millis()`.
 
-The HC-SR04 `range_cm` reading is not part of command validation. It is
-reported to the operator via telemetry as a warning/critical alert only; it
-never rejects or blocks a motor command.
+**Tagged lines:**
+
+| Tag | Example | When |
+|-----|---------|------|
+| `READY` | `READY RESCUE-UNO 1.0.0` | End of boot |
+| `ACK` | `ACK F` | Each accepted command (except `?`) |
+| `NACK` | `NACK F ARG_RANGE` | Each rejected command |
+| `HB` | `HB READY 10345` | Every 1000 ms |
+| `STATUS` | `STATUS;FW=RESCUE-UNO;VER=1.0.0;MODE=READY;FAULT=NONE;UPTIME=…;DIR=S;SPD=0;DIST=124;T=28;H=62;GAS=312;GALM=0;PAN=90;TILT=90` | Reply to `?` |
+| `PANIC` | `PANIC DEADMAN`, `PANIC GAS` | Fault latched |
+| `EVT` | `EVT DEADMAN_CLEARED`, `EVT GAS_CLEARED` | Fault cleared |
+
+P1 parses the CSV lines as telemetry; all other lines are written to the P1
+event log (`PANIC` at CRITICAL level).
+
+## 14.4 Validation
+
+**Firmware — four stages (`arduino/command_parser.cpp`):**
+1. **Framing:** bytes collected up to `\n`; a line longer than the 32-byte
+   buffer is discarded with a `NACK`.
+2. **Syntax:** known opcode; numeric argument present and all digits where
+   required (`ARG_MISSING`, `ARG_INVALID`, `UNKNOWN`).
+3. **Range:** speed 0-255, angle 0-180 (`ARG_RANGE`).
+4. **State:** motion commands are rejected (`REJECTED`) unless the mode is
+   READY or ACTIVE with no fault latched. `S`, `H`, `?`, `P` and `T` are
+   always accepted.
+
+A line that passes stages 1-3 refreshes the dead-man timer, even if stage 4
+then rejects it.
+
+**P1 — before anything reaches the serial port (`pi/p1_control/safety.py`):**
+1. Message type must be known; observers may not send commands.
+2. Direction must be `F/R/L/G`; axis must be `pan`/`tilt`.
+3. Speed clamped to 0-180 and angle to 0-180 (a clamp is logged as `CMD_CLAMP`).
+4. `seq`, when present, must be greater than the client's last `seq`
+   (stale or replayed commands are rejected). `stop_all` skips this check so
+   a stop is never dropped.
 
 ---
 
@@ -672,67 +776,82 @@ never rejects or blocks a motor command.
 
 | Aspect | Value |
 |--------|-------|
-| Server | P1 (FastAPI) |
-| Port | TCP 8080 |
-| Endpoint | ws://192.168.10.10:8080/control/ws |
-| Upgrade | HTTP GET → 101 Switching Protocols |
-| Closure | close event 1006 on network loss |
+| Server | P1 (FastAPI/uvicorn) |
+| Endpoint | `ws://192.168.10.10:8080/control/ws` |
+| Keep-alive | uvicorn WebSocket ping every 20 s, 20 s timeout |
+| Roles | First client to ask for `controller` gets it; all others are `observer` |
+| Reconnect | Dashboard retries with exponential backoff, 1 s to 30 s |
 
-## 15.2 Operator → P1 Messages (Commands)
+The first message on a new connection must be `hello`; P1 answers with an
+`ack`, then sends a telemetry snapshot at once and every 200 ms after that.
+
+## 15.2 Dashboard → P1 Messages
 
 ```json
-// Motor Command
-{"type": "motor", "dir": "forward|reverse|left|right", "speed": 0-180, "seq": int, "ts": timestamp}
+// Session handshake (first message)
+{"type": "hello", "role": "controller"}
 
-// Servo Command
-{"type": "servo", "axis": "pan|tilt", "angle": 0-180, "seq": int, "ts": timestamp}
+// Resume after reconnect (sent right after hello)
+{"type": "resume_from", "last_ts": 1727430000123}
 
-// Heartbeat (keep-alive)
-{"type": "heartbeat", "seq": int, "ts": timestamp}
+// Motor command — dir is the wire letter F | R | L | G
+{"type": "motor", "dir": "F", "speed": 120, "seq": 17}
 
-// Emergency Stop
-{"type": "stop_all", "seq": int, "ts": timestamp}
+// Servo command
+{"type": "servo", "axis": "pan", "angle": 90, "seq": 18}
 
-// Session Handshake
-{"type": "hello", "role": "operator", "token": "auth_token"}
+// Heartbeat (every 500 ms)
+{"type": "heartbeat"}
 
-// Resume from Buffer
-{"type": "resume_from", "last_ts": timestamp}
+// Stop (release of a drive control, ■ button, or EMERGENCY STOP)
+{"type": "stop_all"}
 ```
 
-## 15.3 P1 → Operator Messages (Responses)
+P1 turns these into serial commands: `motor` → `F/R/L/G<speed>`,
+`servo` → `P/T<angle>`, `heartbeat` → `H`, `stop_all` → `S`.
+
+## 15.3 P1 → Dashboard Messages
 
 ```json
-// Telemetry Snapshot (200 ms)
+// Handshake reply
+{"type": "ack", "of": "hello", "role": "controller", "session": "<uuid>"}
+
+// Telemetry snapshot (every 200 ms)
 {
   "type": "telemetry",
-  "seq": int,
-  "server_ts": timestamp,
-  "temperature_c": 28.4,
-  "humidity_pct": 62.1,
-  "gas_ppm": 3,
+  "seq": 1520,
+  "server_ts": 1727430000123,
+  "temperature_c": 28,
+  "humidity_pct": 62,
+  "gas_ppm": 312,
   "range_cm": 47,
   "pan_angle": 90,
-  "tilt_angle": 60,
-  "lat": 40.7128,
-  "lon": -74.0060,
+  "tilt_angle": 90,
+  "fw_state": 1,
+  "uptime_ms": 184320,
+  "lat": 23.810312,
+  "lon": 90.412511,
   "gps_fix": true,
   "gps_sats": 8,
+  "turn_status": "unavailable",
   "serial_ok": true,
-  "fw_state": 2,
-  "uptime_ms": 184320
+  "ws_clients": 1
 }
 
-// Recovery Batch (on reconnect)
+// Recovery batch (reply to resume_from)
 {
   "type": "recovery_batch",
-  "entries": [
-    {"timestamp_ms": 1000, "temperature_c": 28.2, ...},
-    {"timestamp_ms": 1200, "temperature_c": 28.3, ...}
-  ],
-  "gap_ms": 5000
+  "entries": [ { ...telemetry snapshot... }, ... ],
+  "gap_ms": 0
 }
+
+// Rejection
+{"type": "error", "code": "rejected", "message": "observer role cannot send commands"}
 ```
+
+P1 broadcasts every 200 ms from the **latest** Arduino frame, so with the
+firmware sending every 500 ms, consecutive snapshots may repeat the same
+sensor values with a new `seq` and `server_ts`.
 
 ---
 
@@ -743,52 +862,58 @@ never rejects or blocks a motor command.
 | Aspect | Value |
 |--------|-------|
 | Server | P2 (aiortc) |
-| Ports | TCP/UDP 8443 |
-| Signalling | GET /api/ice-config (STUN), POST /webrtc/offer (SDP) |
-| Media Codec | H.264 Baseline (video), Opus 32 kbps (audio) |
-| Data Channel | SCTP, label `screen`, ordered + reliable |
-| Browser Requirement | Operator page must be a secure context (HTTPS, or Chrome flag for the robot's exact origin, e.g. `http://192.168.10.10:8080`) so `getUserMedia` can open the laptop mic/camera; Chrome or Edge, as Firefox/Safari have no equivalent flag |
+| Signalling | `POST http://192.168.10.10:8443/webrtc/offer` — full SDP offer in, SDP answer out (no trickle ICE) |
+| ICE | Host candidates on the local mesh; the dashboard creates its peer connection without STUN/TURN servers |
+| Transceivers | One video and one audio transceiver, both `sendrecv` |
+| Data Channel | Label `screen` (ordered, reliable), created by the dashboard |
+| Browser requirement | For the laptop mic/camera, the page must be a secure context: HTTPS, or Chrome/Edge with `chrome://flags/#unsafely-treat-insecure-origin-as-secure` set to `http://192.168.10.10:8080`. Robot video, images and text work without it |
 
-## 16.2 RTP Tracks (4 Total)
+## 16.2 Media Tracks
 
-| Track | Direction | Codec | Bandwidth | Latency |
-|-------|-----------|-------|-----------|---------|
-| 1 | Pi → Operator | H.264 video | ~500 kbps | < 150 ms |
-| 2 | Pi → Operator | Opus audio | ~40 kbps | < 150 ms |
-| 3 | Operator → Robot display | H.264/VP8 video (laptop camera, image or screen share) | ~300 kbps (camera), ~50 kbps (still image) | < 200 ms |
-| 4 | Operator → Robot speaker | Opus audio (push-to-talk) | ~40 kbps while talking | < 200 ms |
+| Track | Direction | Content | Codec / rate |
+|-------|-----------|---------|--------------|
+| 1 | Robot → Operator | Robot camera | VP8 or H.264 (software, aiortc), 640×480 @ 10 fps; aiortc's rate control (VP8 starts at 500 kbps) |
+| 2 | Robot → Operator | Robot microphone | Opus, 96 kbps (aiortc default) |
+| 3 | Operator → Robot display | Laptop camera (640×480 @ 10 fps), still image (canvas at 1024×600) or screen share (5 fps) | Browser's choice |
+| 4 | Operator → Robot speaker | Laptop mic, push-to-talk (echo cancellation, noise suppression, AGC on) | Opus |
 
-Tracks 3 and 4 are optional per session: the operator chooses what to send.
-When nothing is sent, the robot display shows an idle "Help is coming" screen.
+Tracks 3 and 4 are optional: nothing is sent until the operator chooses a
+source or holds Talk. With nothing sent, the robot display shows the idle
+screen "Help is coming — Stay where you are. The rescue team can see and
+hear you through this robot."
+
+**Screen audio (P2 → Robot Screen).** P2 decodes the operator's voice and
+re-encodes it itself as **mono Opus, 32 kbps, one packet per 60 ms**, with a
+120 ms cushion after silence and a 400 ms cap on buffered voice. This
+replaced 20 ms frames, which a busy Pi could not send on time (speech
+arrived sped up with pieces missing). See `SOFTWARE_ARCHITECTURE.md`, A.11.
 
 **Video source options (Track 3):**
 
 | Source | Browser API | Use |
 |--------|-------------|-----|
-| Laptop camera | `getUserMedia({video})` | Show the operator's face to reassure the victim |
-| Image file | `<canvas>.captureStream(1)` | Show a picture (instructions, map, family photo, etc.) |
-| Screen / window | `getDisplayMedia()` | Show anything on the operator's screen |
-| None | track stopped | Robot display shows idle screen |
+| Laptop camera | `getUserMedia({video: 640×480, 10 fps})` | Show the operator's face |
+| Image file | `<canvas>.captureStream(2)`, repainted to keep frames flowing | Show a picture (instructions, map, photo) |
+| Screen / window | `getDisplayMedia({video: 5 fps})` | Show anything on the operator's screen |
+| None | track stopped | Idle screen |
 
-**Floor control:** only one operator session at a time may send Tracks 3–4 and
-messages (the first to start talking holds the floor until it stops or
-disconnects). Other viewers remain watch/listen-only.
+**Floor control:** only one operator session at a time may send media or
+messages to the robot. The first session to send anything holds the floor
+until it releases it or disconnects; others get `floor_denied` and stay
+watch/listen-only.
 
 ## 16.3 Data Channel — Robot Screen Messages
 
-| Message | Direction | Example | Effect on robot display |
-|---------|-----------|---------|-------------------------|
-| `screen_text` | Operator → Robot | `{"type":"screen_text","text":"Stay calm, help is coming","ts":1727430000}` | Large text banner (max 280 chars) |
-| `screen_clear` | Operator → Robot | `{"type":"screen_clear"}` | Removes the text banner |
-| `screen_ack` | Robot → Operator | `{"type":"screen_ack","ts":1727430000}` | Confirms the message is on screen |
-| `media_state` | Operator → Robot | `{"type":"media_state","talking":true,"video":"camera"}` | Relayed as `screen_state`; shows "Rescuer is speaking" and hides the idle screen while video is active |
-| `floor_release` | Operator → P2 | `{"type":"floor_release"}` | Frees the robot screen and returns it to idle |
-| `talk_status` | P2 → Operator | `{"type":"talk_status","screen_online":true,"floor":"you"}` | (Dashboard only) robot-screen status and who holds it |
-| `floor_denied` | P2 → Operator | `{"type":"floor_denied"}` | (Dashboard only) another operator holds the screen |
-| `display_mode` | Operator → P2 | `{"type":"display_mode","mode":"vnc"}` | `vnc` closes the kiosk so the Pi desktop can be used over VNC; `robot` shows it again (no floor needed) |
-
-`talk_status` also carries `"display_mode":"robot"|"vnc"`, so every dashboard
-shows which one is on the robot display.
+| Message | Direction | Example | Effect |
+|---------|-----------|---------|--------|
+| `screen_text` | Operator → Robot | `{"type":"screen_text","text":"Stay calm, help is coming","ts":1727430000}` | Large text banner (trimmed, max 280 chars) |
+| `screen_clear` | Operator → Robot | `{"type":"screen_clear"}` | Removes the banner |
+| `screen_ack` | Robot → Operator | `{"type":"screen_ack","ts":1727430000}` | Confirms the text is on screen (dashboard shows ✓) |
+| `media_state` | Operator → Robot | `{"type":"media_state","talking":true,"video":"camera"}` | Relayed as `screen_state`; shows "🎤 Rescuer is speaking" and hides the idle screen while video is active |
+| `floor_release` | Operator → P2 | `{"type":"floor_release"}` | Frees the robot screen and clears it to idle |
+| `talk_status` | P2 → Operator | `{"type":"talk_status","screen_online":true,"floor":"you","display_mode":"robot"}` | Robot-screen status and who holds the floor (`free`/`you`/`other`) |
+| `floor_denied` | P2 → Operator | `{"type":"floor_denied"}` | Another operator holds the screen |
+| `display_mode` | Operator → P2 | `{"type":"display_mode","mode":"vnc"}` | Switch the robot display (no floor needed) |
 
 ## 16.3.1 Display Mode — Robot Display ⇄ VNC
 
@@ -798,11 +923,14 @@ also covers an operator's VNC session. P2 holds a display mode:
 | Mode | Robot display shows | Switched by |
 |------|---------------------|-------------|
 | `robot` (default at every P2 start) | Robot Screen kiosk | Dashboard *Robot Display* radio, *Show Robot Screen* menu entry on the Pi, `robot-screen.sh robot` |
-| `vnc` | Pi desktop (kiosk closed) | Dashboard *VNC Mode* radio, *VNC* radio on the kiosk, Alt+F4 on the kiosk |
+| `vnc` | Pi desktop (kiosk closed) | Dashboard *VNC Mode* radio, holding the kiosk's *Hold 3 s for VNC* button, closing the kiosk (Alt+F4), `robot-screen.sh vnc` |
 
 The kiosk launcher polls `GET /screen/mode` every second and opens or closes
 Chromium to match. While in `vnc` mode the dashboard warns that the victim
-cannot see the operator.
+cannot see the operator. The kiosk's button only reacts to a pointer held
+for 3 s and ignores keys, so a stray click or key press from a VNC viewer
+cannot switch the mode; a viewer can still send Alt+F4, so close it while
+talking to a victim.
 
 Messages travel through P2, never through P1, so the safety-critical
 command/telemetry path is unaffected by the talk-to-victim feature.
@@ -810,19 +938,25 @@ command/telemetry path is unaffected by the talk-to-victim feature.
 ## 16.4 Signalling Flow
 
 ```
-1. Browser: GET /api/ice-config → STUN servers
-2. Browser: POST /webrtc/offer → SDP
-3. P2: Create answer SDP
-4. Browser: setRemoteDescription(answer)
-5. ICE candidates exchanged (STUN/UDP)
-6. WebRTC connection established
-7. RTP streams flowing (media active)
-8. Operator presses Talk / shares camera → Tracks 3–4 start
-9. P2 relays Tracks 3–4 + `screen` messages to the Robot Screen peer
+Operator dashboard:
+1. new RTCPeerConnection(); add sendrecv video + audio transceivers
+2. createDataChannel("screen")
+3. createOffer → setLocalDescription
+4. POST /webrtc/offer {sdp, type} → P2 answers with {sdp, type}
+5. setRemoteDescription(answer); ICE connects; robot video/audio play
+6. Operator holds Talk / picks a video source → tracks attached to the
+   existing senders (no renegotiation)
+7. P2 relays tracks and `screen` messages to the Robot Screen peer
 
-Robot Screen (on the Pi, at boot):
-1. Chromium kiosk opens http://localhost:8443/screen
-2. Page: POST /webrtc/screen-offer (recv-only video/audio + data channel)
+If P2 is not up yet (e.g. just after boot), the dashboard retries every
+3 s until the first connection succeeds. After a later failure it shows
+"video error" and a **Retry video** button.
+
+Robot Screen (on the Pi, after desktop login):
+1. robot-screen.sh waits for P2, then opens Chromium --kiosk
+   http://localhost:8443/screen
+2. Page: POST /webrtc/screen-offer (recv-only video/audio + data channel);
+   P2 accepts it only from localhost
 3. P2 answers; the page shows the idle screen until operator media arrives
 ```
 
@@ -830,35 +964,41 @@ Robot Screen (on the Pi, at boot):
 
 # SECTION 17: REST ENDPOINTS & HEALTH CHECKS
 
-## 17.1 P1 Endpoints (localhost:8080)
+## 17.1 P1 Endpoints (port 8080)
 
 | Endpoint | Method | Purpose | Response |
 |----------|--------|---------|----------|
-| /health | GET | Liveness (P3 supervision) | 200 OK (text) |
-| /api/ice-config | GET | ICE server configuration | 200 OK (JSON) |
-| /control/ws | WS | WebSocket upgrade | 101 Switching Protocols |
+| `/health` | GET | Health (P3 supervision) | 200, JSON `{serial_connected, ws_clients, gps_fix, uptime_s}` |
+| `/api/ice-config` | GET | ICE server configuration (rate-limited, 5 per minute per client) | 200 JSON, or 429 |
+| `/api/session` | GET | Session id, mock flag, thresholds, cadences | 200 JSON |
+| `/api/gps-track` | GET | GPS track of this P1 session | 200, GeoJSON `LineString` |
+| `/control/ws` | WS | Control WebSocket | 101 Switching Protocols |
+| `/` | GET | Built dashboard (static files) | 200 HTML |
 
-## 17.2 P2 Endpoints (localhost:8443)
+## 17.2 P2 Endpoints (port 8443)
 
 | Endpoint | Method | Purpose | Response |
 |----------|--------|---------|----------|
-| /health | GET | Liveness (P3 supervision) | 200 OK (text) |
-| /webrtc/offer | POST | WebRTC SDP signalling (operator) | 200 OK (JSON SDP answer) |
-| /webrtc/screen-offer | POST | WebRTC SDP signalling (Robot Screen, localhost only) | 200 OK (JSON SDP answer) |
-| /screen | GET | Robot Screen kiosk page (static) | 200 OK (HTML) |
-| /screen/mode | GET | Current display mode (`robot` / `vnc`), polled by the kiosk launcher | 200 OK (JSON) |
-| /screen/mode | POST | Switch display mode (kiosk radio, desktop shortcut; localhost only) | 200 OK (JSON) |
+| `/health` | GET | Health (P3 supervision) | 200, JSON `{status, camera_open, active_streams, mock_hardware, screen_connected, floor_held, display_mode}` |
+| `/webrtc/offer` | POST | WebRTC signalling (operator) | 200 JSON SDP answer, or 500 |
+| `/webrtc/screen-offer` | POST | WebRTC signalling (Robot Screen, localhost only) | 200 JSON SDP answer, or 403 |
+| `/screen` | GET | Robot Screen kiosk page | 200 HTML |
+| `/screen/mode` | GET | Current display mode (`robot` / `vnc`), polled by the kiosk launcher | 200 JSON |
+| `/screen/mode` | POST | Switch display mode (kiosk hold button, desktop shortcut, launcher; localhost only) | 200 JSON, 403 or 422 |
 
 ## 17.3 Health Check Semantics
 
 ```
-P3 Watchdog Loop:
-├─ Every 10 sec: Poll P1 /health endpoint (30 sec timeout)
-├─ Every 10 sec: Poll P2 /health endpoint (30 sec timeout)
-├─ Continuous: poll() on P1 process (5 sec detection)
-├─ Continuous: poll() on P2 process (5 sec detection)
-└─ On failure: SIGKILL + restart, Pi flush, Arduino DTR reset
+P3, per child (P1 and P2), independently:
+├─ Every 1 s:  poll() the child process → exited = crash
+├─ Every 10 s: GET /health, 5 s timeout → non-200 or timeout = miss
+├─ 3 consecutive misses → SIGKILL the child (treated as a hang)
+└─ After a crash or kill: 10 s cooldown, then respawn
 ```
+
+`/health` answers 200 whenever the process's event loop is running; it
+reports `serial_connected` but does not fail when the Arduino is missing
+(Section 40.3).
 
 ---
 
@@ -867,46 +1007,40 @@ P3 Watchdog Loop:
 ## 18.1 Protocol Stack Integration
 
 ```
-Layer 4: React Dashboard (TypeScript, Vite)
-  ├─ WebSocket client (TCP/IP reliable stream)
-  └─ WebRTC client (UDP/RTP best-effort, two-way + data channel)
+Layer 4: React dashboard
+  ├─ WebSocket client (TCP, reliable) → P1
+  └─ WebRTC client (UDP/RTP + SCTP data channel) → P2
 
-Layer 3: Mesh Network (IEEE 802.11s HWMP)
-  ├─ Transparent packet forwarding
-  ├─ Auto-reroute on link failure
-  └─ Self-healing convergence (1-3 sec)
+Layer 3: Mesh network (IEEE 802.11s, HWMP)
+  └─ Layer-2 forwarding, transparent to IP
 
-Layer 2: Edge Processing (Pi + Linux)
-  ├─ P1: WebSocket server + UART
+Layer 2: Raspberry Pi (Linux)
+  ├─ P1: WebSocket server + serial bridge + GPS
   ├─ P2: WebRTC media server + Robot Screen relay
-  └─ P3: Process supervision
+  └─ P3: supervision of P1 and P2
 
-Layer 1: Arduino (Real-time control)
-  ├─ UART serial input (commands from P1)
-  ├─ Motor/servo output (PWM signals)
-  └─ Sensor input (ADC/GPIO readings)
-
-Failure Isolation:
-├─ If Layer 4 fails: Layer 1 continues (dead-man active)
-├─ If Layer 3 fails: Reroutes or falls back to Local Wi-Fi
-├─ If Layer 2 fails: P3 restarts crashed process (< 15 sec)
-└─ If Layer 1 fails: Motors stop (2 sec dead-man timer)
+Layer 1: Arduino
+  ├─ Serial commands in (from P1)
+  ├─ PWM out (motors, servos)
+  └─ Sensor input (ADC, digital, pulse timing)
 ```
 
 ## 18.2 Error Handling & Recovery
 
-| Error | Detection | Response | Recovery Time |
-|-------|-----------|----------|----------------|
-| **WebSocket loss** | close event 1006 | Cmd→DOWN, Mission→STOP | Auto-reconnect with resume_from |
-| **WebRTC loss** | peer-connection state=closed | Video→AMBER placeholder | Auto ICE-restart (< 10 sec) |
-| **GPS fix loss** | gps_fix=false | GPS card→WARNING | Resume on next fix |
-| **Motor command timeout** | No motor command for > 2 sec | Arduino dead-man timer | Motors stop (guaranteed) |
-| **P1 crash** | P3 detects liveness loss | P3 SIGKILL + restart | Telemetry resumed (< 15 sec) |
-| **P2 crash** | P3 detects liveness loss | P3 SIGKILL + restart | Video resumed (< 15 sec) |
-| **Operator mic/camera denied** | getUserMedia rejects | Error shown; Talk button stays *Enable mic* (disabled without HTTPS) | Grant permission / use HTTPS |
-| **Robot display/speaker fault** | Robot Screen peer not connected | Dashboard shows "Robot screen offline" | Kiosk relaunched by `robot-screen.sh` |
-| **Arduino hang** | Serial telemetry RX stops | Motors safe (dead-man active) | P3 restarts Pi processes |
-| **Mesh route loss** | No HWMP path | Falls back or uses Wi-Fi Direct | Mesh convergence (1-3 sec) |
+| Error | Detection | Response | Recovery |
+|-------|-----------|----------|----------|
+| **WebSocket loss** | `onclose` in the dashboard | `WS offline`, mission `STOP`; P1 sends `S` if the controller left | Auto-reconnect (1-30 s backoff), then `resume_from` |
+| **Telemetry stalls** | No telemetry for > 3 s (heartbeat counter) | Mission `STOP` | Clears on the next telemetry frame |
+| **WebRTC loss** | Peer connection leaves `connected` | Mission `DRIVING_LIMITED`; video panel shows an error | Operator clicks **Retry video** |
+| **GPS fix loss** | `gps_fix=false` | GPS card "no fix"; marker hidden | Resumes on next fix |
+| **No commands reach the Arduino** | Firmware dead-man (2000 ms) | Motors stop, `PANIC DEADMAN` | Clears when commands resume |
+| **Gas over firmware limit** | Raw ADC ≥ 1000 | Motors stop, `PANIC GAS` | Clears when the reading drops |
+| **P1 crash** | P3 `poll()` (1 s) | Respawn after 10 s cooldown | Dashboard reconnects on its own |
+| **P2 crash** | P3 `poll()` (1 s) | Respawn after 10 s cooldown | Operator clicks **Retry video** |
+| **P1/P2 hang** | 3 missed `/health` checks (~30 s) | SIGKILL, then respawn | As above |
+| **Operator mic/camera denied** | `getUserMedia` rejects, or page not a secure context | Error shown on the talk panel | Grant permission / use HTTPS or the Chrome flag |
+| **Robot Screen offline** | Screen peer not connected | Dashboard shows "robot screen offline" | Launcher relaunches Chromium after 3 s |
+| **Arduino unplugged** | Serial read/write raises | `serial_ok=false` → mission `STOP` | Needs a P1 restart (Section 40.3) |
 
 ---
 
@@ -917,36 +1051,29 @@ Failure Isolation:
 ## 19.1 Process Isolation & Decoupling
 
 ```
-Process P1 (FastAPI/UART)
-├─ Memory space: Isolated (separate interpreter)
-├─ PID: Unique (assigned by kernel)
-├─ Resources: UART device, port 8080
-├─ Crash: Detected by P3 (5 sec), auto-restart (< 15 sec)
-└─ Failure effect: Limited to command/telemetry path
+systemd
+└─ robot-watchdog.service (User=robot, KillMode=control-group)
+   └─ P3 watchdog (python -m p3_watchdog.main)
+      ├─ P1 control (python -m p1_control.main)
+      │  ├─ Resources: Arduino serial, GPS serial, TCP 8080, p1.lock
+      │  └─ Failure effect: control/telemetry only
+      └─ P2 media (python -m p2_media.main)
+         ├─ Resources: camera, mic, TCP 8443, WebRTC UDP ports
+         └─ Failure effect: media and talk-to-victim only
 
-Process P2 (aiortc/WebRTC)
-├─ Memory space: Isolated (separate interpreter)
-├─ PID: Unique (assigned by kernel)
-├─ Resources: USB camera, USB mic, port 8443
-├─ Crash: Detected by P3 (5 sec), auto-restart (< 15 sec)
-└─ Failure effect: Limited to media path (incl. talk-to-victim)
+Desktop session (autologin user)
+└─ robot-screen.sh (autostart) → Chromium --kiosk /screen
+   ├─ Resources: HDMI display, speaker (via the browser)
+   ├─ Crash: relaunched after 3 s
+   └─ Failure effect: victim-side display/speaker only
 
-Robot Screen (Chromium kiosk, deploy/robot-screen/robot-screen.sh)
-├─ Memory space: Isolated (browser process)
-├─ Resources: HDMI display, speaker (ALSA via browser)
-├─ Crash: Relaunched by its launcher loop (3 sec)
-└─ Failure effect: Victim-side display/speaker only
-
-Process P3 (Watchdog)
-├─ Memory space: Isolated (separate interpreter)
-├─ PID: Unique (assigned by kernel)
-├─ Resources: HTTP client (localhost), syslog
-├─ Crash: Detected by systemd (5 sec), auto-restart (5 sec)
-└─ Failure effect: 5 sec gap in supervision
-
-KEY: No IPC, no shared memory, no message queues.
-Failure of any single process does not cascade.
+KEY: P1 and P2 share no memory and no IPC. P3 observes them only
+through process status and HTTP /health. A crash in P1 or P2 does
+not affect the other.
 ```
+
+If P3 itself exits abnormally, systemd stops the whole service (P3, P1, P2)
+and starts it again after 5 s, so P1 and P2 are respawned too.
 
 ---
 
@@ -955,36 +1082,39 @@ Failure of any single process does not cascade.
 ## 20.1 P1 Responsibilities
 
 ```
-UART Serial Link (Arduino):
-├─ Open /dev/ttyAMA0 (exclusive fcntl lock)
-├─ Configure: 115,200 baud, 8-N-1
-├─ Transmit motor commands (F/R/L/G/S/H/P/T)
-├─ Receive telemetry snapshots (200 ms)
-└─ Parse and validate Arduino responses
+Startup (Section 35):
+├─ Acquire /run/robot/p1.lock (exit 0 if another P1 holds it)
+├─ Open the Arduino port exclusively; Arduino handshake
+└─ Start GPS thread, telemetry log, 200 ms broadcast loop, HTTP server
 
-Telemetry Ring Buffer:
-├─ Allocate: 300 snapshots × 88 bytes
-├─ Update: Every 200 ms (from Arduino)
-├─ Store: Circular, overwrite oldest on overflow
-├─ Query: read_since(timestamp) for recovery_batch
-└─ Purpose: Backfill operator on reconnect
+Serial Bridge (Arduino):
+├─ Transmit validated commands (F/R/L/G/S/H/P/T/?)
+├─ Read lines every 5-20 ms; CSV lines → latest telemetry frame
+├─ Other lines (READY, ACK, NACK, HB, PANIC, EVT) → event log
+└─ serial_ok = false if a read or write raises
 
-WebSocket Server (Operator):
-├─ Listen: TCP 8080
-├─ Accept: WebSocket upgrade (HTTP → 101)
-├─ Receive: Motor commands, heartbeat, stop_all
-├─ Transmit: Telemetry (200 ms), recovery_batch
-└─ Broadcast: To all connected operators
+GPS Reader (NEO-6M on /dev/serial0, 9600 baud):
+├─ Own thread; parses RMC and GGA sentences (any talker, e.g. $GP/$GN)
+│  with checksum verification
+├─ Publishes lat, lon, gps_fix, gps_sats
+└─ Keeps the session track (points added only when the position changes)
 
-GPS Parsing:
-├─ Extract NMEA sentences from telemetry
-├─ Parse: latitude, longitude, fix status, satellite count
-├─ Store: In ring buffer (per snapshot)
-└─ Use: For GPS path visualization
+Telemetry:
+├─ Every 200 ms: merge latest Arduino frame + GPS + seq/server_ts/
+│  serial_ok/ws_clients → snapshot
+├─ Append to ring buffer (300)
+├─ Write to telemetry.log at most once per second
+└─ Broadcast to all WebSocket clients (concurrently; a slow client
+   does not delay the others)
 
-Health Endpoint:
-├─ GET /health → 200 OK (if alive and responsive)
-└─ Used by P3 watchdog (30 sec timeout)
+WebSocket Server:
+├─ hello → role (one controller, others observers) → ack
+├─ resume_from → recovery_batch
+├─ motor / servo / heartbeat / stop_all → validate → serial
+└─ Controller disconnects → send S immediately
+
+Shutdown:
+└─ Send S, close the port, write the GPS track as GeoJSON
 ```
 
 ---
@@ -994,52 +1124,53 @@ Health Endpoint:
 ## 21.1 P2 Responsibilities
 
 ```
-USB Camera (Video):
-├─ Open: /dev/video0 (Logitech C270)
-├─ Capture: 640×480, 10 fps
-├─ Encode: H.264 Baseline (hardware accelerated)
-├─ Bitrate: ~500 kbps (adaptive to link quality)
-└─ Output: RTP stream (Track 1)
+USB Camera (Video, robot → operator):
+├─ Open: /dev/video0 via PyAV (V4L2), 640×480, 10 fps
+├─ Shared: one open device, relayed to every viewer (newest frame only)
+├─ Encode: software, per viewer, by aiortc (VP8 or H.264)
+├─ Fallback: synthetic test pattern if the camera cannot be opened
+└─ Output: Track 1
 
 Audio (Two-Way):
 ├─ Microphone (victim → operator):
-│  ├─ Capture: 48 kHz mono (ALSA, via p2_media/alsa.conf)
-│  ├─ Shared: one open device fanned out to every session (MediaRelay)
-│  ├─ Encode: Opus 32 kbps (VBR)
-│  └─ Output: RTP stream (Track 2, Pi → Operator)
+│  ├─ Capture: first ALSA capture card, via PyAV with its own ALSA
+│  │  config (p2_media/alsa.conf)
+│  ├─ Shared: one open device fanned out to every session (MediaRelay,
+│  │  buffered so no audio frame is skipped)
+│  ├─ Encode: Opus (aiortc, 96 kbps)
+│  ├─ Fallback: silence if the mic cannot be opened
+│  └─ Output: Track 2
 │
 ├─ Speaker (operator → victim):
-│  ├─ Receive: RTP Opus (Track 4, push-to-talk)
-│  ├─ Relay: Decoded, re-encoded to Robot Screen peer
+│  ├─ Receive: Track 4 (Opus, push-to-talk)
+│  ├─ Relay: Decoded, re-encoded to Robot Screen peer (mono Opus, 60 ms packets, 120 ms cushion)
 │  └─ Playback: Robot Screen page → speaker (3.5 mm jack, the default PipeWire sink)
 
 Operator Video & Messages (operator → victim):
 ├─ Receive: Track 3 (camera, image or screen share)
 ├─ Receive: `screen` data channel messages
 ├─ Floor control: first sending operator holds the floor
-└─ Relay: Re-encoded to Robot Screen peer (camera capped at 640×480, 10 fps)
+├─ Every inbound track is drained, but only the floor holder's frames
+│  are forwarded
+└─ Relay: re-encoded to the Robot Screen peer; the last frame is
+   repeated after 1 s so a still image stays on screen
 
 Robot Screen (victim-facing display):
 ├─ Runs: Chromium --kiosk http://localhost:8443/screen
 ├─ Launcher: robot-screen.sh from desktop autostart (relaunch on crash)
-├─ Connects: POST /webrtc/screen-offer (localhost only)
+├─ Connects: POST /webrtc/screen-offer (localhost only); a new screen
+│  connection replaces the old one
 ├─ Display mode: shown in `robot` mode, closed in `vnc` mode (Section 16.3.1)
 ├─ Shows: Operator video full-screen, text banner on top
 ├─ Plays: Operator voice through the speaker
-└─ Idle: "Help is coming — stay where you are" when no media
+└─ Idle: "Help is coming" when no media
 
-WebRTC Media Session:
-├─ Create peer connection (aiortc)
-├─ Receive: SDP offer (POST /webrtc/offer)
-├─ Generate: SDP answer (with media parameters)
-├─ ICE: Gather candidates (STUN localhost:3478)
-├─ RTP: Send Tracks 1–2 to operator, receive Tracks 3–4
-├─ Data channel: `screen` messages relayed to Robot Screen
-└─ Adapt: Video bitrate to network congestion
-
-Health Endpoint:
-├─ GET /health → 200 OK (if alive and responsive)
-└─ Used by P3 watchdog (30 sec timeout)
+WebRTC Session (per operator):
+├─ POST /webrtc/offer → new RTCPeerConnection, add Tracks 1-2
+├─ setRemoteDescription(offer) → createAnswer → return answer
+├─ on track: hand Tracks 3-4 to the ScreenHub
+├─ on datachannel "screen": hand messages to the ScreenHub
+└─ Connection failed/closed → release the floor if held, close
 ```
 
 ---
@@ -1049,38 +1180,36 @@ Health Endpoint:
 ## 22.1 Supervision Strategy
 
 ```
-Monitoring Loop (Continuous):
-├─ P1 Liveness: poll() on P1 process (5 sec timeout)
-│  └─ If no response: SIGKILL, restart via systemctl
-│
-├─ P1 Responsiveness: HTTP GET /health:8080 (30 sec timeout)
-│  └─ If timeout: P1 frozen, SIGKILL, restart
-│
-├─ P2 Liveness: poll() on P2 process (5 sec timeout)
-│  └─ If no response: SIGKILL, restart via systemctl
-│
-├─ P2 Responsiveness: HTTP GET /health:8443 (30 sec timeout)
-│  └─ If timeout: P2 frozen, SIGKILL, restart
-│
-└─ Recovery Actions:
-   ├─ Log failure (timestamp, error code, PID)
-   ├─ Kill crashed process (SIGKILL -9)
-   ├─ Flush Pi serial buffers (tcdrain)
-   ├─ Reset Arduino via DTR line (100 ms pulse)
-   ├─ Start new process (systemctl restart)
-   └─ Poll /health until online (max 20 sec timeout)
+Per child (P1, P2), one asyncio task each:
 
-Detection Latencies:
-├─ Hard crash (process exits): 5 sec
-├─ Soft hang (infinite loop): 30 sec
-└─ Total detection: 5-30 sec (worst case)
+SPAWN ──► MONITOR ──(exit or 3 health misses)──► COOLDOWN (10 s) ──► SPAWN
 
-Recovery Times:
-├─ Kill + flush + reset: < 1 sec
-├─ Process restart: 1-2 sec
-├─ Handshake verification: < 1 sec
-└─ Total recovery: 8-10 sec (typical)
+MONITOR, every 1 s:
+├─ proc.poll() → exited?  → record exit code → COOLDOWN
+└─ every 10 s: GET /health (5 s timeout)
+   ├─ 200 → misses = 0
+   └─ otherwise → misses += 1; at 3 → SIGKILL → COOLDOWN
+
+Exit codes (from P1):
+├─ 0  lock already held by another P1 → logged as PROC_LOCK_HELD
+├─ 1  lock error
+├─ 2  Arduino handshake failed → crash
+└─ 3  invalid configuration → logged as PROC_CONFIG_INVALID
+Every case is still retried after the 10 s cooldown.
+
+Detection latency:
+├─ Crash (process exits): ≤ 1 s
+└─ Hang (alive, not answering): 20-30 s (3 missed checks, 10 s apart)
+
+Recovery time (crash → serving again, design estimate):
+├─ Detection ≤ 1 s + cooldown 10 s
+├─ P1: 2 s Arduino boot wait + 0.6 s stops + READY (≤ 5 s timeout)
+├─ P2: import + HTTP server start
+└─ Total: ~13-16 s for P1; a little less for P2
 ```
+
+P3 logs every event to `/var/log/robot/p3_events.log` (`PROC_SPAWN`,
+`PROC_CRASH`, `HEALTH_MISS`, `PROC_KILL`, …).
 
 ---
 
@@ -1089,43 +1218,37 @@ Recovery Times:
 ## 23.1 Four-Tier Supervision Hierarchy
 
 ```
-TIER 1 (Hardware Level):
+TIER 1 (Firmware Level):
 └─ Arduino Dead-Man Timer
-   ├─ Trigger: UART heartbeat loss (> 2000 ms)
-   ├─ Action: Force motor PWM → 0, all directions → LOW
-   ├─ Latency: < 2000 ms (guaranteed)
-   └─ Guarantee: Motors stop, independent of network/Pi
+   ├─ Trigger: no valid command for 2000 ms
+   ├─ Action: PWM 0 on all motor pins, driver enable LOW, PANIC DEADMAN
+   ├─ Latency: ≤ 2010 ms
+   └─ Guarantee: motors stop without the network or the Pi
+
+   Supporting: P1 sends S as soon as the controlling dashboard
+   disconnects, and three S commands on every P1 start.
 
 TIER 2 (Application Level):
 └─ P3 Watchdog
-   ├─ Monitors: P1 (liveness 5 sec, responsiveness 30 sec)
-   ├─ Monitors: P2 (liveness 5 sec, responsiveness 30 sec)
-   ├─ Action: SIGKILL + restart process, DTR reset Arduino
-   ├─ Latency: 5-30 sec detection, 8-10 sec recovery
-   └─ Guarantee: Crashed process restarted automatically
+   ├─ Monitors: P1 and P2 (poll 1 s, /health 10 s)
+   ├─ Action: SIGKILL if hung; respawn after 10 s cooldown
+   └─ Guarantee: a crashed or hung process is restarted
 
 TIER 3 (OS Level):
-└─ systemd Service Manager
-   ├─ Monitors: P3 process
-   ├─ Trigger: P3 exit (any exit code)
-   ├─ Action: Restart P3 (on-failure, 5 sec RestartSec)
-   ├─ Latency: 5 sec restart window
-   └─ Guarantee: P3 supervision always available
+└─ systemd (robot-watchdog.service)
+   ├─ Monitors: P3
+   ├─ Trigger: abnormal exit (Restart=on-failure)
+   ├─ Action: stop the control group, restart after 5 s
+   └─ Guarantee: supervision comes back without operator action
 
 TIER 4 (Network Level):
-└─ IEEE 802.11s Mesh Self-Healing
-   ├─ Monitors: HWMP link quality (RSSI, TSR, beacon frames)
-   ├─ Trigger: Link breakage (no beacon > 2-3 sec)
-   ├─ Action: Broadcast PERR (Path Error), re-route traffic
-   ├─ Latency: 1-3 sec route convergence
-   └─ Guarantee: Automatic path rebuild (if alternate path exists)
+└─ IEEE 802.11s Path Selection
+   ├─ Trigger: link breakage (PERR)
+   ├─ Action: HWMP path discovery
+   └─ Guarantee: re-routes when an alternative path exists; with the
+      three-router chain, losing Relay 2 breaks the link (test N8)
 
-Cascading Failover:
-├─ Level 1 failure: Motors safe (Tier 1)
-├─ Level 2 failure: P3 restarts process (Tier 2)
-├─ Level 3 failure: systemd restarts P3 (Tier 3)
-├─ Level 4 failure: Mesh reroutes (Tier 4) or falls back to local
-└─ Total coverage: No single point of failure
+Kiosk: robot-screen.sh relaunches Chromium 3 s after a crash.
 ```
 
 ---
@@ -1135,53 +1258,37 @@ Cascading Failover:
 ## 24.1 Data Flow Diagram
 
 ```
-Arduino (Real-Time)
-  │
-  ├─ Sensors (200 ms)
-  │  ├─ DHT11 (temp/humidity)
-  │  ├─ MQ-136 (gas)
-  │  ├─ HC-SR04 (range)
-  │  └─ GPS (position)
-  │
-  └─ Telemetry TX (200 ms cadence)
-     └─ UART 115,200 baud → Pi
-        │
-        ├─→ P1: Parse → Ring Buffer → WebSocket Broadcast
-        │
-        └─→ Operator Dashboard
-           ├─ Sensor display (real-time update)
-           ├─ Alert evaluation (thresholds)
-           ├─ GPS visualization (marker + polyline)
-           └─ Mission state derivation
+Telemetry Path:
+Arduino
+  ├─ HC-SR04 (50 ms), DHT11 + MQ-136 (2 s)
+  └─ CSV telemetry every 500 ms ──USB serial──▶ P1
+                                                 │
+NEO-6M GPS ──/dev/serial0──▶ P1 GPS thread ──────┤
+                                                 ▼
+                         P1: snapshot every 200 ms
+                           ├─▶ ring buffer (300)
+                           ├─▶ telemetry.log (1 Hz)
+                           └─▶ WebSocket broadcast ──▶ Dashboard
+                                                         ├─ Sensor cards
+                                                         ├─ GPS card + map
+                                                         └─ Mission state
 
 Motor Command Path:
-Operator Dashboard
-  │ (WebSocket)
-  ├─→ P1: Receive command
-  │       ├─ Validate (speed/angle range, sequence state)
-  │       ├─ Translate to Arduino format
-  │       └─ UART TX → Arduino
-  │
-  └─→ Arduino: Parse command
-      ├─ Update PWM (motor speed)
-      ├─ Update GPIO (motor direction)
-      └─ Motors move (immediate response)
+Dashboard (button / key press, slider speed)
+  └─ {"type":"motor","dir":"F","speed":120,"seq":n} ──WebSocket──▶ P1
+       ├─ role check, clamp, seq check
+       └─ "F120\n" ──USB serial──▶ Arduino
+            ├─ 4-stage validation, dead-man refresh
+            ├─ ACK F
+            └─ Ramp PWM toward target (10 ms ticks)
+  Release → {"type":"stop_all"} → "S\n" → ramp to 0
 
-Media Path:
-Arduino Sensors
-  ├─ USB Camera (Pi) → P2: Capture
-  │  ├─ H.264 encode (hardware)
-  │  └─ RTP stream → WebRTC
-  │
-  ├─ USB Microphone (Pi) → P2: Capture
-  │  ├─ Opus encode (32 kbps)
-  │  └─ RTP stream → WebRTC
-  │
-  └─ WebRTC → Operator Dashboard
-     ├─ Video sink (HTML5 video element)
-     └─ Audio sink (HTML5 audio element)
+Media Path (robot → operator):
+USB camera ──▶ P2 (shared capture) ──encode──▶ Track 1 ──▶ Dashboard <video>
+USB mic    ──▶ P2 (shared capture) ──Opus───▶ Track 2 ──▶ Dashboard (muted
+                                                            until "Listen")
 
-Talk-to-Victim Path (reverse):
+Talk-to-Victim Path (operator → victim):
 Operator Laptop
   ├─ Laptop mic (push-to-talk) → Opus → Track 4
   ├─ Laptop camera / image / screen → Track 3
@@ -1197,434 +1304,325 @@ Operator Laptop
 
 # PART 6: DATA MANAGEMENT & STORAGE
 
-# SECTION 25: SENSOR RING BUFFER & RECOVERY MECHANISM
+# SECTION 25: TELEMETRY RING BUFFER & RECOVERY MECHANISM
 
-## 25.1 Ring Buffer Structure
+## 25.1 Ring Buffer Structure (`pi/p1_control/ring_buffer.py`)
 
 ```
-Memory Layout (P1 Process Heap):
-├─ Capacity: 300 snapshots
-├─ Snapshot size: 85 bytes (struct TelemetrySnapshot)
-├─ Total: 25.5 KB (volatile, RAM only)
+├─ Capacity: 300 snapshots (RING_BUFFER_SIZE)
+├─ Element: the full telemetry snapshot dict broadcast by P1
+│  (17 data fields + "type"; Section 15.3)
+├─ Cadence: one append per 200 ms broadcast
+├─ Span: 60 s
+├─ Storage: Python list used as a circular buffer, in P1's memory
 ├─ Lifespan: P1 process lifetime (lost on restart)
-├─ Cadence: Update every 200 ms (from Arduino)
-└─ Overflow: Circular (oldest overwritten when capacity exceeded)
-
-Snapshot Structure (85 bytes):
-├─ timestamp_ms: 4 bytes (uint32)
-├─ temperature_c: 4 bytes (float)
-├─ humidity_pct: 4 bytes (float)
-├─ gas_ppm: 2 bytes (uint16)
-├─ range_cm: 2 bytes (uint16)
-├─ pan_angle, tilt_angle: 2 bytes (uint8 × 2)
-├─ lat, lon: 16 bytes (double × 2)
-├─ gps_fix, gps_sats: 2 bytes (uint8 × 2)
-├─ serial_ok, fw_state: 2 bytes (uint8 × 2)
-├─ uptime_ms: 4 bytes (uint32)
-└─ reserved: 2 bytes (padding)
+└─ Overflow: oldest entry overwritten
 ```
 
 ## 25.2 Recovery Algorithm
 
 ```
-Operator Disconnects:
-├─ WebSocket close event (1006)
-├─ Ring buffer continues updating locally
-└─ Telemetry stored for up to 60 sec (300 snapshots)
+Dashboard reconnects:
+├─ Sends {"type":"hello","role":"controller"}
+└─ If it has seen telemetry before:
+   {"type":"resume_from","last_ts": <server_ts of the last snapshot>}
 
-Operator Reconnects:
-├─ WebSocket open (HTTP → 101)
-├─ Browser sends: "resume_from": {last_ts: timestamp}
-│
-└─ P1 Processes Recovery:
-   ├─ Query ring buffer: read_since(last_ts)
-   ├─ Returns: All snapshots with timestamp >= last_ts
-   ├─ Max: 300 snapshots (60 sec history)
-   │
-   └─ Build recovery_batch JSON:
-      ├─ Type: "recovery_batch"
-      ├─ Entries: [snapshot1, snapshot2, ...snapshot_N]
-      ├─ Gap_ms: Time elapsed since oldest snapshot
-      └─ Buffer_overflow: boolean (if capacity exceeded)
+P1:
+├─ entries = snapshots with server_ts > last_ts (oldest first)
+├─ gap_ms  = oldest_retained_ts − last_ts if positive, else 0
+│            (history lost because the client was away > 60 s)
+└─ Sends {"type":"recovery_batch","entries":[…],"gap_ms":…}
 
-Browser Processes Recovery_Batch:
-├─ Render historical snapshots (light blue polyline for GPS)
-├─ Display "Recovered N snapshots"
-├─ Resume live streaming (200 ms cadence)
-└─ Operator resumes teleoperation
+Dashboard:
+├─ Takes the newest entry as the current telemetry
+└─ Logs "recovered N buffered telemetry frames" in the alert log
 ```
+
+The dashboard does not yet draw the replayed entries (for example as a
+path on the map); the map's history comes from `/api/gps-track` instead
+(Section 27).
 
 ---
 
 # SECTION 26: TELEMETRY PIPELINE & VISUALIZATION
 
-## 26.1 Telemetry Data Flow (200 ms Cycle)
+## 26.1 Telemetry Data Flow
 
 ```
-Arduino Captures Sensors (every 200 ms):
-└─ DHT11, MQ-136, HC-SR04, GPS
-   └─ Package into TelemetrySnapshot
+Arduino (every 500 ms):
+└─ Serial.print CSV: "28,62,312,47,90,90,1,184320\n"
+   (~28 bytes ≈ 2.5 ms on the wire at 115,200 baud)
 
-Arduino TX via UART (200 ms):
-└─ CSV format: "28.4,62.1,3,0,47,90,60,2,184320\n"
-   └─ Latency: ~2 ms (serial TX time, 88 bytes @ 115,200 baud)
+P1 serial reader (polls every 5-20 ms):
+├─ parse_telemetry_line(): ≤ 80 chars, exactly 8 fields,
+│  each cast and range-checked (e.g. range_cm 0-500, fw_state 1-3)
+├─ Malformed frame → dropped (the next one follows in 500 ms)
+└─ Valid frame → becomes the "latest frame"
 
-P1 RX via UART (< 1 ms after Arduino TX):
-├─ Parse CSV line
-├─ Validate format & ranges
-├─ Store in ring buffer[head]
-├─ Advance circular pointer: head = (head + 1) % 300
-└─ Broadcast to all WebSocket clients (< 10 ms)
+P1 broadcast loop (every 200 ms, drift-corrected):
+├─ Build snapshot = latest frame + GPS + P1 fields
+├─ Ring buffer, telemetry.log (1 Hz), WebSocket broadcast
+└─ Keeps running even if a broadcast fails
 
-WebSocket Broadcast to Operator (150-200 ms after Arduino):
-├─ Telemetry JSON message (same fields as snapshot)
-├─ Latency: 150-200 ms mesh RTT + 50 ms processing
-└─ Total: ~200-250 ms from Arduino capture to dashboard display
-
-Browser Receives Telemetry (200-250 ms after Arduino):
-├─ Parse JSON message
-├─ Update Redux state (atomic replace)
-├─ Component re-render (selective, React optimization)
-├─ Display sensor values (updated on dashboard)
-└─ Smooth, continuous update loop
-
-One Full Cycle: 200 ms (200 ms Arduino sample period)
+Dashboard:
+├─ Parses JSON, stores it in React state (useState in useControlSocket)
+├─ Re-renders sensor cards, GPS card, map, servo slider positions
+└─ Resets the "time since last reply" counter used by the mission state
 ```
 
 ## 26.2 Sensor Display & Alerts
 
-| Sensor | Display Format | Alert Threshold (WARNING) | Alert Threshold (CRITICAL) |
-|--------|-----------------|--------------------------|---------------------------|
-| Temperature | "28.4°C" | ≥ 50°C | ≥ 70°C |
-| Humidity | "62.1% RH" | INFO only | INFO only |
-| Gas | "3 ppm" | ≥ 10 ppm | ≥ 20 ppm |
-| Range | "47 cm" | < 30 cm | < 20 cm (critical obstacle-distance warning; operator action required) |
-| GPS | "40.7128, -74.0060" | Fix loss | — |
+| Sensor | Display Format | WARNING (amber) | CRITICAL (red) |
+|--------|-----------------|-----------------|----------------|
+| Temperature | "28.0 °C" | ≥ 50 °C | ≥ 70 °C |
+| Humidity | "62.0 %" | — | — |
+| Gas | "312 ppm" (raw ADC count) | ≥ 450 | ≥ 600 |
+| Range | "47 cm" | ≤ 30 cm | ≤ 20 cm |
+| GPS | "23.810312, 90.412511" + satellites | "no fix" | — |
 
 ---
 
 # SECTION 27: GPS PATH TRACKING & MAPPING
 
-## 27.1 GPS Visualization (Leaflet.js)
+## 27.1 GPS Visualization (Leaflet / react-leaflet)
 
 ```
-Real-Time Points (Blue Polyline):
-├─ New GPS snapshot with gps_fix=true
-├─ Mark with blue circle marker (current position)
-├─ Extend polyline (new point connected to previous)
-└─ Update Leaflet map (auto-pan to marker)
+Map:
+├─ Background: OpenStreetMap tiles, fetched from tile.openstreetmap.org
+│  (needs internet; without it the background is blank but the marker
+│  and paths still draw)
+├─ Zoom 17; default centre 23.8103, 90.4125 until a fix arrives
+└─ Robot marker: blue dot, shown only while gps_fix = true
 
-Ring Buffer Backfill (Light Blue Polyline):
-├─ On operator reconnect: recovery_batch contains historical GPS
-├─ Render light-blue dashed polyline (historical path)
-├─ Extend from last-known position to current
-└─ Operator sees continuous path (no gap if < 60 sec disconnect)
+Live Path (blue #2196F3, weight 3):
+├─ Every telemetry snapshot with a fix adds a point
+└─ Keeps the last 1000 points in the browser
 
-Gap Indicators:
-├─ GPS fix lost (gps_fix=false)
-├─ Ring buffer overflow (> 300 snapshots = > 60 sec)
-├─ Mesh disconnection (> 5 sec no packets)
-└─ Display: ⊗ gap marker with "GPS gap: X seconds" tooltip
+Session Track (light blue #90CAF9, weight 3):
+├─ Loaded once when the dashboard opens: GET /api/gps-track
+└─ All positions P1 has recorded since it started
 
-Path Properties:
-├─ Color: Blue (live), Light Blue (historical)
-├─ Weight: 2 pixels
-├─ Opacity: 1.0 (live), 0.5 (historical, faded)
-└─ Update: Real-time as new GPS points arrive
+Persistence:
+└─ When P1 stops, the track is written to
+   /var/log/robot/gps_track/session_<session-id>.geojson
+```
+
+No gap markers are drawn; a period without a fix simply adds no points.
+
+---
+
+# SECTION 28: LOGGING, LOG ROTATION & STORAGE
+
+## 28.1 Log Files (`/var/log/robot/`)
+
+| File | Writer | Content | Rate |
+|------|--------|---------|------|
+| `telemetry.log` | P1 | CSV, 18 columns (`iso_ts, seq`, the 8 Arduino fields, `lat, lon, gps_fix, gps_sats, serial_ok, ws_clients, turn_status, alert_flags`) | 1 line/s (~93 bytes) |
+| `p1_events.log` | P1 | Events: session, handshake, WebSocket, every serial line in/out (`DEBUG_RX`/`DEBUG_TX`) | Per event |
+| `p2_events.log` | P2 | Events: WebRTC sessions, floor, display mode, device errors | Per event |
+| `p3_events.log` | P3 | Events: spawn, crash, health misses, kills | Per event |
+| `gps_track/session_<id>.geojson` | P1 | GPS track, written on P1 shutdown | Per session |
+
+Event line format:
+
+```
+[2026-09-27T10:15:02.113+00:00][P1][INFO][HANDSHAKE_OK][arduino ready]
+[2026-09-27T10:15:04.520+00:00][P1][INFO][WS_CONNECT][client connected]{client=c1 total=1}
+```
+
+`alert_flags` packs threshold crossings into bits: 0 temp_warn, 1
+temp_crit, 2 gas_warn, 3 gas_crit, 4 range_warn, 5 range_crit, 7 gps_lost
+(bit 6 unused).
+
+## 28.2 Rotation (`deploy/logrotate/robot`)
+
+| Files | Policy |
+|-------|--------|
+| `telemetry.log` | daily or 50 MB, keep 7, compressed |
+| `p1_events.log`, `p2_events.log` (plus `watchdog.log`, `fault.log`, which no code writes) | weekly or 10 MB, keep 8, compressed |
+| `session.log` (no code writes it) | monthly or 5 MB, keep 12 |
+
+`p3_events.log` is not in the rotation policy, and the clean-up of old GPS
+tracks (a `find … -mtime +90 -delete` cron line in the comments) is not
+installed by `install.sh`. Both are listed in Section 40.3.
+
+## 28.3 Storage Estimate
+
+```
+telemetry.log: 93 bytes × 86,400 s ≈ 8 MB/day before compression
+p1_events.log: dominated by DEBUG_RX/DEBUG_TX lines — every Arduino
+               ACK and HB line and every command is logged, so it grows
+               faster than telemetry.log while a dashboard is connected
+Retention:     7 days of telemetry + 8 weeks of events; a 16 GB or
+               larger microSD card leaves ample room
 ```
 
 ---
 
-# SECTION 28: LOG ROTATION & STORAGE RELIABILITY
+# SECTION 29: PIN CONFIGURATION & DEVICE INTERFACES
 
-## 28.1 Log Types & Retention Schedule
+## 29.1 Arduino UNO Pin Allocation (`arduino/config.h`)
 
-| Log Type | File | Cadence | Size/Day | Rotation | Retention |
-|----------|------|---------|----------|----------|-----------|
-| Telemetry | telemetry-YYYYMMDD.csv | 1/200ms | ~50 MB | 100 MB or daily | 30 days |
-| Events | events.log | Sporadic (< 10/sec) | ~5 MB | 50 MB or daily | 90 days |
-| Faults | faults.log | On error (< 1/hour) | ~1 MB | 10 MB or daily | 1 year |
-| Session | session-YYYYMMDD.log | Per mission | < 100 KB | Daily | 1 year |
+| Pin | Function | Notes |
+|-----|----------|-------|
+| D0 / D1 | Serial RX / TX | Used by the USB-serial link to the Pi |
+| D3 | Tilt servo | ServoTimer2Plus (Timer2) |
+| D4 | Motor driver enable | Both BTS7960s |
+| D5 | Left RPWM (forward) | Timer0 PWM |
+| D6 | Left LPWM (reverse) | Timer0 PWM |
+| D7 | HC-SR04 TRIG | Output |
+| D8 | HC-SR04 ECHO | Input, `pulseIn` |
+| D9 | Right RPWM (forward) | Timer1 PWM |
+| D10 | Right LPWM (reverse) | Timer1 PWM |
+| D11 | Pan servo | ServoTimer2Plus (Timer2) |
+| D13 | Status LED | Toggles every 1 s |
+| A2 | DHT11 data | Bit-banged single wire |
+| A3 | MQ-136 analog out | `analogRead`, 0-1023 |
 
-## 28.2 Storage Capacity Planning
+## 29.2 Raspberry Pi Interfaces
 
-```
-Daily Generation:
-├─ Telemetry: 50 MB (uncompressed)
-├─ Events: 5 MB
-├─ Faults: 1 MB
-└─ Total: 56 MB/day (uncompressed)
-
-With gzip Compression (90% reduction):
-├─ Daily: ~5.6 MB
-├─ Monthly: ~168 MB
-└─ Quarterly: ~504 MB
-
-90-Day Retention:
-├─ Uncompressed: ~5 GB
-├─ Compressed: ~500 MB
-└─ SD card: 32 GB microSD (Class 10) recommended
-
-Estimated SD Card Lifespan:
-├─ Write rate: < 5 cycles/hour
-├─ P/E cycles per block: 30,000 (Class 10)
-├─ Block size: 4 KB
-└─ Useful life: > 10 years
-```
-
----
-
-# SECTION 29: DEVICE TREE & PIN CONFIGURATION
-
-## 29.1 Arduino UNO Pin Allocation
-
-| Pin | Function | Type | Purpose |
-|-----|----------|------|---------|
-| D0 | RXD | Serial | UART RX (from Pi) |
-| D1 | TXD | Serial | UART TX (to Pi) |
-| D2 | INT0 | Interrupt | HC-SR04 echo start |
-| D3 | INT1 | Interrupt | HC-SR04 echo end |
-| D4 | GPIO | Output | HC-SR04 trigger |
-| D5 | OC0B | PWM | Motor left speed |
-| D6 | OC0A | PWM | Motor right speed |
-| D7 | GPIO | Output | Motor left direction FWD |
-| D8 | GPIO | Output | Motor left direction REV |
-| D9 | OC1A | PWM | Servo pan angle |
-| D10 | OC1B | PWM | Servo tilt angle |
-| D11 | GPIO | Output | Motor right direction FWD |
-| D12 | GPIO | Output | Motor right direction REV |
-| A2 | ADC | Input | MQ-136 gas sensor |
-| A3 | ADC | Input | DHT11 data (1-wire) |
-
-## 29.2 Raspberry Pi GPIO & Interfaces
-
-| GPIO | Function | Type | Purpose |
-|-----|----------|------|---------|
-| GPIO14 | TXD | Serial | UART TX (to Arduino) |
-| GPIO15 | RXD | Serial | UART RX (from Arduino) |
-| USB 3.0 Port 1 | /dev/video0 | Camera | Logitech C270 camera |
-| USB 2.0 Port 1 | first ALSA capture card (e.g. "U20") | Audio | USB microphone (ALSA; P2 picks it by card id) |
-| 3.5 mm jack | ALSA card "Headphones" | Audio | Speaker (operator voice) |
-| micro-HDMI 0 | HDMI-A-1 | Display | Robot display (Robot Screen kiosk) |
-| Ethernet | eth0 | Network | Robot Mesh Router → Pi |
+| Interface | Device | Purpose |
+|-----------|--------|---------|
+| USB | `/dev/ttyACM0` | Arduino UNO (serial) |
+| GPIO14 / GPIO15 (UART) | `/dev/serial0` | NEO-6M GPS, 9600 baud |
+| USB | `/dev/video0` | Logitech C270 camera |
+| USB | First ALSA capture card (e.g. "U20") | USB microphone (P2 picks it by card id) |
+| 3.5 mm jack | ALSA card "Headphones" (default PipeWire sink) | Speaker |
+| micro-HDMI 0 | HDMI-A-1 | Robot display (Robot Screen kiosk) |
+| Ethernet | eth0, static 192.168.10.10 | Robot Mesh Router |
 
 ---
 
 # PART 7: OPERATIONAL MODES & STATES
 
-# SECTION 30: FIVE OPERATIONAL MODES (DETAILED)
+# SECTION 30: OPERATIONAL MODES
 
-## 30.1 Mode 1: Primary (Local-First Mesh Only)
+## 30.1 Mode 1: Primary — Local Mesh Only (implemented, default)
 
 ```
-Network Path: Operator → Relay 1 → Relay 2 → Robot Router → Pi → Arduino
+Network path: Operator → Relay 1 (AP) → Relay 2 → Robot Router → Pi → Arduino
 
-Services Online: P1 ✓, P2 ✓, P3 ✓
+Services: P3 ✓ → P1 ✓, P2 ✓; Robot Screen kiosk ✓
 Capability:
-├─ Motor control: ✓ Full (4-direction, speed 0-180)
-├─ Servo control: ✓ Full (pan/tilt 0-180°)
-├─ Telemetry: ✓ Full (all 9 sensors, 200 ms cadence)
-├─ Video stream: ✓ Full (H.264, 640×480, 10 fps)
-├─ Audio: ✓ Two-way (Opus 32 kbps, push-to-talk)
-├─ Talk-to-victim: ✓ Operator video/image + text on robot display
-├─ GPS tracking: ✓ Real-time path visualization
-├─ Mission recording: ✓ Local logs (telemetry + events)
-└─ Internet dependency: ✗ None (fully local)
+├─ Motor control: ✓ 4 directions, speed 0-180
+├─ Servo control: ✓ pan/tilt 0-180°
+├─ Telemetry: ✓ 4 sensors + GPS, 200 ms broadcast
+├─ Video: ✓ 640×480, 10 fps
+├─ Audio: ✓ two-way (robot mic; operator push-to-talk)
+├─ Talk-to-victim: ✓ operator video/image + text on the robot display
+├─ GPS tracking: ✓ live path + session track (map tiles need internet)
+├─ Logging: ✓ telemetry + event logs on the Pi
+└─ Internet dependency: none for control, media or telemetry
 
-Mesh Performance:
-├─ Latency: 150-200 ms (3 hops, typical)
-├─ Packet loss: < 5% (reliable)
-├─ Coverage: 150-300 m (LOS dependent)
-└─ Self-healing: 1-3 sec route convergence
+Config: ENABLE_OVERLAY=0 in /etc/robot/p3.env.
 ```
 
-## 30.2 Mode 2: Secondary (Internet Overlay)
+## 30.2 Mode 2: Internet Overlay (not implemented)
+
+A remote-operator mode through an internet tunnel with a TURN relay was
+planned. The code keeps the hooks (`ENABLE_OVERLAY`, the `turn` field of
+`/api/ice-config`, the `turn_status` telemetry field, which currently always
+reads `unavailable`), but no tunnel or TURN server is installed or started.
+
+## 30.3 Mode 3: Degraded — Media Down, Control Up
 
 ```
-Network Paths:
-├─ Primary: Operator → Mesh (local, zero latency preference)
-└─ Secondary: Operator → Cloudflare Tunnel → Pi (internet fallback)
+Trigger: P2 crash or hang (camera/mic fault, WebRTC failure)
 
-Services Online: P1 ✓, P2 ✓, P3 ✓ + cloudflared daemon ✓
-
+Services: P1 ✓, P2 ✗ (P3 respawns it), P3 ✓
 Capability:
-├─ Same as Mode 1 (mesh continues unaffected)
-├─ Plus: Operator can be anywhere (extended range via internet)
-├─ Fallback: If mesh unavailable, tunnel takes over
-└─ Hybrid: Automatic selection based on link quality
-
-Cloudflare Tunnel:
-├─ Daemon: cloudflared (on Pi, outbound HTTPS)
-├─ Public URL: https://robot-rescue.example.com
-├─ Ingress: P1:8080, P2:8443
-├─ TURN relay: For WebRTC media (internet operator)
-└─ Reactivation: Can be toggled on/off without affecting mesh
-```
-
-## 30.3 Mode 3: Degradation (Mesh + P1 Only, P2 Down)
-
-```
-Trigger: P2 crash (USB camera lost, WebRTC failure)
-
-Services Online: P1 ✓, P2 ✗ (P3 restarts), P3 ✓
-
-Capability:
-├─ Motor control: ✓ Full (via P1 WebSocket)
-├─ Telemetry: ✓ Full (all sensors, P1 broadcasts)
-├─ Video stream: ✗ Unavailable (placeholder on dashboard)
-├─ Audio: ✗ Unavailable (both directions)
-├─ Talk-to-victim: ✗ Unavailable (robot display shows idle screen)
-├─ GPS tracking: ✓ Continues (GPS in telemetry)
-└─ Duration: Temporary (P3 restarts P2 < 10 sec)
+├─ Motor control: ✓ (WebSocket, P1)
+├─ Telemetry + GPS: ✓
+├─ Video / audio: ✗
+├─ Talk-to-victim: ✗ (kiosk keeps its last page; reconnects when P2 returns)
+└─ Mission state: DRIVING_LIMITED (amber)
 
 Recovery:
-├─ P3 detects P2 liveness loss (5 sec)
-├─ P3 SIGKILL + restart (fork + execve)
-├─ USB camera re-initialize (< 2 sec)
-├─ WebRTC re-negotiate (< 5 sec)
-└─ Video restored (total < 15 sec from failure)
+├─ P3 detects the crash (≤ 1 s) or hang (~30 s)
+├─ 10 s cooldown, P2 respawned
+└─ Operator clicks "Retry video" on the dashboard
 
-Operator Experience:
-├─ Video placeholder appears ("Video unavailable")
-├─ Audio and talk-to-victim stop (no fallback channel)
-├─ Motor commands still work (high priority, unaffected)
-└─ Auto-recovery message ("Recovering media stream...")
+If only the camera or mic fails to open, P2 keeps running and sends a
+synthetic test pattern or silence instead.
 ```
 
-## 30.4 Mode 4: Degradation (Local Wi-Fi Direct, No Mesh)
+## 30.4 Mode 4: Degraded — Control Down
 
 ```
-Trigger: All 3 mesh routers offline (Relay 1, Relay 2, Robot Router unavailable)
+Trigger: WebSocket lost (network, P1 crash, laptop)
 
-Services Online: P1 ✓, P2 ✓, P3 ✓ (Local Wi-Fi Direct enabled)
-
-Network Path: Operator Laptop ←(Wi-Fi Direct)→ Robot Router (Access Point mode)
-
-Capability:
-├─ Motor control: ✓ Full (direct WebSocket, very low latency)
-├─ Telemetry: ✓ Full (direct WebSocket)
-├─ Video stream: ✓ Available (WebRTC direct, P2P)
-├─ Audio: ✓ Two-way (WebRTC direct, P2P)
-├─ Talk-to-victim: ✓ Available (robot display + speaker)
-├─ GPS tracking: ✓ Path tracking continues
-├─ Range: ~30 m (direct LOS only, no relay amplification)
-└─ Mission state: DRIVING (if within range)
-
-Setup:
-├─ Robot Router broadcasts SSID: "RobotRescue_Direct"
-├─ Security: WPA2-PSK, password: "rescue123"
-├─ Operator laptop joins SSID
-├─ Automatic IP assignment (192.168.10.X via DHCP)
-└─ Browser: http://192.168.10.1 (fallback frontend)
-
-Advantages over Mesh:
-├─ Lower latency (direct link, no relay hops)
-├─ Simpler deployment (no intermediate routers needed)
-├─ Full capability retained (all sensors, video, audio, talk-to-victim)
-└─ Suitable for: Robot stuck nearby, operator within 30 m
-
-Limitations:
-├─ Range: ~30 m (outdoor, LOS), ~15 m (indoor)
-├─ Single operator (Wi-Fi Direct AP mode, one connection)
-├─ No internet connectivity (local only)
-└─ Manual reconnect: If moved out of range
+Robot: P1 sends S on controller disconnect (if P1 is alive); the
+       Arduino dead-man stops the motors ≤ 2 s after the last command.
+Dashboard: STOP (red), "WS offline", reconnects automatically
+           (1 s, doubling to 30 s), then replays missed telemetry.
 ```
 
-## 30.5 Mode 5: Degradation (Arduino Autonomous, No Pi)
+A direct Wi-Fi fallback without the mesh (the laptop joining the robot
+router directly) is not provisioned by the scripts; the operator AP exists
+only on Relay 1.
+
+## 30.5 Mode 5: Pi Offline — Arduino Alone
 
 ```
-Trigger: Raspberry Pi offline (power loss, SD corruption, total freeze)
+Trigger: Pi power loss, SD card failure, or a total freeze
 
-Services Online: P1 ✗, P2 ✗, P3 ✗ (Dormant)
-Arduino State: Autonomous safety mode
+Arduino behaviour:
+├─ No commands → dead-man fires after 2000 ms → PANIC DEADMAN
+├─ Motors stopped, drivers disabled; motion commands would be refused
+├─ Keeps reading sensors and printing telemetry to the (unread) serial
+└─ Status LED keeps toggling every 1 s
 
-Capability:
-├─ Motor control: ✗ Limited (dead-man timer only, safety shutdown)
-├─ Telemetry: ✗ No wireless output (Arduino internal sensors work)
-├─ Video stream: ✗ Unavailable (no USB camera)
-├─ Audio: ✗ Unavailable (no USB audio)
-├─ Robot display: ✗ Blank (no Pi)
-├─ GPS tracking: ✗ No output (GPS data received but not transmitted)
-└─ Operator control: ✗ None (no wireless communication)
+Operator: no telemetry, video or control until the Pi is back.
 
-Arduino Behavior (Autonomous Mode):
-├─ Detect: No UART communication from Pi (> 2 sec timeout)
-├─ Mode: Enter autonomous safety
-├─ Dead-man timer: Active (2000 ms re-arm window)
-├─ Motor output: Suppressed (no motor commands processed)
-├─ Telemetry: Stopped (no wireless TX)
-├─ LED indicator: Blink red (3 blinks/sec, hardware state)
-└─ Status: Safe (motors stopped, no runaway possible)
-
-Recovery Path:
-├─ Raspberry Pi restarts (power restored, SD recovered)
-├─ Pi boots (30 sec)
-├─ P1 starts, opens UART
-├─ Arduino detects: Serial communication from P1
-├─ Arduino: Exit autonomous mode, resume normal operation
-├─ P1: Send heartbeat (H\n)
-├─ Telemetry: Resumes (200 ms cadence)
-└─ Operator: Reconnects, mission continues
-
-Operator Action During Pi Offline:
-├─ Cannot send commands (no wireless link)
-├─ Cannot see telemetry (no wireless link)
-├─ Must wait for Pi restart OR manually power cycle Pi
-├─ If Pi doesn't restart, mission aborted (manual recovery)
-└─ Safety: Motors guaranteed stopped (dead-man timer)
+Recovery:
+├─ Pi boots → systemd starts P3 → P3 starts P1
+├─ P1 opens the port (resets the UNO), handshake, commands resume
+└─ Dashboard reconnects on its own
 ```
 
 ---
 
 # SECTION 31: MISSION STATE MACHINE (4-STATE)
 
-## 31.1 State Definitions
+## 31.1 Rules (`deriveMissionState`, first match wins)
 
 ```
-┌───────────────┐
-│    READY      │  (All transports healthy)
-│   ◻◻◻◻◻◻◻     │  Motor DISABLED (standby)
-│  Green light  │  Operator can click to drive
-└───────┬───────┘
-        │ Motor command issued
-        ▼
-┌───────────────┐
-│   DRIVING     │  (Command + Video both healthy)
-│   ◼◼▶◼◼◼◼     │  Motor ENABLED (active control)
-│  Green light  │  Real-time teleoperation
-└───────┬───────┘
-        │ Video lost
-        ├─ (but command OK)
-        ▼
-┌──────────────────────┐
-│ DRIVING LIMITED      │  (Command OK, Video degraded)
-│  ◼◼▶◼◼▓▓▓▓▓▓▓▓     │  Motor ENABLED (active control)
-│  Amber warning light │  Continue mission, limited feedback
-└───────┬──────────────┘
-        │ Video lost for > 30 sec
-        ├─ OR Command lost
-        ▼
-┌───────────────┐
-│     STOP      │  (Any transport lost, or operator stops)
-│    ◻◻◻◻◻◻     │  Motor DISABLED (safe, emergency stop)
-│   Red light   │  Operator must reconnect to resume
-└───────────────┘
+1. STOP             if  WebSocket disconnected
+                    or  serial_ok = false
+                    or  no telemetry for > 3000 ms
+2. DRIVING_LIMITED  if  WebRTC video not connected
+                    or  mesh not OK (fixed to OK — no mesh metric yet)
+3. DRIVING          if  fw_state = 2 (Arduino ACTIVE)
+4. READY            otherwise
 ```
 
-## 31.2 State Transition Logic
+The "no telemetry" timer counts up 500 ms with each heartbeat the dashboard
+sends and resets to 0 on every telemetry message.
 
-| Current | Condition | Next | Motor | Visual |
-|---------|-----------|------|-------|--------|
-| READY | Motor command issued | DRIVING | ENABLED | 🟢 Green |
-| READY | Any transport lost | STOP | DISABLED | 🔴 Red |
-| DRIVING | Command continues, video OK | DRIVING | ENABLED | 🟢 Green |
-| DRIVING | Video lost (< 30 sec) | DRIVING LIMITED | ENABLED | 🟡 Amber |
-| DRIVING | Command lost | STOP | DISABLED | 🔴 Red |
-| DRIVING LIMITED | Video recovered | DRIVING | ENABLED | 🟢 Green |
-| DRIVING LIMITED | Video lost > 30 sec | STOP | DISABLED | 🔴 Red |
-| DRIVING LIMITED | Command lost | STOP | DISABLED | 🔴 Red |
-| STOP | Command + video reconnect | READY | DISABLED | 🟢 Green |
-| STOP | Operator issues stop_all | STOP | DISABLED | 🔴 Red |
+## 31.2 States
+
+| State | Colour | Meaning | Operator action |
+|-------|--------|---------|-----------------|
+| **READY** | Green | Everything working, robot idle | Drive normally |
+| **DRIVING** | Blue | Robot is moving | — |
+| **DRIVING_LIMITED** | Amber | Video link from the robot lost; control still works | Stop; click **Retry video** |
+| **STOP** | Red | Control connection lost, Arduino not connected, or no reply for > 3 s | Wait; see the operator manual's troubleshooting |
+
+The mission state is **advisory**: it colours the dashboard but does not
+itself block commands. Drive controls are disabled only when the WebSocket
+is disconnected or the dashboard is an observer. Motor safety comes from
+the firmware (Section 6.2).
+
+## 31.3 Transitions
+
+| From | Condition | To |
+|------|-----------|----|
+| READY | Motor command accepted (fw_state → 2) | DRIVING |
+| DRIVING | Stop (fw_state → 1) | READY |
+| READY / DRIVING | Video connection lost | DRIVING_LIMITED |
+| DRIVING_LIMITED | Video reconnected (Retry video) | READY / DRIVING |
+| any | WebSocket lost, serial down, or > 3 s without telemetry | STOP |
+| STOP | Reconnected and telemetry flowing | READY (or DRIVING_LIMITED if video is still down) |
 
 ---
 
@@ -1632,40 +1630,37 @@ Operator Action During Pi Offline:
 
 ## 32.1 Alert Levels
 
-| Level | Visual | Audio | Display | Trigger |
-|-------|--------|-------|---------|---------|
-| **INFO** | Plain text | None | Routine value | Humidity, uptime, sat count |
-| **WARNING** | 🟡 Amber banner | Single tone | "Temp 52°C ⚠" | Temp ≥ 50°C, gas ≥ 10 ppm, range < 30 cm, GPS loss |
-| **CRITICAL** | 🔴 Flashing red | Repeating tone | "RANGE 18 CM ⚠⚠" | Temp ≥ 70°C, gas ≥ 20 ppm, range < 20 cm |
-| **TRANSPORT** | 🔴 Indicator RED | Disconnect tone | "Command channel down" | WebSocket/WebRTC/Mesh loss |
+| Level | Visual | Trigger |
+|-------|--------|---------|
+| **INFO** | Plain card | Normal readings; humidity always |
+| **WARNING** | Amber card border and tint | Temp ≥ 50 °C, gas ≥ 450, range ≤ 30 cm |
+| **CRITICAL** | Red card border and tint | Temp ≥ 70 °C, gas ≥ 600, range ≤ 20 cm |
+| **GPS** | GPS card "no fix", status bar "GPS no fix" | gps_fix = false |
+| **TRANSPORT** | Status bar "WS offline" / "serial down"; mission state colour | WebSocket, serial or video loss |
 
-## 32.2 Alert Response Matrix
+There are no audible alarms. The **alert log** panel lists connection
+events ("connected to control server", "disconnected; reconnecting…"),
+recovered telemetry and server rejections.
+
+## 32.2 Alert Response
 
 ```
-Sensor Threshold Crossing:
-├─ WARNING: Single tone, amber banner (latched)
-│  └─ Operator can dismiss or waits for condition to clear
-│
-├─ CRITICAL: Repeating tone, red flashing banner
-│  └─ Operator prompted to take action (reduce speed, avoid obstacle)
-│
-└─ TRANSPORT: Red indicator + disconnect tone
-   └─ Mission → STOP, operator must reconnect
+Sensor threshold crossing:
+├─ WARNING / CRITICAL: card colour changes while the value is over the
+│  threshold and returns to normal when it clears (not latched)
+└─ The operator decides what to do
 
-Obstacle Distance Warning (Advisory Only, Not Motor-Blocking):
-├─ Range < 30 cm → WARNING banner (amber)
-├─ Range < 20 cm → CRITICAL banner (red, repeating tone)
-│  └─ "Critical obstacle-distance warning; operator action required."
-│
-├─ Forward, reverse, and turn commands: No range check
-│  └─ HC-SR04 distance never rejects or blocks any motor command
-│
-└─ Operator decides whether to stop, reverse, or change direction
+Obstacle distance (advisory only, never motor-blocking):
+├─ Range ≤ 30 cm → amber; ≤ 20 cm → red
+├─ Forward, reverse and turn commands: no range check anywhere
+└─ Operator decides whether to stop, reverse, or turn
 
-Temperature-Based Throttling (Optional):
-├─ Temp 60-70°C: Warn operator, suggest motor cooldown
-├─ Temp > 70°C: Critical, suggest immediate stop
-└─ Pi thermal throttling: Automatically reduce CPU frequency
+Gas:
+├─ Dashboard: amber ≥ 450, red ≥ 600 (raw ADC)
+└─ Firmware: motors stopped at ≥ 1000 (PANIC GAS), independent of the Pi
+
+Transport:
+└─ Mission state → STOP or DRIVING_LIMITED (Section 31)
 ```
 
 ---
@@ -1676,16 +1671,17 @@ Temperature-Based Throttling (Optional):
 
 | Failure | Detection | Response | Recovery |
 |---------|-----------|----------|----------|
-| **WebSocket loss** | close 1006 | Cmd→DOWN (red) | Backoff + resume_from |
-| **WebRTC loss** | peer-connection closed | Video→Placeholder | Auto ICE-restart |
-| **GPS fix loss** | gps_fix=false | Marker paused | Resume on next fix |
-| **Arduino hang** | Telemetry RX stops | Motors safe (dead-man) | P3 restarts Pi |
-| **P1 crash** | Liveness loss (5 sec) | P3 restarts | Telemetry resumed (< 15 sec) |
-| **P2 crash** | Liveness loss (5 sec) | P3 restarts | Video resumed (< 15 sec) |
-| **Robot Screen crash** | Chromium exits | Launcher relaunches kiosk | Display back (< 5 sec) |
-| **Mesh link break** | HWMP PERR | Automatic reroute | Convergence (1-3 sec) |
-| **All mesh down** | No packets (> 5 sec) | Falls back to local Wi-Fi Direct | Operator joins SSID (< 30 sec) |
-| **Pi offline** | All transports → DOWN | Arduino autonomous mode | Pi restart + reconnect |
+| **WebSocket loss** | `onclose` | STOP; P1 sends `S` | Backoff reconnect + `resume_from` |
+| **WebRTC loss** | Connection leaves `connected` | DRIVING_LIMITED, video error | **Retry video** |
+| **GPS fix loss** | `gps_fix=false` | Marker hidden, "no fix" | Resumes on next fix |
+| **Arduino unplugged / port error** | Serial exception | `serial_ok=false` → STOP | Restart P1 (e.g. restart the service) |
+| **Arduino reset** | Firmware boots with drivers disabled | Handled by the next command | Commands resume normally |
+| **P1 crash** | P3 poll (≤ 1 s) | Respawn after 10 s | Dashboard reconnects |
+| **P2 crash** | P3 poll (≤ 1 s) | Respawn after 10 s | Retry video |
+| **P3 crash** | systemd | Service restarted after 5 s (P1, P2 too) | Automatic |
+| **Robot Screen crash** | Launcher sees Chromium exit | Relaunch after 3 s (or `vnc` if closed by hand) | Automatic |
+| **Mesh link break** | HWMP PERR | Re-route if a path exists | Automatic, or reposition a relay |
+| **Pi offline** | Everything stops | Dead-man stops the motors | Pi reboot; services start on their own |
 
 ---
 
@@ -1694,492 +1690,454 @@ Temperature-Based Throttling (Optional):
 ## 34.1 Emergency Stop Execution
 
 ```
-Operator Clicks "Emergency Stop" Button:
+Operator clicks EMERGENCY STOP (or ■, or releases a drive control/key):
   │
-  ├─ Browser: Send "stop_all" message via WebSocket
+  ├─ Dashboard: {"type":"stop_all"} over the WebSocket
+  │   (sent even when the dashboard is not the controller, but P1
+  │    only acts on it from the controller)
   │
-  ├─ P1: Receive message, translate to "S\n" (stop command)
+  ├─ P1: skips the seq check, writes "S\n" to the Arduino
   │
-  ├─ Arduino: Parse "S" token
-  │  ├─ Set all PWM registers: OCR0A = 0, OCR0B = 0
-  │  ├─ Set direction pins: D7/D8/D11/D12 → LOW
-  │  └─ Motors STOP (immediate, < 10 ms)
+  ├─ Arduino: "S" is always accepted (any mode)
+  │  ├─ Motor targets → 0; PWM ramps down 15 units per 10 ms
+  │  │  (from speed 180: 0 in 120 ms)
+  │  ├─ Mode ACTIVE → READY (fw_state 1)
+  │  └─ ACK S
   │
-  ├─ Mission State: → STOP (red indicator)
-  │
-  └─ Result: Robot physically stops within 100 ms
+  └─ Dashboard: mission state DRIVING → READY
+```
 
-Hardware Dead-Man Timer (Automatic):
-  ├─ If operator heartbeat lost (> 2000 ms)
-  ├─ Arduino ISR fires (independent of software)
-  ├─ Motors stop (hardware-enforced)
-  └─ Guaranteed: Motors stop, no software can override
+The emergency-stop button sends the same `S` as releasing a drive control;
+it is a large, always-enabled target, not a separate latched state.
 
-Mesh Disconnection (Automatic):
-  ├─ If mesh link lost (no packets > 5 sec)
-  ├─ WebSocket connection drops
-  ├─ P1 stops broadcasting telemetry
-  ├─ Arduino heartbeat re-arm stops (timeout > 2 sec)
-  ├─ Dead-man timer triggers (ISR fires)
-  └─ Motors stop (automatic safety, no operator intervention needed)
+```
+Dead-man stop (automatic):
+  ├─ No command reaches the Arduino for 2000 ms
+  ├─ PWM cut to 0 immediately, drivers disabled (D4 LOW)
+  └─ PANIC DEADMAN; clears automatically when commands resume
+
+Operator disconnect (automatic):
+  ├─ Controller's WebSocket closes (network loss, tab closed)
+  ├─ P1 sends S straight away (if P1 is running)
+  └─ Otherwise the dead-man stops the motors within 2 s
+
+Gas panic (automatic):
+  └─ Raw gas ADC ≥ 1000 → PWM cut, drivers disabled, PANIC GAS
 ```
 
 ---
 
 # PART 8: STARTUP, RECOVERY & DEPLOYMENT
 
-# SECTION 35: STARTUP HANDSHAKE PROCEDURE (20 SEC TIMELINE)
+# SECTION 35: STARTUP HANDSHAKE PROCEDURE
 
-## 35.1 Complete Startup Sequence
+## 35.1 Startup Sequence
 
-| Time | Component | Action | Status |
-|------|-----------|--------|--------|
-| 0 ms | Raspberry Pi | Power applied | ⊘ Initializing |
-| 500 ms | Pi bootloader | U-Boot loading kernel | ⊘ Boot |
-| 1000 ms | systemd | Init system starting | ⊘ Boot |
-| 2000 ms | Network | Ethernet link up (DHCP) | ◐ Partial |
-| 3000 ms | USB/HDMI/ALSA | Camera, mic, display, speaker detected | ✓ Ready |
-| 4000 ms | systemd | P1 service starting | ⊘ Startup |
-| 5000 ms | P1 process | fork + execve, FastAPI init | ✓ Ready |
-| 6000 ms | P1: UART | open("/dev/ttyAMA0"), fcntl lock | ⓧ Handshake |
-| 6100 ms | P1: DTR reset | Toggle DTR line, Arduino boot | ✓ Configured |
-| 7000 ms | Arduino | Boot from flash, UART ready | ✓ Online |
-| 8000 ms | P1: Ring buffer | Initialize 300-entry circular | ✓ Ready |
-| 9000 ms | systemd: P2 | Service starting | ⊘ Startup |
-| 10000 ms | P2 process | fork + execve, aiortc init | ⓧ Init |
-| 11000 ms | P2: USB camera | open("/dev/video0"), H.264 encoder | ⓧ Init |
-| 12000 ms | P2: /health | HTTP server ready | ✓ Listening |
-| 12500 ms | Robot Screen | Chromium kiosk → /screen, idle screen shown | ✓ Ready |
-| 13000 ms | systemd: P3 | Service starting | ⊘ Startup |
-| 14000 ms | P3 process | fork + execve, watchdog start | ⓧ Init |
-| 15000 ms | P3: Health check | HTTP GET /health:8080, /health:8443 | ✓ OK |
-| 16000 ms | Operator browser | User opens http://192.168.10.10 | ⊘ Connecting |
-| 17000 ms | Browser: React | SPA downloaded from Pi (static) | ✓ Loaded |
-| 18000 ms | Browser: WebSocket | ws://192.168.10.10:8080/ws | ✓ Connected |
-| 19000 ms | Browser: resume_from | last_ts=0 (full buffer request) | ✓ Requested |
-| 20000 ms | **FULL OPERATIONAL** | **All systems online** | **✓✓✓** |
+Times vary and have not yet been measured end to end (test F9 records the
+real value).
+
+| Step | Component | Action |
+|------|-----------|--------|
+| 1 | Pi | Power on, kernel and systemd boot |
+| 2 | systemd | Starts `robot-watchdog.service` (P3) as user `robot` |
+| 3 | P3 | Spawns P1 and P2 |
+| 4 | P1 | Acquires `/run/robot/p1.lock` |
+| 5 | P1 | Opens the Arduino port exclusively; DTR resets the UNO |
+| 6 | Arduino | Safe boot: drivers disabled, PWM 0, servos centred, `READY RESCUE-UNO 1.0.0` |
+| 7 | P1 | Waits 2 s, flushes both buffers |
+| 8 | P1 | Sends `S` three times, 200 ms apart |
+| 9 | P1 | Sends `?`; waits up to 5 s for `READY` or a telemetry line (else exits with code 2) |
+| 10 | P1 | Starts GPS thread, telemetry log, 200 ms broadcast; HTTP on 8080 |
+| 11 | P2 | HTTP on 8443 (camera and mic open on the first viewer) |
+| 12 | Desktop | Autologin; `robot-screen.sh` waits for P2, then opens the kiosk |
+| 13 | Operator | Opens `http://192.168.10.10:8080`; WebSocket `hello` → controller |
+| 14 | Dashboard | WebRTC offer to P2 (retried every 3 s until P2 answers) |
+| — | **Operational** | Mission state READY |
 
 ---
 
 # SECTION 36: ADVISORY LOCKING & PROCESS MANAGEMENT
 
-## 36.1 P1 Serial Device Locking
+## 36.1 P1 Single-Instance Lock (`pi/p1_control/lockfile.py`)
 
-```c
-// Prevent duplicate P1 instances (fcntl advisory lock)
-
-int acquire_serial_lock(const char *device_path) {
-    int fd = open(device_path, O_RDWR | O_NOCTTY);
-    if (fd == -1) {
-        perror("open");
-        return -1;
-    }
-
-    struct flock lock;
-    lock.l_type = F_WRLCK;      // Exclusive write lock
-    lock.l_whence = SEEK_SET;
-    lock.l_start = 0;
-    lock.l_len = 0;             // Entire file
-
-    if (fcntl(fd, F_SETLK, &lock) == -1) {
-        if (errno == EAGAIN || errno == EACCES) {
-            fprintf(stderr, "Serial device already locked\n");
-            close(fd);
-            return -1;
-        } else {
-            perror("fcntl");
-            close(fd);
-            return -1;
-        }
-    }
-
-    return fd;  // Lock acquired, ready
-}
-
-// Lock automatically released when P1 exits or fd closes (POSIX guarantee)
+```python
+# Exclusive, non-blocking advisory lock held for the process lifetime.
+fd = os.open(self.path, os.O_RDWR | os.O_CREAT, 0o644)   # /run/robot/p1.lock
+try:
+    fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+except OSError as exc:
+    os.close(fd)
+    raise LockAcquisitionError(f"{self.path} is held by another process") from exc
+os.truncate(fd, 0)
+os.write(fd, f"{os.getpid()}\n".encode())   # PID for diagnostics
+os.fsync(fd)
 ```
+
+- `/run` is tmpfs, so the file does not survive a reboot.
+- The kernel releases the lock when the holder exits, including on SIGKILL.
+- A second P1 exits with code **0** (`LOCK_HELD`), which P3 logs
+  separately from a crash.
+
+## 36.2 Second Layer: Exclusive Serial Open
+
+```python
+serial.Serial(port=SERIAL_PORT, baudrate=115200, timeout=0.1, exclusive=True)
+```
+
+`exclusive=True` makes the kernel refuse a second opener of the same
+device, so even a process that skipped the lock file could not write to
+the Arduino at the same time.
+
+## 36.3 Third Layer: One Controller
+
+Only one WebSocket client holds the `controller` role; the rest are
+observers and their commands are rejected (Section 15.1).
 
 ---
 
 # SECTION 37: PROCESS RECOVERY & AUTO-RESTART
 
-## 37.1 P3 Watchdog Recovery Procedure
+## 37.1 P3 Recovery Procedure
 
 ```
-Failure Detected (P1 or P2):
+Failure detected (P1 or P2):
   │
-  ├─ Log failure: timestamp, error code, PID
-  ├─ Log level: ERROR (syslog)
+  ├─ Crash: proc.poll() returns an exit code
+  │   └─ Log PROC_CRASH (or PROC_LOCK_HELD / PROC_CONFIG_INVALID)
   │
-  ├─ Kill crashed process:
-  │  └─ SIGKILL -9 (unconditional termination)
-  │  └─ Duration: < 100 ms
+  ├─ Hang: third consecutive /health miss
+  │   ├─ Log PROC_KILL
+  │   └─ SIGKILL, wait up to 5 s
   │
-  ├─ Flush Pi serial buffers:
-  │  └─ tcdrain(fd) → wait for TX queue empty
-  │  └─ Duration: < 500 ms
+  ├─ Cooldown: 10 s
   │
-  ├─ Reset Arduino via DTR:
-  │  └─ ioctl(fd, TIOCMSET, &status) → DTR LOW (100 ms)
-  │  └─ ioctl(fd, TIOCMSET, &status) → DTR HIGH
-  │  └─ Duration: 100 ms
-  │  └─ Arduino boots from flash
+  ├─ Respawn: subprocess.Popen(P1_CMD or P2_CMD), log PROC_SPAWN
   │
-  ├─ Start new process:
-  │  └─ systemctl restart p1.service (or p2.service)
-  │  └─ fork + execve of Python interpreter
-  │  └─ Duration: 1-2 sec
-  │
-  ├─ Verify startup:
-  │  └─ Poll /health endpoint every 500 ms
-  │  └─ Timeout: 20 sec (max acceptable)
-  │  └─ Duration: < 1 sec (typical)
-  │
-  └─ Process Online:
-     └─ Telemetry resumes (200 ms cadence)
-     └─ Operator reconnects via resume_from
-     └─ Total recovery: 8-10 sec
+  └─ P1 re-runs the full startup handshake (Section 35), which
+     resets the Arduino through DTR and sends three stops
+```
 
-systemd Service Definition (p1.service):
+P3 does not touch the serial port itself; the Arduino reset comes from P1
+reopening the port.
+
+## 37.2 systemd Unit (`deploy/systemd/robot-watchdog.service`)
+
+```ini
 [Unit]
-Description=Robot Control Server (P1)
-After=network.target
+Description=Rescue Robot Process Watchdog (P3)
+After=network.target dev-ttyUSB0.device
+Wants=dev-ttyUSB0.device
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python3 /opt/p1/main.py
+User=robot
+Group=robot
+WorkingDirectory=/opt/robot/pi
+EnvironmentFile=-/etc/robot/p1.env
+EnvironmentFile=-/etc/robot/p2.env
+EnvironmentFile=-/etc/robot/p3.env
+ExecStart=/opt/robot/venv/bin/python -m p3_watchdog.main
 Restart=on-failure
 RestartSec=5
-StandardOutput=journal
-StandardError=journal
+KillMode=control-group
+TimeoutStopSec=15
 
 [Install]
 WantedBy=multi-user.target
 ```
 
+The unit waits for `dev-ttyUSB0.device`, but the UNO in use enumerates as
+`/dev/ttyACM0` (`p1.env`); the device dependency should be updated to match
+(Section 40.3).
+
 ---
 
 # SECTION 38: DEPLOYMENT CHECKLIST & PRE-MISSION VERIFICATION
 
-## 38.1 Pre-Deployment Hardware Checklist
+## 38.1 Installation (once per robot)
+
+```
+1. Flash the Arduino: open arduino/arduino.ino in the Arduino IDE
+   (with the ServoTimer2Plus library installed), board "Arduino UNO",
+   upload; the serial monitor at 115200 shows "READY RESCUE-UNO 1.0.0".
+2. Build the dashboard: cd dashboard && npm install && npm run build
+3. On the Pi: sudo ./deploy/install.sh
+   (packages, "robot" user, /opt/robot, venv, /etc/robot templates,
+   robot-watchdog.service enabled, kiosk autostart, logrotate)
+4. Manual steps printed by the script: enable the GPS UART, static IP
+   192.168.10.10, desktop autologin, 3.5 mm jack as default output,
+   check SERIAL_PORT in /etc/robot/p1.env (ls /dev/tty{USB,ACM}*)
+5. Provision the routers: deploy/mesh/robot.sh, relay1.sh, relay2.sh
+   (change the mesh and AP keys first)
+6. sudo systemctl start robot-watchdog.service
+```
+
+## 38.2 Pre-Deployment Hardware Checklist
 
 ```
 ROBOT UNIT:
-  ☐ 4WD chassis assembled, motors tested
-  ☐ Pan-tilt camera assembly (SG90 servos) mounted, range tested
-  ☐ Sensor wiring (DHT11, MQ-136, HC-SR04) connected
-  ☐ GPS receiver (NEO-6M) connected to Arduino
-  ☐ USB camera focused, mounted on pan-tilt (aim center)
-  ☐ USB microphone mounted, capture level set
-  ☐ Speaker connected (3.5 mm), volume audible at 2 m
-  ☐ Robot display mounted facing forward, visible at victim eye level
-  ☐ Mesh router on-board (Archer C7), antenna mounted, power connected
-  ☐ Raspberry Pi secured in chassis, cooling ensured (no obstruction)
-  ☐ Arduino UNO securely mounted (no loose connections)
-  ☐ Battery (24V Li-Po) connected with fusing, polarity checked
-  ☐ BEC 24V→5V tested (Pi powers on)
+  ☐ Chassis assembled, all four motors turn the right way
+  ☐ Pan-tilt servos mounted, full range free of obstruction
+  ☐ DHT11 (A2), MQ-136 (A3, pre-heated), HC-SR04 (D7/D8) wired
+  ☐ GPS (NEO-6M) wired to the Pi's GPIO UART, antenna with sky view
+  ☐ USB camera mounted on the pan-tilt, focused
+  ☐ USB microphone mounted
+  ☐ Speaker on the 3.5 mm jack, audible at 2 m
+  ☐ Robot display mounted facing forward, at the victim's eye level
+  ☐ Mesh router on board, antennas clear, Ethernet to the Pi
+  ☐ Pi secured, ventilation not blocked
+  ☐ Arduino secured, USB cable to the Pi strain-relieved
+  ☐ 4S battery charged, polarity checked, BMS connected
+  ☐ Buck converters set (5 V rails, Arduino supply); Pi power bank charged
 
 MESH ROUTERS:
-  ☐ Relay 1: OpenWrt firmware flashed, LAN IP 192.168.10.1
-  ☐ Relay 2: OpenWrt firmware flashed, LAN IP 192.168.10.2
-  ☐ Robot Router: OpenWrt firmware flashed, LAN IP 192.168.10.3
-  ☐ All routers: Mesh ID configured ("RobotRescue_Mesh")
-  ☐ All routers: Channel 6, 20 MHz bandwidth, 20 dBm TX power
-  ☐ Relay 1: Antenna mounted, elevated 1.5-2 m, LOS to Relay 2
-  ☐ Relay 2: Antenna mounted, elevated 2-3 m, LOS to both Relay 1 & Robot
-  ☐ Relay 2: Power source (battery + solar) tested for 8-12 hour runtime
+  ☐ Robot Router 192.168.10.1, Relay 1 192.168.10.2, Relay 2 192.168.10.3
+  ☐ Mesh ID "robot-mesh", SAE key changed from the default
+  ☐ Channel 6, HT20 on all three
+  ☐ Relay 1 AP "robot-mesh-ap" up, DHCP 192.168.10.50-99
+  ☐ Relays elevated, line of sight along the chain, batteries sized
 
 OPERATOR LAPTOP:
-  ☐ React SPA built (Vite production bundle)
-  ☐ Browser: Chrome/Firefox/Safari (modern version, WebRTC support)
+  ☐ Chrome or Edge, current version
   ☐ Laptop mic + camera working; browser allowed to use them
     (dashboard over HTTPS, or Chrome/Edge flag for the robot's exact
     origin; check `isSecureContext` is true in the browser console)
-  ☐ VNC viewer closed while talking to the victim (its clicks and
-    keys can switch the robot display to VNC mode)
-  ☐ Network: Wi-Fi adapter (802.11g at minimum, 5 GHz preferred)
-  ☐ Storage: 1 GB free disk space
+  ☐ VNC viewer closed while talking to the victim (keys such as
+    Alt+F4 sent through it close the kiosk)
+  ☐ Wi-Fi adapter with 2.4 GHz support
 ```
 
-## 38.2 Field Setup & Link Verification
+## 38.3 Field Setup & Link Verification
 
 ```
-1. POWER UP SEQUENCE (in order):
-   ☐ Relay 1: Power on (operator-side access point)
-   ☐ Wait 30 sec (boot + mesh startup)
-   ☐ Relay 2: Power on (interior relay node)
-   ☐ Wait 30 sec (boot + mesh join to Relay 1)
-   ☐ Robot: Power on (Pi + Arduino boot)
-   ☐ Wait 30 sec (full startup handshake)
+1. POWER UP (in order):
+   ☐ Relay 1 on; wait for it to boot
+   ☐ Relay 2 on; wait for it to boot
+   ☐ Robot on (router, Pi, Arduino); wait for the kiosk idle screen
 
-2. LINK QUALITY VERIFICATION:
-   ☐ Operator laptop: Connect to Relay 1 Wi-Fi (or Ethernet)
-   ☐ Open browser: http://192.168.10.1 (Relay 1 management interface)
-   ☐ Verify: Relay 2 shows in mesh table (peer list)
-   ☐ Verify: Robot Router shows in mesh table
-   ☐ Measure RSSI: Relay 1 ↔ Relay 2 (should be -60 to -70 dBm)
-   ☐ Measure RSSI: Relay 2 ↔ Robot Router (should be -60 to -75 dBm)
-   ☐ Ping test: ping 192.168.10.10 (Pi) from operator laptop
-   ☐ Acceptable: < 5% packet loss, latency < 200 ms
+2. LINK VERIFICATION:
+   ☐ Laptop joins "robot-mesh-ap", gets a 192.168.10.50-99 address
+   ☐ On a router: `iw dev <mesh-if> station dump` shows the peers
+   ☐ ping 192.168.10.10: < 5 % loss, < 200 ms
 
 3. ROBOT SYSTEMS VERIFICATION:
-   ☐ Operator browser: http://192.168.10.10 (Robot Pi dashboard)
-   ☐ Dashboard loads: React SPA visible, no console errors
-   ☐ Telemetry display: All 9 sensors showing live data (200 ms update)
-   ☐ Video stream: H.264 video visible (640×480, live)
-   ☐ Audio test (victim → operator): robot microphone audible on dashboard
-   ☐ Talk test (operator → victim): hold Talk, voice heard from robot speaker
-   ☐ Screen test: laptop camera and an image appear on robot display
-   ☐ Message test: send text → shown on robot display, ack on dashboard
-   ☐ Motor test: Forward/Reverse commands → motors move
-   ☐ Servo test: Pan/Tilt commands → servos respond
-   ☐ GPS test: Position displayed on map (if outdoor with sky view)
-   ☐ Alert test: Range sensor < 20 cm → critical alert shown to operator (motors unaffected)
-   ☐ Emergency stop: Click button → motors STOP immediately
+   ☐ Open http://192.168.10.10:8080
+   ☐ Status bar: WS connected, role: controller, serial ok; mission READY
+   ☐ Sensor cards update; GPS card shows a fix outdoors
+   ☐ Video visible (640×480)
+   ☐ "Listen to robot mic": robot microphone audible
+   ☐ Hold Talk: voice heard from the robot speaker
+   ☐ My camera and an image appear on the robot display
+   ☐ Text message shown on the robot display; ✓ on the dashboard
+   ☐ Drive: each direction moves correctly and stops on release
+   ☐ Pan/tilt sliders move the camera
+   ☐ Obstacle < 20 cm → range card red (motors unaffected)
+   ☐ EMERGENCY STOP while driving → robot stops
 
-4. MESH FAILOVER TEST:
-   ☐ Power off Relay 2 temporarily
-   ☐ Wait 3 sec (HWMP route convergence)
-   ☐ Verify: Robot still connected to operator (via direct link Relay 1 ↔ Robot? unlikely)
-   ☐ Expected: Connection loss (Relay 2 is bridge)
-   ☐ Power on Relay 2
-   ☐ Wait 3 sec
-   ☐ Verify: Connection restored, telemetry resumed
+4. FAILSAFE CHECKS:
+   ☐ Turn laptop Wi-Fi off while driving → robot stops within 2 s
+   ☐ Turn it back on → dashboard reconnects, alert log shows recovery
+   ☐ Power off Relay 2 → link lost (it is the only path in a chain);
+     power on → link and telemetry return
 
 5. MISSION START:
-   ☐ All systems verified and operational
-   ☐ Battery charge: > 80% (for 2-4 hour mission)
-   ☐ Operator: Familiar with dashboard controls
-   ☐ Operator: Aware of mesh range (150-300 m)
-   ☐ Start mission: Deploy robot into disaster zone
+   ☐ Battery charged; spare Pi power bank
+   ☐ Operator familiar with the dashboard (OPERATOR_MANUAL.md)
+   ☐ Relay positions planned for the area to be searched
 ```
 
 ---
 
 # SECTION 39: PERFORMANCE ANALYSIS & BENCHMARKS
 
-## 39.1 Latency Breakdown
+## 39.1 Motor Command Latency (design estimate — measure with test N6)
 
-| Operation | Path | Latency | Cumulative |
-|-----------|------|---------|-----------|
-| **Motor Command** | Operator click | — | 0 ms |
-| WebSocket TX | Browser → Wi-Fi → Relay 1 | 15 ms | 15 ms |
-| Mesh hop 1 | Relay 1 → Relay 2 | 35 ms | 50 ms |
-| Mesh hop 2 | Relay 2 → Robot Router | 50 ms | 100 ms |
-| Ethernet | Robot Router → Pi | 1 ms | 101 ms |
-| P1 processing | Parse, validate, UART TX | 5 ms | 106 ms |
-| UART | Pi → Arduino (2 bytes @ 115.2k baud) | 0.2 ms | 106.2 ms |
-| Arduino | Parse, update PWM | 1 ms | 107.2 ms |
-| **Motor actuation** | PWM output → motor response | ~5 ms | **~112 ms** |
+| Stage | Path | Estimate |
+|-------|------|----------|
+| Browser → Relay 1 | Wi-Fi | ~5-15 ms |
+| Mesh hops | Relay 1 → Relay 2 → Robot Router | ~10-100 ms (site dependent) |
+| Router → Pi | Ethernet | < 1 ms |
+| P1 | Validate, write serial | < 5 ms |
+| Serial | "F120\n" (5 bytes at 115,200 baud) | ~0.5 ms |
+| Arduino | Parse in main loop; next motor tick | ≤ 10 ms (+ up to ~25 ms if a sensor read is in progress) |
+| **Total to motor start** | | **~30-150 ms** |
+| Ramp | 0 → 120 in 15-unit steps | + 80 ms to full commanded speed |
 
-**Result: ~110-120 ms end-to-end motor command latency (acceptable for teleoperation)**
-
-## 39.2 Throughput & Bandwidth Usage
+## 39.2 Bandwidth Usage
 
 ```
-Telemetry Stream (P1 → Operator):
-├─ Message size: 200 bytes (JSON)
-├─ Cadence: 200 ms (5 messages/sec)
-├─ Throughput: 200 bytes × 5 = 1 KB/sec = 8 Kbps
-└─ Negligible (easily fits in mesh capacity)
+Telemetry (P1 → each dashboard):
+└─ ~400 bytes of JSON × 5 per second ≈ 2 kB/s ≈ 16 kbps
 
-Video Stream (P2 → Operator):
-├─ Codec: H.264 Baseline
-├─ Resolution: 640×480, 10 fps
-├─ Bitrate: ~500 kbps (adaptive, can reduce to 250 kbps)
-├─ Bandwidth: 500 Kbps (significant, but within mesh capacity)
-└─ Latency: 50-100 ms (acceptable for monitoring)
+Video (P2 → each dashboard):
+├─ 640×480, 10 fps, aiortc rate control
+└─ VP8: starts at 500 kbps (range 250 kbps-1.5 Mbps);
+   H.264: starts at 1 Mbps (range 500 kbps-3 Mbps)
 
-Audio Stream (Two-Way):
-├─ Codec: Opus VBR
-├─ Bitrate: 32 Kbps per direction
-├─ Total: 64 Kbps (both directions, operator side only while talking)
-└─ Latency: 50-100 ms
+Robot audio (P2 → each dashboard):
+└─ Opus, 96 kbps (aiortc default)
 
-Operator Video (Operator → Robot display):
-├─ Laptop camera: ~300 Kbps (640×480)
-├─ Still image: ~50 Kbps (1 fps)
-└─ None: 0 Kbps
+Operator → robot (only while in use):
+├─ Voice: Opus, browser-chosen rate
+├─ Camera 640×480 @ 10 fps / screen share 5 fps / still image
+└─ Text messages: negligible
 
-Robot Screen Messages:
-└─ Negligible (< 1 Kbps, event-driven)
+P2 → Robot Screen: localhost only, not on the mesh.
 
-Total Bandwidth (worst case, operator camera on):
-├─ Telemetry: 8 Kbps
-├─ Video (robot → operator): 500 Kbps
-├─ Video (operator → robot): 300 Kbps
-├─ Audio: 64 Kbps
-└─ **Total: ~872 Kbps (mesh easily handles this @ 54 Mbps PHY rate)**
+Rough worst case, one dashboard, VP8, operator camera on (estimate):
+≈ 16 kbps + 0.5-1.5 Mbps + 96 kbps + several hundred kbps (operator
+video) + voice ≈ 1-2 Mbps — within a 20 MHz 2.4 GHz mesh link, which is
+why the camera and screen share are capped at 640×480 and 10/5 fps.
+Each extra viewer adds another video + audio stream.
 ```
 
-## 39.3 Reliability Metrics
+## 39.3 Reliability Targets (to be verified)
 
-| Metric | Target | Achieved |
-|--------|--------|----------|
-| **Motor command success rate** | > 99% | ~99.5% (ARQ + timeout retry) |
-| **Telemetry delivery rate** | > 95% | ~98% (200 ms cadence, some loss OK) |
-| **Video frame arrival** | > 90% | ~95% (H.264 keyframe recovery) |
-| **GPS fix availability** | > 90% | ~95% (outdoor with sky view) |
-| **Mesh availability** | > 98% | ~99% (3-hop path, self-healing) |
-| **Process uptime** | > 99% | ~99.9% (P3 watchdog + systemd) |
-| **Motor safety guarantee** | 100% | 100% (dead-man timer hardware) |
+| Metric | Target | How it is met / checked |
+|--------|--------|-------------------------|
+| Motor stop on link loss | 100 %, ≤ 2 s | Firmware dead-man (tests H7, F1) |
+| Crash recovery | Automatic, ~15 s | P3 (tests F3, F4) |
+| Watchdog recovery | Automatic | systemd (test F5) |
+| Reboot to operational | Unattended | Test F9 |
+| Automated tests | All pass | `pytest` in `pi/`: 69 tests passing |
+
+No field reliability figures (uptime, packet loss, MTBF) have been
+measured yet; they belong in `TEST_REPORT.md` once the field test is run.
 
 ---
 
-# SECTION 40: SYSTEM INTEGRATION MATRIX & CONCLUSION
+# SECTION 40: SYSTEM INTEGRATION MATRIX, KNOWN LIMITATIONS & CONCLUSION
 
 ## 40.1 Component Dependency Matrix
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│ COMPONENT INTEGRATION & FAILURE ISOLATION                    │
-├──────────────────────────────────────────────────────────────┤
-
 OPERATOR DASHBOARD
-  ├─ Depends on: Mesh network (IEEE 802.11s)
-  ├─ Failure: Browser crash → Robot safe (dead-man active)
-  └─ Recovery: Refresh browser (auto-reconnect via resume_from)
+  ├─ Depends on: mesh, P1 (served from it), P2 for media
+  ├─ Failure: tab closed/crash → P1 sends S; dead-man as backstop
+  └─ Recovery: reload; reconnect + resume_from
 
-MESH NETWORK (3 Routers)
-  ├─ Depends on: Physical line-of-sight, power supply
-  ├─ Failure: Link loss → Auto-reroute (1-3 sec) or local Wi-Fi Direct
-  └─ Recovery: Move relay closer OR use direct connection
+MESH NETWORK (3 routers)
+  ├─ Depends on: line of sight, router power
+  ├─ Failure: link loss → re-route if possible, else control lost
+  └─ Recovery: reposition or re-power a relay
 
 P1 CONTROL SERVER
-  ├─ Depends on: Arduino (UART), Mesh network (WebSocket)
-  ├─ Failure: P1 crash → P3 detects (5 sec), restarts (< 15 sec total)
-  └─ Recovery: Operator reconnects via resume_from
+  ├─ Depends on: Arduino (USB serial), GPS (UART), mesh
+  ├─ Failure: crash → P3 respawns after 10 s
+  └─ Recovery: dashboard reconnects on its own
 
 P2 MEDIA SERVER
-  ├─ Depends on: USB camera/mic, Mesh network (WebRTC)
-  ├─ Failure: P2 crash → P3 detects (5 sec), restarts (< 15 sec total)
-  └─ Recovery: Video placeholder during restart, auto-resume
+  ├─ Depends on: camera, mic, mesh
+  ├─ Failure: crash → P3 respawns after 10 s
+  └─ Recovery: operator clicks Retry video
 
 ROBOT SCREEN (victim-facing display + speaker)
-  ├─ Depends on: P2 (relay), HDMI display, speaker
-  ├─ Failure: Kiosk crash → systemd restarts (< 5 sec)
-  └─ Recovery: Idle screen until operator media resumes
+  ├─ Depends on: P2, desktop session, HDMI display, speaker
+  ├─ Failure: Chromium crash → launcher relaunches after 3 s
+  └─ Recovery: idle screen until operator media resumes
 
 P3 WATCHDOG
-  ├─ Depends on: systemd (process management)
-  ├─ Failure: P3 crash → systemd restarts (5 sec)
-  └─ Recovery: 5 sec gap in supervision, then P3 online
+  ├─ Depends on: systemd
+  ├─ Failure: crash → systemd restarts the service after 5 s
+  └─ Recovery: P1 and P2 are restarted with it
 
 ARDUINO UNO
-  ├─ Depends on: Power supply, UART link to Pi
-  ├─ Failure: Motor freeze → Dead-man timer stops motors (2 sec)
-  └─ Recovery: P1 sends heartbeat, Arduino re-arms
+  ├─ Depends on: power, USB serial to the Pi
+  ├─ Failure: no commands → dead-man stops the motors (2 s)
+  └─ Recovery: commands resume → fault clears automatically
 
 CRITICAL PATH (Motor Safety):
-  └─ Arduino dead-man timer (HARDWARE)
-     ├─ Operational: Motors stop (2000 ms max)
-     ├─ Failure isolation: No software can override
-     └─ Guarantee: 100% (verified by design)
-
-CASCADE TOLERANCE:
-  ├─ Layer 4 (Operator) fails → Layer 1 safe (dead-man active)
-  ├─ Layer 3 (Mesh) fails → Local Wi-Fi Direct fallback
-  ├─ Layer 2 (Pi processes) fail → Auto-restart via P3 + systemd
-  └─ Layer 1 (Arduino) hangs → Dead-man timer enforces motor stop
-  └─ Result: No single point of failure
+  └─ Arduino firmware dead-man
+     ├─ Stops the motors ≤ 2 s after the last valid command
+     └─ Independent of the network, the Pi and the dashboard
 ```
 
-## 40.2 System Conclusion
+## 40.2 Technology Stack
 
 ```
-AUTONOMOUS RESCUE ROBOT SYSTEM
+├─ Firmware: C++ (Arduino core), ServoTimer2Plus
+├─ Pi: Python 3.11 — FastAPI, uvicorn, pyserial, aiortc, PyAV, aiohttp
+├─ Frontend: React 19, TypeScript, Vite, Tailwind CSS, Leaflet
+├─ Kiosk: Chromium in kiosk mode, bash launcher
+├─ Network: OpenWrt, IEEE 802.11s (HWMP), WPA3-SAE
+├─ Supervision: systemd (P3), P3 (P1, P2)
+└─ Tests: pytest (69 tests: command validation, telemetry parsing,
+   mission state, ring buffer, dead-man emulation, shared capture,
+   talk-back)
+```
 
-Architecture: 5 principal subsystems + 4-tier fault-tolerance
+## 40.3 Known Limitations
+
+1. **No mesh link-quality monitoring.** No process measures signal
+   strength or loss; the mesh input to the mission state is fixed at OK.
+2. **Serial loss needs a P1 restart.** If the Arduino is unplugged, P1 marks
+   `serial_ok=false` but does not reopen the port, and `/health` still
+   returns 200, so P3 does not restart it.
+3. **A silent Arduino is not detected.** `serial_ok` only drops on a serial
+   error. If the firmware stops sending without an error, P1 keeps
+   broadcasting the last frame, so readings go stale without a warning.
+4. **Map tiles need internet.** Everything else runs offline.
+5. **Gas is uncalibrated.** Readings and thresholds are raw ADC counts,
+   labelled "ppm" on the dashboard.
+6. **No authentication.** Any host on the mesh can open the dashboard and
+   take the controller role if it is free; security rests on the mesh and
+   AP keys.
+7. **Housekeeping.** The systemd unit waits for `dev-ttyUSB0.device` while
+   the UNO is `/dev/ttyACM0`; `p3_events.log` is not rotated; logrotate
+   names logs no code writes; the GPS-track clean-up cron is not installed;
+   `VIDEO_BITRATE_KBPS` in `p2.env` is not used by P2.
+8. **Talk-to-victim partly tested on hardware.** Both audio directions work
+   on the robot; operator video, images and text have not yet been shown on
+   a physical display.
+9. **Performance not yet measured.** Latency, range and bandwidth figures
+   in Sections 13 and 39 are design estimates until tests N1-N8 are run.
+
+## 40.4 System Conclusion
+
+```
+RESCUE ROBOT SYSTEM
+
+Architecture: 5 subsystems, 4-tier fault tolerance
 
 Capabilities:
-├─ Real-time teleoperation: 110 ms motor command latency
-├─ Live video + audio: H.264 (500 Kbps) + Opus (32 Kbps)
-├─ Talk-to-victim: operator voice, face/image and text on robot display
-├─ Environmental monitoring: 9 sensors, 200 ms cadence
-├─ GPS tracking: Real-time path visualization
-├─ Disaster resilience: Requires NO internet, local mesh only
-└─ Safety guarantee: Motors stop within 2 seconds, ANY failure
+├─ Teleoperation over a local 802.11s mesh (WebSocket control)
+├─ Live video + audio from the robot (WebRTC)
+├─ Talk-to-victim: operator voice, face/image/screen and text on
+│  the robot's own display and speaker
+├─ Environmental monitoring: temperature, humidity, gas, range, GPS
+├─ GPS tracking with a saved per-session track
+├─ No internet needed for control, media or telemetry
+└─ Safety: motors stop ≤ 2 s after the last command, whatever fails
+   upstream; P1 also stops them at once when the operator disconnects
 
 Deployment:
-├─ Pre-mission: Mesh setup (30 min), link verification (15 min)
-├─ Startup: 20 seconds (power on to full operation)
-├─ Operation: Mesh range 150-300 m (LOS dependent)
-├─ Recovery: Auto-restart < 15 sec (P3 watchdog), fallback to local Wi-Fi
-└─ Mission duration: 4-6 hours (battery dependent)
-
-Reliability:
-├─ Motor command success: > 99%
-├─ Process uptime: > 99.9%
-├─ Mesh availability: > 98%
-├─ Safety guarantee: 100% (dead-man timer)
-└─ Overall system MTBF: > 50 hours (typical mission-grade)
-
-Technology Stack:
-├─ Hardware: Arduino (real-time), Raspberry Pi (Linux)
-├─ Network: IEEE 802.11s (mesh), HWMP (routing)
-├─ Protocols: UART (serial), WebSocket (TCP), WebRTC (UDP)
-├─ Frontend: React 18 (TypeScript, Vite)
-├─ Supervision: systemd (OS), P3 watchdog (application)
-└─ Persistence: Circular ring buffer (volatile), SD card logs (permanent)
+├─ One install script on the Pi, three router scripts
+├─ Unattended start on power-up (systemd → P3 → P1, P2; kiosk autostart)
+└─ Automatic recovery of crashed or hung processes (~15 s)
 
 Strengths:
-✓ Fully autonomous mesh network (no controller required)
-✓ Graceful degradation (5 operational modes)
-✓ Hardware-enforced motor safety (dead-man timer)
-✓ Decoupled processes (one crash ≠ system failure)
-✓ Zero internet dependency (local operation only)
-✓ Low-latency teleoperation (110 ms command execution)
-✓ Real-time video + audio + telemetry (multi-path)
+✓ Motor safety enforced in firmware, independent of the network and Pi
+✓ Defence in depth: P1 validates, the firmware validates again
+✓ Control and media in separate processes and transports
+✓ Single-writer guarantee on the Arduino (lock + exclusive open + one
+  controller)
+✓ Telemetry replay after reconnect (60 s ring buffer)
 ✓ Two-way communication with the victim (voice, video, text)
-✓ Comprehensive logging (30-day telemetry history)
+✓ Runs end to end without hardware (MOCK_HARDWARE=1) for development
+  and tests
 
 Constraints:
-- Mesh range: 150-300 m (LOS dependent)
-- Mission duration: 4-6 hours (battery)
-- Single operator (Wi-Fi Direct mode)
-- High-interference environments: May degrade link quality
-- Relay 2 positioning: Critical for 3-hop chain
-
-Conclusion:
-This architecture provides a robust, fault-tolerant platform for autonomous
-rescue robotics in disaster zones. Core safety mechanisms (dead-man timer, P3
-watchdog, systemd) ensure reliable operation. Multi-layered fault-tolerance
-(4-tier) enables graceful degradation. Local-first mesh design eliminates
-internet dependency, critical for post-collapse scenarios. The system achieves
-mission-critical reliability (99.9% uptime, 100% motor safety) while supporting
-real-time teleoperation with video, audio, and comprehensive environmental
-monitoring, and lets the operator speak to, be seen by, and send messages to
-a trapped victim through the robot's own display and speaker.
-
-Suitable for: Search & rescue, hazmat reconnaissance, collapse zone surveying,
-first-response operations where communication infrastructure is compromised.
+- Range limited by the three-router chain and line of sight
+- One controller at a time; one talker at a time
+- Relay 2 is a single point of failure in a chain deployment
+- Items in Section 40.3
 ```
 
----
+This architecture gives a rescue team a robot they can drive, watch and
+listen through over a self-contained mesh network, and that lets them speak
+to, be seen by and send messages to a trapped victim. Its core safety
+property — the motors stop when commands stop — is enforced in the
+Arduino firmware and does not depend on any other part of the system.
 
-# END OF 100-PAGE COMPREHENSIVE METHODOLOGY DOCUMENT
-
-**Total Pages: 100 (formatted for standard 11-point font, single-space)**
-
-**Statistics:**
-- Part 1 (System Overview): 10 pages
-- Part 2 (Hardware & Embedded): 15 pages
-- Part 3 (Mesh Network): 10 pages
-- Part 4 (Communication Protocols): 10 pages
-- Part 5 (Embedded Software): 15 pages
-- Part 6 (Data & Storage): 10 pages
-- Part 7 (Operational Modes): 10 pages
-- Part 8 (Startup & Deployment): 20 pages
-- **TOTAL: 100 pages**
-
-**All sections included with:**
-✅ Architecture diagrams
-✅ Protocol specifications
-✅ Performance analysis
-✅ Deployment procedures
-✅ Fault-tolerance mechanisms
-✅ Emergency procedures
-✅ Integration matrix
-
-**Ready for capstone project submission.**
-
+Suitable for: search and rescue, collapse-zone surveying, and hazmat
+reconnaissance where communication infrastructure is unavailable.

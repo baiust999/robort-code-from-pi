@@ -3,6 +3,10 @@
 import asyncio
 import json
 import logging
+import time
+
+import av
+import numpy as np
 
 import pytest
 
@@ -221,6 +225,41 @@ def test_idle_tracks_produce_black_video_and_silence(hub, monkeypatch):
 
     video, a1, a2 = asyncio.run(run())
     assert (video.width, video.height) == (640, 480)
-    assert a1.samples == 960 and a1.sample_rate == 48000
-    assert a2.pts - a1.pts == 960
-    assert not any(a1.to_ndarray().ravel())
+    # Audio leaves as one 60 ms Opus packet at a time.
+    assert a2.pts - a1.pts == 2880
+    decoder = av.CodecContext.create("libopus", "r")
+    decoded = [f for p in (a1, a2) for f in decoder.decode(p)]
+    assert sum(f.samples for f in decoded) == 2 * 2880
+    assert abs(decoded[-1].to_ndarray()).max() < 50  # silence, give or take codec noise
+
+
+def test_screen_audio_carries_operator_voice_and_never_bursts(hub, monkeypatch):
+    """Operator frames come out intact; a late track resets its clock rather than bursting."""
+    hub.floor_holder = "s1"
+    tone = (8000 * np.sin(np.arange(960) / 5)).astype(np.int16)
+
+    def operator_frame():
+        f = av.AudioFrame.from_ndarray(np.repeat(tone, 2).reshape(1, -1), format="s16", layout="stereo")
+        f.sample_rate = 48000
+        return f
+
+    async def run():
+        track = ScreenAudioTrack(hub)
+        # 140 ms: enough to fill the 120 ms cushion.
+        for _ in range(7):
+            hub._audio_queue.append(operator_frame())
+        voiced = await track.recv()
+        # Simulate the event loop stalling for a second.
+        track._start -= 1.0
+        t = time.monotonic()
+        await track.recv()
+        await track.recv()
+        return voiced, time.monotonic() - t
+
+    voiced, elapsed = asyncio.run(run())
+    decoder = av.CodecContext.create("libopus", "r")
+    samples = np.concatenate([f.to_ndarray().ravel() for f in decoder.decode(voiced)])
+    assert np.abs(samples).max() > 2000  # the tone, not silence
+    # After the stall the next packet goes out at once, but the one after
+    # waits its 60 ms instead of following in a burst.
+    assert elapsed >= 0.05

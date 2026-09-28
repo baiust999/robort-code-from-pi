@@ -17,7 +17,9 @@ screen peer. ``ScreenVideoTrack`` and ``ScreenAudioTrack`` are the outbound
 tracks on the screen connection: they are created once per screen session
 and read whatever the floor holder is currently sending, falling back to
 the last frame (video) or silence (audio) so the screen connection never
-needs renegotiating when the operator starts or stops sending.
+needs renegotiating when the operator starts or stops sending. Audio is
+re-encoded here as 60 ms Opus packets rather than by aiortc (see
+``ScreenAudioTrack``).
 """
 
 from __future__ import annotations
@@ -31,7 +33,7 @@ import time
 from typing import Any, Protocol
 
 import av
-from aiortc import AudioStreamTrack, VideoStreamTrack
+from aiortc import VideoStreamTrack
 from aiortc.mediastreams import MediaStreamError, MediaStreamTrack
 
 from common.logging_setup import EventLogger
@@ -45,10 +47,20 @@ DISPLAY_MODES = ("robot", "vnc")
 
 VIDEO_CLOCK_RATE = 90000
 AUDIO_RATE = 48000
-AUDIO_FRAME_SAMPLES = 960  # 20 ms, the Opus frame size browsers send
-# Beyond this many queued 20 ms frames the oldest are dropped, capping the
-# operator-to-speaker latency added by P2 at ~200 ms.
+# Beyond this many queued 20 ms operator frames the oldest are dropped,
+# capping the operator-to-speaker latency added by P2 at ~200 ms.
 AUDIO_QUEUE_FRAMES = 10
+# Audio to the Robot Screen goes out as one Opus packet per 60 ms (see
+# ScreenAudioTrack). Later than this, the track resets its clock instead of
+# catching up.
+AUDIO_PACKET_MS = 60
+AUDIO_PACKET_SAMPLES = AUDIO_RATE * AUDIO_PACKET_MS // 1000
+AUDIO_MAX_LATE_S = 0.1
+AUDIO_BITRATE = 32000
+# Voice buffered before playing (again) after running dry, and the most
+# kept; beyond that the oldest is discarded to bound the delay.
+AUDIO_CUSHION_SAMPLES = AUDIO_RATE * 120 // 1000
+AUDIO_BUFFER_MAX_SAMPLES = AUDIO_RATE * 400 // 1000
 # With no new operator frame for this long the screen track repeats the last
 # one, so a static source (a still image, an idle shared screen) keeps the
 # screen connection's encoder fed.
@@ -342,8 +354,18 @@ class ScreenVideoTrack(VideoStreamTrack):
         return frame
 
 
-class ScreenAudioTrack(AudioStreamTrack):
-    """Outbound audio to the Robot Screen: operator voice, or silence, at a steady 20 ms pace."""
+class ScreenAudioTrack(MediaStreamTrack):
+    """Outbound audio to the Robot Screen: operator voice, or silence, as 60 ms Opus packets.
+
+    The track encodes its own Opus packets instead of handing aiortc 20 ms
+    frames. On a busy Pi, P2's event loop can run tens of milliseconds late,
+    and aiortc's sender needs a trip through the loop per frame, so a 20 ms
+    pace could not be kept: the track fell seconds behind, then sent in
+    bursts faster than real time, and the operator frames that piled up in
+    the meantime overflowed the queue and were dropped. The kiosk played
+    that as speech with pieces missing — too fast. A 60 ms packet needs a
+    third as many trips, and a late packet is never followed by a burst.
+    """
 
     kind = "audio"
 
@@ -352,25 +374,70 @@ class ScreenAudioTrack(AudioStreamTrack):
         self.hub = hub
         self._start: float | None = None
         self._samples = 0
+        # Operator voice is mono; aiortc's decoder hands over stereo.
+        self._resampler = av.AudioResampler(format="s16", layout="mono", rate=AUDIO_RATE)
+        self._fifo = av.AudioFifo()
+        self._refilling = True
+        self._encoder = av.CodecContext.create("libopus", "w")
+        self._encoder.sample_rate = AUDIO_RATE
+        self._encoder.format = "s16"
+        self._encoder.layout = "mono"
+        self._encoder.bit_rate = AUDIO_BITRATE
+        self._encoder.options = {"application": "voip", "frame_duration": str(AUDIO_PACKET_MS)}
+        self._encoder.time_base = fractions.Fraction(1, AUDIO_RATE)
 
-    async def recv(self) -> av.AudioFrame:
+    async def recv(self) -> av.Packet:
+        if self.readyState != "live":
+            raise MediaStreamError
+        now = time.monotonic()
         if self._start is None:
-            self._start = time.monotonic()
+            self._start = now
         else:
-            wait = self._start + self._samples / AUDIO_RATE - time.monotonic()
+            wait = self._start + self._samples / AUDIO_RATE - now
             if wait > 0:
                 await asyncio.sleep(wait)
+            elif wait < -AUDIO_MAX_LATE_S:
+                # Running late (the Pi was busy): carry on from now rather
+                # than bursting to catch up, which the kiosk's jitter buffer
+                # would play back sped up.
+                self._start = now - self._samples / AUDIO_RATE
 
-        frame = self.hub.next_audio_frame()
-        if frame is None:
-            # Stereo s16 at 48 kHz matches what aiortc's Opus decoder
-            # produces, so the encoder's resampler never switches format.
-            frame = av.AudioFrame(format="s16", layout="stereo", samples=AUDIO_FRAME_SAMPLES)
+        frame = self._next_frame()
+        packets = self._encoder.encode(frame)
+        # libopus emits exactly one packet per full frame of frame_duration.
+        packet = packets[0]
+        packet.pts = frame.pts
+        packet.time_base = frame.time_base
+        return packet
+
+    def _next_frame(self) -> av.AudioFrame:
+        """The next 60 ms of operator voice, or silence while (re)filling the cushion."""
+        while (operator := self.hub.next_audio_frame()) is not None:
+            operator.pts = None
+            for mono in self._resampler.resample(operator):
+                mono.pts = None
+                self._fifo.write(mono)
+        # Operator audio reaches P2 in bursts when the Pi is busy. Keep a
+        # small cushion so a late burst doesn't cut words into pieces, but
+        # never let the backlog (and so the delay) grow past a cap.
+        excess = self._fifo.samples - AUDIO_BUFFER_MAX_SAMPLES
+        if excess > 0:
+            self._fifo.read(excess)
+        if self._refilling and self._fifo.samples >= AUDIO_CUSHION_SAMPLES:
+            self._refilling = False
+
+        if not self._refilling and self._fifo.samples >= AUDIO_PACKET_SAMPLES:
+            frame = self._fifo.read(AUDIO_PACKET_SAMPLES)
+        else:
+            # Ran dry (the operator is silent, or their audio is late): send
+            # silence and keep what has arrived until the cushion is full
+            # again, so speech resumes intact rather than in 60 ms scraps.
+            self._refilling = True
+            frame = av.AudioFrame(format="s16", layout="mono", samples=AUDIO_PACKET_SAMPLES)
             for plane in frame.planes:
                 plane.update(bytes(plane.buffer_size))
-            frame.sample_rate = AUDIO_RATE
-
+        frame.sample_rate = AUDIO_RATE
         frame.pts = self._samples
         frame.time_base = fractions.Fraction(1, AUDIO_RATE)
-        self._samples += int(frame.samples * AUDIO_RATE / (frame.sample_rate or AUDIO_RATE))
+        self._samples += AUDIO_PACKET_SAMPLES
         return frame

@@ -703,7 +703,7 @@ stateDiagram-v2
 | Control | Path to P2 | Access |
 |---|---|---|
 | Dashboard radio buttons (Talk panel) | data channel `{"type":"display_mode","mode":…}` | Any operator session; does not need or claim the floor |
-| Kiosk radio buttons (top-left) | `POST /screen/mode` | Localhost only |
+| Kiosk *Hold 3 s for VNC* button (top-left; switches to `vnc` only) | `POST /screen/mode` | Localhost only |
 | "Show Robot Screen" menu entry, `robot-screen.sh robot\|vnc` | `POST /screen/mode` | Localhost only |
 | Launcher loop | `GET /screen/mode` every 1 s | Opens / closes Chromium |
 
@@ -711,7 +711,10 @@ Every change is broadcast to all dashboards in `talk_status`, so the radio
 buttons always show the mode the robot is really in.
 
 A VNC viewer mirrors the robot display, so its clicks and key presses reach
-the kiosk radio buttons too; close it while talking to a victim. P2 logs
+the kiosk too. The kiosk once had one-click radio buttons, and stray VNC
+clicks kept closing it mid-conversation; its button now needs a 3-second
+press-and-hold and ignores keys. Still, close the viewer while talking to a
+victim. P2 logs
 which local client switched the mode (`source=local:127.0.0.1:kiosk` or
 `:curl`) in the `DISPLAY_MODE` event.
 

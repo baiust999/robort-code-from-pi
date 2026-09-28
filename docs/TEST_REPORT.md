@@ -105,6 +105,7 @@ ending: Newline), or test through the dashboard where noted.
 | I15 | VNC mode | Switch to VNC, then back to Robot Display. | Kiosk closes and reopens; the warning shows while in VNC. | | | |
 | I16 | Sensor alerts | Bring an obstacle within 20 cm. | Range card turns red. | | | |
 | I17 | Map | Drive outdoors with a GPS fix. | Robot position updates on the map. | | | |
+| I18 | Video-loss warning | While READY, stop P2 (`sudo pkill -9 -f p2_media`). | Mission state turns amber DRIVING_LIMITED; after P2 restarts, clicking **Retry video** returns it to READY. | | | |
 
 ---
 
@@ -187,7 +188,7 @@ List every failure or unexpected behaviour found during testing.
 |---|---|---|---|---|
 | Unit tests | 68 | 68 | 0 | 0 |
 | Hardware | 15 | | | |
-| Integration | 17 | | | |
+| Integration | 18 | | | |
 | Network | 8 | | | |
 | Failure / recovery | 10 | | | |
 | Field test | 1 | | | |

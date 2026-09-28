@@ -117,8 +117,8 @@ Remaining manual steps (Section 8.14.4, Stage 5):
        - Enable desktop autologin so the kiosk starts at boot:
            sudo raspi-config nonint do_boot_behaviour B4
        - VNC shows the same display as the kiosk. To use the Pi desktop,
-         pick "VNC" on the kiosk's corner radio buttons or on the
-         dashboard; "Show Robot Screen" in the app menu switches back.
+         hold the kiosk's corner "Hold 3 s for VNC" button, or pick VNC
+         on the dashboard; "Show Robot Screen" in the app menu switches back.
        - Connect the robot display (HDMI 0) and the speaker (3.5 mm jack),
          then make the jack the default audio output:
            wpctl status            # find the "Built-in Audio" sink id

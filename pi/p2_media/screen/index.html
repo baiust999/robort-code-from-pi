@@ -9,8 +9,10 @@
   shows text messages in large type. With no operator active it shows a
   reassurance screen.
 
-  The radio buttons in the corner switch the display to VNC mode: the
-  launcher then closes this kiosk so the Pi desktop can be used over VNC.
+  The button in the corner switches the display to VNC mode when held for
+  three seconds: the launcher then closes this kiosk so the Pi desktop can be
+  used over VNC. It has to be held because VNC mirrors this display, so a
+  stray click from a VNC viewer used to close the kiosk mid-conversation.
   "Show Robot Screen" on the desktop, or the dashboard, switches back.
 -->
 <html lang="en">
@@ -24,10 +26,12 @@
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
   /* The cursor only shows while the mouse moves (e.g. over VNC). */
   body.idle-cursor, body.idle-cursor * { cursor: none !important; }
-  #mode { position: absolute; left: 1.5vw; top: 1.5vh; z-index: 10; display: flex; gap: 1.5vw;
-    padding: .8vh 1.2vw; border-radius: 1vh; background: rgba(0, 0, 0, .55); font-size: 2.2vh; }
-  #mode label { display: flex; align-items: center; gap: .5vw; cursor: pointer; }
-  #mode input { width: 2.2vh; height: 2.2vh; margin: 0; cursor: pointer; }
+  #vnc { position: absolute; left: 1.5vw; top: 1.5vh; z-index: 10; overflow: hidden;
+    padding: .8vh 1.2vw; border: 0; border-radius: 1vh; background: rgba(0, 0, 0, .55);
+    color: #fff; font: inherit; font-size: 2.2vh; cursor: pointer; user-select: none; touch-action: none; }
+  #vnc-fill { position: absolute; inset: 0; width: 0; background: rgba(245, 158, 11, .7); }
+  #vnc.holding #vnc-fill { width: 100%; transition: width 3s linear; }
+  #vnc-label { position: relative; }
   video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; }
   .layer { position: absolute; inset: 0; display: flex; flex-direction: column;
     align-items: center; justify-content: center; text-align: center; padding: 5vh 6vw; box-sizing: border-box; }
@@ -58,10 +62,7 @@
 <div id="talking" hidden>🎤 Rescuer is speaking</div>
 <div id="message" hidden></div>
 <button id="sound" type="button" hidden>Tap to turn on sound</button>
-<form id="mode">
-  <label><input type="radio" name="mode" value="robot" checked> Robot screen</label>
-  <label><input type="radio" name="mode" value="vnc"> VNC</label>
-</form>
+<button id="vnc" type="button" tabindex="-1"><span id="vnc-fill"></span><span id="vnc-label">Hold 3 s for VNC</span></button>
 <script>
 'use strict';
 const RETRY_MS = 3000;
@@ -94,23 +95,50 @@ async function enableSound() {
 }
 soundBtn.addEventListener('click', enableSound);
 
-// This page is only on screen in "robot" mode; picking VNC asks P2 to
-// switch, and the launcher closes the kiosk within a second.
-const modeForm = document.getElementById('mode');
-modeForm.addEventListener('change', async (event) => {
-  const mode = event.target.value;
+// This page is only on screen in "robot" mode. Holding the VNC button for
+// VNC_HOLD_MS asks P2 to switch, and the launcher closes the kiosk within a
+// second. Letting go early cancels. It only answers a held pointer — no
+// click and no key — so a stray click or key press from a VNC viewer can't
+// silence the operator mid-sentence.
+const VNC_HOLD_MS = 3000;
+const vncBtn = document.getElementById('vnc');
+const vncLabel = document.getElementById('vnc-label');
+let holdTimer = null;
+
+function cancelHold() {
+  clearTimeout(holdTimer);
+  holdTimer = null;
+  vncBtn.classList.remove('holding');
+}
+
+async function switchToVnc() {
+  vncLabel.textContent = 'Switching to VNC…';
   try {
     const resp = await fetch('/screen/mode', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode }),
+      body: JSON.stringify({ mode: 'vnc' }),
     });
     if (!resp.ok) throw new Error('mode switch failed: ' + resp.status);
   } catch (err) {
     console.warn(err);
-    modeForm.elements.mode.value = 'robot';
+    vncLabel.textContent = 'Failed — hold again';
+    setTimeout(() => { vncLabel.textContent = 'Hold 3 s for VNC'; }, 3000);
   }
+}
+
+vncBtn.addEventListener('pointerdown', (event) => {
+  if (event.button !== 0) return;
+  vncBtn.setPointerCapture(event.pointerId);
+  vncBtn.classList.add('holding');
+  holdTimer = setTimeout(() => {
+    cancelHold();
+    switchToVnc();
+  }, VNC_HOLD_MS);
 });
+for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+  vncBtn.addEventListener(type, cancelHold);
+}
 
 let cursorTimer = null;
 function showCursor() {

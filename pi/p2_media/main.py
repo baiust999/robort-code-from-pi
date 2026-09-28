@@ -17,6 +17,7 @@ kiosk page and desktop shortcut switch it with ``POST /screen/mode``
 
 from __future__ import annotations
 
+import faulthandler
 import itertools
 import sys
 from pathlib import Path
@@ -211,6 +212,9 @@ def create_app(server: MediaServer) -> FastAPI:
 
 
 def main() -> int:
+    # PyAV/FFmpeg run native code; on a segfault, dump every thread's
+    # Python stack to stderr (the journal) instead of dying silently.
+    faulthandler.enable()
     try:
         config = P2Config.from_env()
     except Exception as exc:  # noqa: BLE001

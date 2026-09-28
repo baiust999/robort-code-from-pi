@@ -13,7 +13,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable
 
-from aiortc import RTCPeerConnection, RTCSessionDescription
+from aiortc import RTCPeerConnection, RTCRtpSender, RTCSessionDescription
 
 from common.logging_setup import EventLogger
 
@@ -143,7 +143,12 @@ async def negotiate_screen(
     """Answer the Robot Screen kiosk's recv-only offer with the operator relay tracks."""
     pc = RTCPeerConnection()
     pc.addTrack(ScreenVideoTrack(hub))
-    pc.addTrack(ScreenAudioTrack(hub))
+    audio_sender = pc.addTrack(ScreenAudioTrack(hub))
+    # ScreenAudioTrack sends ready-made Opus packets, so no other codec will do.
+    opus = [c for c in RTCRtpSender.getCapabilities("audio").codecs if c.mimeType == "audio/opus"]
+    for transceiver in pc.getTransceivers():
+        if transceiver.sender is audio_sender:
+            transceiver.setCodecPreferences(opus)
     screen_channel = None
 
     @pc.on("datachannel")

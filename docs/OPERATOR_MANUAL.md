@@ -75,7 +75,7 @@ The large mission state on the left tells you whether it is safe to drive.
 |---|---|---|
 | **READY** (green) | Everything working, robot idle. | Drive normally. |
 | **DRIVING** (blue) | The robot is moving. | — |
-| **DRIVING_LIMITED** (amber) | Video or mesh link degraded. | Drive slowly and carefully. |
+| **DRIVING_LIMITED** (amber) | Video link from the robot lost. You can still drive, but you can't see. | Stop. Click **Retry video** on the video panel; if it fails, wait a few seconds for the media service to restart and try again. |
 | **STOP** (red) | Connection lost, Arduino not responding, or no reply from the robot for over 3 seconds. Motion is disabled. | Stop and wait. See [Troubleshooting](#10-troubleshooting). |
 
 ---

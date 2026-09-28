@@ -9,7 +9,7 @@
 # VNC (wayvnc) mirrors this same display, so a full-screen kiosk also covers
 # the operator's VNC session. P2 therefore holds a display mode — "robot"
 # (kiosk shown) or "vnc" (kiosk closed, Pi desktop usable) — switched from
-# the dashboard, the radio buttons on the kiosk page, or this script:
+# the dashboard, the kiosk page's hold-to-switch VNC button, or this script:
 #
 #   robot-screen.sh          run the launcher loop (autostart does this)
 #   robot-screen.sh robot    show the Robot Screen (desktop/menu shortcut)

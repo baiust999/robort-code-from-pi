@@ -26,12 +26,13 @@ function App() {
       deriveMissionState({
         wsConnected: connected,
         serialOk: telemetry?.serial_ok ?? false,
-        videoActive: true,
+        videoActive: video.connected,
+        // No mesh link-quality source exists yet (Known Limitations, A.10.3).
         meshOk: true,
         lastCmdAckMs: lastAckMs,
         commandActive: telemetry?.fw_state === FW_STATE_DRIVING,
       }),
-    [connected, telemetry, lastAckMs],
+    [connected, telemetry, lastAckMs, video.connected],
   );
 
   const controlsDisabled = !connected || role !== 'controller';
