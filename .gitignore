@@ -9,6 +9,7 @@ venv/
 # Runtime data
 pi/var/
 var/log/
+var/run/
 
 # Node
 node_modules/
