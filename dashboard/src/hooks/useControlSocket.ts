@@ -8,8 +8,11 @@ import {
   MSG_RECOVERY_BATCH,
   MSG_ACK,
   MSG_ERROR,
+  MSG_ROLE,
   ROLE_CONTROLLER,
+  ROLE_OBSERVER,
   HEARTBEAT_PERIOD_MS,
+  type Auth,
   type ClientMessage,
   type TelemetrySnapshot,
   type Role,
@@ -27,6 +30,10 @@ export interface AlertLogEntry {
 export interface ControlSocketState {
   connected: boolean;
   role: Role | null;
+  /** Result of the last controller-key check. */
+  auth: Auth | null;
+  /** Seconds left on a lockout, when auth is 'locked'. */
+  retryAfterS: number | null;
   telemetry: TelemetrySnapshot | null;
   lastAckMs: number;
   alerts: AlertLogEntry[];
@@ -38,10 +45,15 @@ export interface ControlSocketState {
 /**
  * Owns the P1 control WebSocket: connect, heartbeat, exponential-backoff
  * reconnect, and resume_from replay on reconnect (Section 8.10.1, 8.15.4).
+ *
+ * The hello carries `controllerKey`; P1 makes this dashboard controller only
+ * if it is right. A changed key is re-sent as a fresh hello on the open socket.
  */
-export function useControlSocket(): ControlSocketState {
+export function useControlSocket(controllerKey: string | null): ControlSocketState {
   const [connected, setConnected] = useState(false);
   const [role, setRole] = useState<Role | null>(null);
+  const [auth, setAuth] = useState<Auth | null>(null);
+  const [retryAfterS, setRetryAfterS] = useState<number | null>(null);
   const [telemetry, setTelemetry] = useState<TelemetrySnapshot | null>(null);
   const [lastAckMs, setLastAckMs] = useState(0);
   const [alerts, setAlerts] = useState<AlertLogEntry[]>([]);
@@ -53,6 +65,8 @@ export function useControlSocket(): ControlSocketState {
   const heartbeatTimerRef = useRef<number | null>(null);
   const reconnectTimerRef = useRef<number | null>(null);
   const alertIdRef = useRef(0);
+  const keyRef = useRef(controllerKey);
+  const roleRef = useRef<Role | null>(null);
   const mountedRef = useRef(true);
 
   const pushAlert = useCallback((message: string) => {
@@ -86,7 +100,7 @@ export function useControlSocket(): ControlSocketState {
       }
       backoffRef.current = RECONNECT_MIN_MS;
       setConnected(true);
-      socket.send(JSON.stringify({ type: MSG_HELLO, role: ROLE_CONTROLLER }));
+      socket.send(JSON.stringify(helloMessage(keyRef.current)));
       if (lastServerTsRef.current > 0) {
         socket.send(JSON.stringify({ type: MSG_RESUME_FROM, last_ts: lastServerTsRef.current }));
       }
@@ -97,6 +111,7 @@ export function useControlSocket(): ControlSocketState {
       if (!isCurrent() || !mountedRef.current) return;
       setConnected(false);
       setRole(null);
+      roleRef.current = null;
       pushAlert('disconnected; reconnecting…');
       scheduleReconnect();
     };
@@ -132,7 +147,20 @@ export function useControlSocket(): ControlSocketState {
         }
         case MSG_ACK: {
           if (msg.of === 'hello' && typeof msg.role === 'string') {
+            roleRef.current = msg.role as Role;
             setRole(msg.role as Role);
+            setAuth((msg.auth as Auth) ?? null);
+            setRetryAfterS(typeof msg.retry_after_s === 'number' ? msg.retry_after_s : null);
+          }
+          break;
+        }
+        case MSG_ROLE: {
+          if (typeof msg.role === 'string') {
+            roleRef.current = msg.role as Role;
+            setRole(msg.role as Role);
+            if (msg.role === ROLE_OBSERVER && msg.reason === 'taken_over') {
+              pushAlert('another dashboard took control; you are now an observer');
+            }
           }
           break;
         }
@@ -167,9 +195,19 @@ export function useControlSocket(): ControlSocketState {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // A changed key takes effect on the open socket; on a closed one the next
+  // connect sends it anyway.
+  useEffect(() => {
+    if (keyRef.current === controllerKey) return;
+    keyRef.current = controllerKey;
+    send(helloMessage(controllerKey));
+  }, [controllerKey, send]);
+
   // Idle heartbeat: keeps the dead-man armed when the operator isn't driving.
+  // Only the controller's count, so observers don't send them.
   useEffect(() => {
     heartbeatTimerRef.current = window.setInterval(() => {
+      if (roleRef.current !== ROLE_CONTROLLER) return;
       send({ type: MSG_HEARTBEAT });
       setLastAckMs((v) => v + HEARTBEAT_PERIOD_MS);
     }, HEARTBEAT_PERIOD_MS);
@@ -198,5 +236,9 @@ export function useControlSocket(): ControlSocketState {
     send({ type: 'stop_all' });
   }, [send]);
 
-  return { connected, role, telemetry, lastAckMs, alerts, sendMotor, sendServo, sendStopAll };
+  return { connected, role, auth, retryAfterS, telemetry, lastAckMs, alerts, sendMotor, sendServo, sendStopAll };
+}
+
+function helloMessage(key: string | null): ClientMessage {
+  return key ? { type: MSG_HELLO, role: ROLE_CONTROLLER, key } : { type: MSG_HELLO, role: ROLE_CONTROLLER };
 }

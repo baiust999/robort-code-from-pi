@@ -42,6 +42,15 @@ def _env_path(name: str, default: Path) -> Path:
     return Path(raw) if raw else default
 
 
+def _controller_key() -> str:
+    """The key a dashboard must present to control the robot; empty means nobody can.
+
+    Set once in /etc/robot/p1.env; the watchdog unit loads every env file,
+    so P1 and P2 both see it.
+    """
+    return os.environ.get("CONTROLLER_KEY", "").strip()
+
+
 def _default_root() -> Path:
     """/ on the Pi, ./var during development."""
     if _IS_POSIX and Path("/opt/robot").exists():
@@ -99,6 +108,7 @@ class P1Config:
     stun_url: str
     static_dir: Path | None
     telemetry_log_enabled: bool
+    controller_key: str
 
     @classmethod
     def from_env(cls) -> "P1Config":
@@ -125,6 +135,7 @@ class P1Config:
             stun_url=os.environ.get("STUN_URL", "stun:192.168.10.1:3478"),
             static_dir=static_dir,
             telemetry_log_enabled=_env_bool("TELEMETRY_LOG", True),
+            controller_key=_controller_key(),
         )
 
 
@@ -142,6 +153,9 @@ class P2Config:
     framerate: int
     bitrate_kbps: int
     paths: Paths
+    controller_key: str
+    # P1 on this Pi, asked which dashboard is the controller.
+    p1_url: str
 
     @classmethod
     def from_env(cls) -> "P2Config":
@@ -156,6 +170,8 @@ class P2Config:
             framerate=_env_int("VIDEO_FPS", 10),
             bitrate_kbps=_env_int("VIDEO_BITRATE_KBPS", 500),
             paths=Paths.from_env(),
+            controller_key=_controller_key(),
+            p1_url=f"http://127.0.0.1:{_env_int('P1_PORT', protocol.P1_PORT)}",
         )
 
 

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { negotiateWebrtc } from '../lib/api';
+import type { Auth } from '../lib/protocol';
 
 /** Delay between attempts while P2 is still starting (e.g. right after Pi boot). */
 const STARTUP_RETRY_MS = 3000;
@@ -25,6 +26,8 @@ export interface WebrtcVideoState {
   retry: () => void;
   /** Present while a peer connection exists; replaced on every reconnect. */
   talkLink: TalkLink | null;
+  /** P2's controller-key check for this connection. */
+  auth: Auth | null;
 }
 
 /**
@@ -39,8 +42,12 @@ export interface WebrtcVideoState {
  * boot would otherwise be stuck on an error. Once video has connected, a later
  * loss is surfaced as an error and only reconnected via retry(), so the
  * operator sees the drop rather than having it papered over.
+ *
+ * The offer carries `controllerKey`; without the right one P2 still sends
+ * the robot's video and audio but ignores anything sent back. A changed key
+ * renegotiates.
  */
-export function useWebrtcVideo(): WebrtcVideoState {
+export function useWebrtcVideo(controllerKey: string | null): WebrtcVideoState {
   const videoRef = useRef<HTMLVideoElement>(null);
   const everConnected = useRef(false);
   const [attempt, setAttempt] = useState(0);
@@ -48,6 +55,7 @@ export function useWebrtcVideo(): WebrtcVideoState {
   const [error, setError] = useState<string | null>(null);
   const [waiting, setWaiting] = useState(false);
   const [talkLink, setTalkLink] = useState<TalkLink | null>(null);
+  const [auth, setAuth] = useState<Auth | null>(null);
 
   const retry = useCallback(() => {
     everConnected.current = false;
@@ -106,9 +114,10 @@ export function useWebrtcVideo(): WebrtcVideoState {
 
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
-        const answer = await negotiateWebrtc(offer);
+        const answer = await negotiateWebrtc(offer, controllerKey);
         if (cancelled) return;
-        await pc.setRemoteDescription(answer);
+        setAuth(answer.auth);
+        await pc.setRemoteDescription({ type: answer.type, sdp: answer.sdp });
       } catch (err) {
         fail(err instanceof Error ? err.message : 'webrtc setup failed');
       }
@@ -121,8 +130,9 @@ export function useWebrtcVideo(): WebrtcVideoState {
       if (retryTimer !== null) clearTimeout(retryTimer);
       pc?.close();
       setTalkLink(null);
+      setAuth(null);
     };
-  }, [attempt]);
+  }, [attempt, controllerKey]);
 
-  return { videoRef, connected, error, waiting, retry, talkLink };
+  return { videoRef, connected, error, waiting, retry, talkLink, auth };
 }

@@ -19,8 +19,10 @@ const SOURCES: { id: VideoSource; label: string }[] = [
 ];
 
 /** Talk to the victim through the robot's speaker and display, Section 16. */
-export function TalkPanel(props: { talk: TalkbackState; linkUp: boolean }) {
-  const { talk, linkUp } = props;
+export function TalkPanel(props: { talk: TalkbackState; linkUp: boolean; isController: boolean }) {
+  const { talk, linkUp, isController } = props;
+  // Both must agree: P1 says this dashboard is the controller, and P2 accepts it.
+  const canControl = isController && talk.canControl;
   const [text, setText] = useState('');
   const [sentTs, setSentTs] = useState<number | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -30,7 +32,7 @@ export function TalkPanel(props: { talk: TalkbackState; linkUp: boolean }) {
     if (preview.current) preview.current.srcObject = talk.previewStream;
   }, [talk.previewStream]);
 
-  const blocked = !linkUp || talk.floor === 'other';
+  const blocked = !linkUp || !canControl || talk.floor === 'other';
   const shown = sentTs !== null && talk.lastAckTs === sentTs;
 
   function submit(e: FormEvent) {
@@ -52,7 +54,7 @@ export function TalkPanel(props: { talk: TalkbackState; linkUp: boolean }) {
 
   return (
     <section className="flex flex-col gap-2 rounded-lg border border-white/10 bg-white/5 p-3 text-sm">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-white/50">Talk to victim</h3>
         <span
           className={`ml-auto flex items-center gap-1 text-xs ${talk.screenOnline ? 'text-green-400' : 'text-amber-400'}`}
@@ -71,9 +73,9 @@ export function TalkPanel(props: { talk: TalkbackState; linkUp: boolean }) {
         )}
       </div>
 
-      <fieldset disabled={!linkUp} className="flex items-center gap-3 text-xs disabled:opacity-40">
+      <fieldset disabled={!linkUp || !canControl} className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs disabled:opacity-40">
         <legend className="sr-only">Robot display</legend>
-        <span className="text-white/50">Robot display:</span>
+        <span className="w-full text-white/50">Robot display:</span>
         {DISPLAY_MODES.map((m) => (
           <label key={m.id} className="flex cursor-pointer items-center gap-1">
             <input
@@ -95,11 +97,15 @@ export function TalkPanel(props: { talk: TalkbackState; linkUp: boolean }) {
         </p>
       )}
 
+      {linkUp && !canControl && (
+        <p className="text-xs text-amber-300">View only: observers can't talk to the victim.</p>
+      )}
+
       {talk.floor === 'other' && (
         <p className="text-xs text-amber-300">Another operator is talking to the victim.</p>
       )}
 
-      <div className="flex items-stretch gap-2">
+      <div className="flex flex-col gap-2">
         <button
           type="button"
           disabled={blocked || !talk.mediaDevicesAvailable}
@@ -110,14 +116,14 @@ export function TalkPanel(props: { talk: TalkbackState; linkUp: boolean }) {
           onPointerUp={talk.stopTalking}
           onPointerCancel={talk.stopTalking}
           onLostPointerCapture={talk.stopTalking}
-          className={`w-32 shrink-0 select-none rounded-md px-3 py-2 font-semibold touch-none disabled:opacity-40 ${
+          className={`w-full select-none rounded-md px-3 py-2 font-semibold touch-none disabled:opacity-40 ${
             talk.talking ? 'bg-red-600 text-white' : 'bg-white/10 hover:bg-white/20'
           }`}
         >
           {talk.talking ? '🎤 Talking…' : talk.micReady ? '🎤 Hold to talk' : '🎤 Enable mic'}
         </button>
 
-        <div className="flex flex-1 flex-col gap-1">
+        <div className="flex flex-col gap-1">
           <span className="text-xs text-white/50">Show on robot display</span>
           <div className="flex flex-wrap gap-1">
             {SOURCES.map((s) => {
@@ -156,23 +162,23 @@ export function TalkPanel(props: { talk: TalkbackState; linkUp: boolean }) {
           playsInline
           muted
           hidden={!talk.previewStream}
-          className="h-14 w-20 shrink-0 rounded bg-black object-contain"
+          className="aspect-video w-full rounded bg-black object-contain"
         />
       </div>
 
-      <form onSubmit={submit} className="flex gap-2">
+      <form onSubmit={submit} className="flex flex-wrap gap-2">
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
           maxLength={SCREEN_TEXT_MAX}
           disabled={blocked}
           placeholder="Message to show on robot screen…"
-          className="min-w-0 flex-1 rounded border border-white/20 bg-black/40 px-2 py-1 disabled:opacity-40"
+          className="w-full rounded border border-white/20 bg-black/40 px-2 py-1 disabled:opacity-40"
         />
         <button
           type="submit"
           disabled={blocked || !text.trim()}
-          className="rounded bg-sky-600 px-3 py-1 font-semibold disabled:opacity-40"
+          className="flex-1 rounded bg-sky-600 px-3 py-1 font-semibold disabled:opacity-40"
         >
           Send
         </button>
@@ -183,7 +189,7 @@ export function TalkPanel(props: { talk: TalkbackState; linkUp: boolean }) {
             talk.clearText();
             setSentTs(null);
           }}
-          className="rounded bg-white/10 px-3 py-1 hover:bg-white/20 disabled:opacity-40"
+          className="flex-1 rounded bg-white/10 px-3 py-1 hover:bg-white/20 disabled:opacity-40"
         >
           Clear
         </button>

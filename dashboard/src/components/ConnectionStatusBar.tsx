@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { MissionState } from '../lib/protocol';
 
 const MISSION_STYLES: Record<MissionState, string> = {
@@ -13,8 +14,10 @@ export function ConnectionStatusBar(props: {
   missionState: MissionState;
   serialOk: boolean;
   gpsFix: boolean;
+  /** Controller-key box, shown at the right-hand end. */
+  children?: ReactNode;
 }) {
-  const { connected, role, missionState, serialOk, gpsFix } = props;
+  const { connected, role, missionState, serialOk, gpsFix, children } = props;
   return (
     <div className="flex items-center gap-3 border-b border-white/10 bg-black/30 px-4 py-2 text-sm">
       <span
@@ -22,7 +25,17 @@ export function ConnectionStatusBar(props: {
       >
         {connected ? 'WS connected' : 'WS offline'}
       </span>
-      <span className="text-white/50">role: {role ?? '—'}</span>
+      {role === 'controller' ? (
+        <span className="rounded-full border border-emerald-500/40 bg-emerald-500/20 px-2 py-0.5 font-semibold text-emerald-300">
+          CONTROLLER
+        </span>
+      ) : role === 'observer' ? (
+        <span className="rounded-full border border-amber-500/40 bg-amber-500/20 px-2 py-0.5 font-semibold text-amber-300">
+          OBSERVER — view only
+        </span>
+      ) : (
+        <span className="text-white/50">role: —</span>
+      )}
       <span className={`rounded-full border px-2 py-0.5 font-medium ${MISSION_STYLES[missionState]}`}>
         {missionState}
       </span>
@@ -32,6 +45,7 @@ export function ConnectionStatusBar(props: {
       <span className={gpsFix ? 'text-emerald-300' : 'text-white/40'}>
         GPS {gpsFix ? 'fix' : 'no fix'}
       </span>
+      {children}
     </div>
   );
 }

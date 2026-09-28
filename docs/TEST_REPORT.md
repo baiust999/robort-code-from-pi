@@ -39,8 +39,8 @@ unusual. If a test fails, describe it in [Section 9](#9-issues-found).
 ## 3. Automated unit tests
 
 **Command:** `cd pi && pytest`
-**Run on:** Raspberry Pi 4, 2026-09-27
-**Result:** **68 passed, 0 failed** (4.4 s)
+**Run on:** Raspberry Pi 4, 2026-09-28
+**Result:** **106 passed, 0 failed** (3.3 s)
 
 | Test file | Tests | What it verifies | Result |
 |---|---|---|---|
@@ -49,9 +49,11 @@ unusual. If a test fails, describe it in [Section 9](#9-issues-found).
 | `test_mock_deadman.py` | 10 | Simulated firmware: dead-man timer trips after 2 s and stops the motors; heartbeat re-arms it; oversized and unknown commands are rejected; PWM is clamped; telemetry arrives at the expected rate. | PASS |
 | `test_ring_buffer.py` | 9 | The 300-slot telemetry buffer keeps order, overwrites the oldest entries, returns only newer frames on resume, and reports gaps. | PASS |
 | `test_telemetry_parser.py` | 8 | Arduino telemetry lines are parsed correctly; wrong field counts, non-numeric, out-of-range, empty and oversized lines are rejected. | PASS |
-| `test_talkback.py` | 15 | Only one operator can hold the robot screen; release and disconnect free it; messages reach the screen; a reconnecting screen gets the current text; Robot Display / VNC mode switching. | PASS |
-| `test_shared_capture.py` | 3 | Several video sessions share one camera device; the device closes after the last session and reopens; open errors are reported. | PASS |
-| **Total** | **68** | | **68 / 68 PASS** |
+| `test_talkback.py` | 22 | Only one operator can hold the robot screen; release and disconnect free it; messages reach the screen; a reconnecting screen gets the current text; Robot Display / VNC mode switching; a session without the controller key can't talk, show video, send text or switch the display, and its media never reaches the screen; a session with the key but not from P1's current controller is also view-only; a takeover moves talk to the new controller and frees the floor. | PASS |
+| `test_controller_access.py` | 25 | Controller key: the right key makes a dashboard controller, no key or a wrong one makes it an observer; a stranger connecting first doesn't block the operator; a second keyed dashboard takes over, demoting and telling the first and stopping the robot; observers' drive, servo and emergency-stop commands are rejected and their heartbeats ignored; 5 wrong keys lock an IP out for 5 minutes, even for the right key, without affecting other IPs; no `CONTROLLER_KEY` means nobody controls; P2 gives the talk path only to offers with the key; P1 reports its controller's host to P2 on a localhost-only endpoint. | PASS |
+| `test_shared_capture.py` | 5 | Several video sessions share one camera device; the device closes after the last session and reopens; open errors are reported; each session gets its own yuv420p copy of every camera frame (never a shared frame object), from YUYV or yuv420p cameras. | PASS |
+| `test_resilient_audio.py` | 4 | The robot mic track sends silence while the mic is missing and switches to it once it opens; a mic lost mid-session is reopened; each outage is reported once; output is one continuous stream of 60 ms Opus packets, paced in real time. | PASS |
+| **Total** | **106** | | **106 / 106 PASS** |
 
 **Limitation:** these tests use simulated hardware. They prove the software
 logic, not the real motors, sensors or radio link, which are covered in the
@@ -88,14 +90,16 @@ ending: Newline), or test through the dashboard where noted.
 
 | ID | Test | Procedure | Expected | Result | Pass/Fail | Date / By |
 |---|---|---|---|---|---|---|
-| I1 | Dashboard loads | Open `http://192.168.10.10:8080`. | `WS connected`, `role: controller`, `READY`. | | | |
+| I1 | Dashboard loads | Open `http://192.168.10.10:8080` and enter the controller key. | `WS connected`, `CONTROLLER`, `READY`. | | | |
 | I2 | Button drive | Hold each drive button, then release. | Robot moves while held and stops on release. | | | |
 | I3 | Keyboard drive | Hold arrow keys and WASD. | Same as I2. | | | |
 | I4 | Typing doesn't drive | Type "wasd" in the message box. | Robot does not move. | | | |
 | I5 | Speed slider | Drive at speeds 60, 120 and 180. | Visibly different speeds; never above 180. | | | |
 | I6 | Emergency stop | Drive at full speed, click EMERGENCY STOP. | Stops immediately. Stopping distance: ___ cm. | | | |
-| I7 | Observer role | Open a second dashboard. | It shows `role: observer`; its drive controls are disabled. | | | |
-| I8 | Controller handover | Close the first dashboard; reload the second. | The second becomes controller. | | | |
+| I7 | Observer role | Open a second dashboard (another laptop) without the key. | It shows `OBSERVER — view only`; video, sensors and map work; Drive, Servo, Talk and EMERGENCY STOP are greyed out. | | | |
+| I8 | Controller takeover | Enter the key on the second dashboard. | The second becomes controller; the robot stops; the first shows `OBSERVER` and "another dashboard took control", and within about a second its Talk panel is greyed out too ("View only"). | | | |
+| I8a | Stranger first | Restart the robot service, open a dashboard without the key, then the operator's with the key. | The operator is controller; the first stays observer. | | | |
+| I8b | Wrong key and lockout | On a laptop, enter a wrong key 5 times, then the right key. | "Wrong controller key." four times, then "Too many wrong keys"; the right key is refused for 5 minutes; that laptop can still watch. | | | |
 | I9 | Live video | Watch the video panel. | Clear 640×480 video. | | | |
 | I10 | Push-to-talk | Hold to talk and speak. | Voice is heard from the robot speaker. | | | |
 | I11 | Operator camera | Click My camera. | Operator's face appears on the robot display. | | | |
@@ -106,6 +110,7 @@ ending: Newline), or test through the dashboard where noted.
 | I16 | Sensor alerts | Bring an obstacle within 20 cm. | Range card turns red. | | | |
 | I17 | Map | Drive outdoors with a GPS fix. | Robot position updates on the map. | | | |
 | I18 | Video-loss warning | While READY, stop P2 (`sudo pkill -9 -f p2_media`). | Mission state turns amber DRIVING_LIMITED; after P2 restarts, clicking **Retry video** returns it to READY. | | | |
+| I19 | Robot audio | Click **Listen** and speak near the robot for a minute. | Voice is heard clearly on the dashboard, without dropouts, and stays in step with the video. | | | |
 
 ---
 
@@ -178,7 +183,9 @@ List every failure or unexpected behaviour found during testing.
 
 | # | Test ID | Description | Severity (high / medium / low) | Fixed? | Notes |
 |---|---|---|---|---|---|
-| 1 | | | | | |
+| 1 | I19 | Robot audio on the dashboard was choppy: P2 sent only ~75 % of the mic audio (305 of ~400 packets in 8 s, none lost on the network). aiortc encoded each 20 ms frame on a thread pool shared with every viewer's video encoding, which the busy Pi could not keep up with. | High | Yes, 2026-09-28 | The mic track now encodes its own 60 ms Opus packets; measured 99 % of real time afterwards (165 × 60 ms in 10 s). |
+| 2 | I19 | A dashboard stayed silent until reloaded if the mic could not be opened when it connected. The USB webcam/mic was seen dropping off USB and re-enumerating when P2 reopened it. | Medium | Yes, 2026-09-28 | Each session's mic track retries every 2 s and switches to the mic when it returns (`MIC_OPEN_FAIL` / `MIC_RESTORED` in `p2_events.log`). |
+| 3 | — | P2 crashed with a segmentation fault (exit -11), every 1–2 minutes once two dashboards were watching (13 crashes on 2026-09-28); P3 restarted it after ~10 s each time, dropping the video. | High | Yes, 2026-09-28 | Every `faulthandler` trace showed two VP8 encoder threads at once. The camera's YUYV frames were one object shared by all sessions, and each encoder converted it with `frame.reformat()`, which PyAV runs through a converter cached on the frame with the GIL released. Reproduced off the robot: two encoders on shared YUYV frames segfaulted 3/3 runs; with each session given its own yuv420p copy (`PrivateVideoTrack`), 3/3 runs of 1,500 frame pairs completed. |
 
 ---
 
@@ -186,9 +193,9 @@ List every failure or unexpected behaviour found during testing.
 
 | Area | Tests | Passed | Failed | Not run |
 |---|---|---|---|---|
-| Unit tests | 68 | 68 | 0 | 0 |
+| Unit tests | 106 | 106 | 0 | 0 |
 | Hardware | 15 | | | |
-| Integration | 18 | | | |
+| Integration | 21 | | | |
 | Network | 8 | | | |
 | Failure / recovery | 10 | | | |
 | Field test | 1 | | | |

@@ -423,7 +423,7 @@ as child processes and supervises them.
 | Port | TCP 8443 (HTTP signalling); media over UDP ports chosen by ICE |
 | Owned resources | USB camera (`/dev/video0`), USB mic (first ALSA capture card) |
 | Video to operator | 640×480 @ 10 fps, software-encoded by aiortc (VP8 or H.264, whichever the browser's offer prefers; Chrome lists VP8 first) |
-| Audio to operator | Opus (aiortc encoder, 96 kbps) |
+| Audio to operator | Mono Opus, 32 kbps, 60 ms packets encoded by P2 itself (`ResilientAudioTrack`) |
 | Shared capture | One open camera and one open mic, fanned out to every viewer (`SharedCapture` / `MediaRelay`) |
 | Relay | Operator audio/video decoded and re-encoded to the Robot Screen peer; `screen` data-channel messages forwarded (`talkback.ScreenHub`) |
 | Signalling | `POST /webrtc/offer` (operator), `POST /webrtc/screen-offer` (Robot Screen, localhost only) |
@@ -873,7 +873,7 @@ sensor values with a new `seq` and `server_ts`.
 | Track | Direction | Content | Codec / rate |
 |-------|-----------|---------|--------------|
 | 1 | Robot → Operator | Robot camera | VP8 or H.264 (software, aiortc), 640×480 @ 10 fps; aiortc's rate control (VP8 starts at 500 kbps) |
-| 2 | Robot → Operator | Robot microphone | Opus, 96 kbps (aiortc default) |
+| 2 | Robot → Operator | Robot microphone | Mono Opus, 32 kbps, one packet per 60 ms (encoded by P2) |
 | 3 | Operator → Robot display | Laptop camera (640×480 @ 10 fps), still image (canvas at 1024×600) or screen share (5 fps) | Browser's choice |
 | 4 | Operator → Robot speaker | Laptop mic, push-to-talk (echo cancellation, noise suppression, AGC on) | Opus |
 
@@ -887,6 +887,13 @@ re-encodes it itself as **mono Opus, 32 kbps, one packet per 60 ms**, with a
 120 ms cushion after silence and a 400 ms cap on buffered voice. This
 replaced 20 ms frames, which a busy Pi could not send on time (speech
 arrived sped up with pieces missing). See `SOFTWARE_ARCHITECTURE.md`, A.11.
+
+**Robot audio (P2 → dashboard).** The robot mic goes out the same way:
+P2 encodes **mono Opus, 32 kbps, one packet per 60 ms** itself instead of
+leaving 20 ms frames to aiortc's shared encoder thread pool, which on a busy
+Pi sent only ~75 % of the audio and made it choppy. If the mic cannot be
+opened, or drops off USB, the session gets silence and P2 retries every
+2 s, switching back to the mic as soon as it returns.
 
 **Video source options (Track 3):**
 
@@ -1137,8 +1144,9 @@ Audio (Two-Way):
 │  │  config (p2_media/alsa.conf)
 │  ├─ Shared: one open device fanned out to every session (MediaRelay,
 │  │  buffered so no audio frame is skipped)
-│  ├─ Encode: Opus (aiortc, 96 kbps)
-│  ├─ Fallback: silence if the mic cannot be opened
+│  ├─ Encode: by P2, mono Opus, 32 kbps, 60 ms packets
+│  ├─ Fallback: silence while the mic cannot be opened; retried every
+│  │  2 s, switching back to the mic when it returns
 │  └─ Output: Track 2
 │
 ├─ Speaker (operator → victim):
@@ -1543,7 +1551,8 @@ Recovery:
 └─ Operator clicks "Retry video" on the dashboard
 
 If only the camera or mic fails to open, P2 keeps running and sends a
-synthetic test pattern or silence instead.
+synthetic test pattern or silence instead. The mic is retried every 2 s,
+so robot audio returns by itself once the mic is back.
 ```
 
 ## 30.4 Mode 4: Degraded — Control Down
@@ -1975,7 +1984,7 @@ Video (P2 → each dashboard):
    H.264: starts at 1 Mbps (range 500 kbps-3 Mbps)
 
 Robot audio (P2 → each dashboard):
-└─ Opus, 96 kbps (aiortc default)
+└─ Mono Opus, 32 kbps, 60 ms packets
 
 Operator → robot (only while in use):
 ├─ Voice: Opus, browser-chosen rate
@@ -1985,7 +1994,7 @@ Operator → robot (only while in use):
 P2 → Robot Screen: localhost only, not on the mesh.
 
 Rough worst case, one dashboard, VP8, operator camera on (estimate):
-≈ 16 kbps + 0.5-1.5 Mbps + 96 kbps + several hundred kbps (operator
+≈ 16 kbps + 0.5-1.5 Mbps + 32 kbps + several hundred kbps (operator
 video) + voice ≈ 1-2 Mbps — within a 20 MHz 2.4 GHz mesh link, which is
 why the camera and screen share are capped at 640×480 and 10/5 fps.
 Each extra viewer adds another video + audio stream.

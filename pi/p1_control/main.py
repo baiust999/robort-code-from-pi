@@ -33,7 +33,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from common import protocol
+from common import access, protocol
 from common.config import P1Config
 from common.logging_setup import EventLogger, setup_logging
 from p1_control.gps_reader import GPSReader
@@ -48,6 +48,9 @@ EXIT_LOCK_HELD = 0
 EXIT_LOCK_ERROR = 1
 EXIT_HANDSHAKE_FAILED = 2
 EXIT_CONFIG_INVALID = 3
+
+# Only processes on the Pi itself (P2) may ask who the controller is.
+LOCAL_HOSTS = {"127.0.0.1", "::1", "localhost"}
 
 ICE_RATE_LIMIT = 5  # requests per minute per client, Section 8.8.1.1
 ICE_RATE_WINDOW_S = 60.0
@@ -67,6 +70,7 @@ class ControlServer:
         self.buffer = RingBuffer()
         self.hub = WebSocketHub(log)
         self.validator = CommandValidator()
+        self.gate = access.KeyGate(config.controller_key)
         self.telemetry_log = TelemetryLog(
             config.paths.log_dir / "telemetry.log",
             config.thresholds,
@@ -97,6 +101,11 @@ class ControlServer:
             session=self.session_id,
             mock=self.config.mock_hardware,
         )
+        if not self.gate.enabled:
+            self.log.warning(
+                "NO_CONTROLLER_KEY",
+                "CONTROLLER_KEY is not set; every dashboard is view-only",
+            )
 
     async def stop(self) -> None:
         if self._broadcast_task is not None:
@@ -176,16 +185,7 @@ class ControlServer:
         msg_type = message.get("type")
 
         if msg_type == protocol.MSG_HELLO:
-            role = self.hub.claim_role(client, str(message.get("role", protocol.ROLE_OBSERVER)))
-            await self.hub.send(
-                client,
-                {
-                    "type": protocol.MSG_ACK,
-                    "of": protocol.MSG_HELLO,
-                    "role": role,
-                    "session": self.session_id,
-                },
-            )
+            await self._handle_hello(client, message)
             return
 
         if msg_type == protocol.MSG_RESUME_FROM:
@@ -196,9 +196,11 @@ class ControlServer:
             await self._reject(client, f"unsupported type {msg_type!r}")
             return
 
-        # Observers may keep the socket alive but not actuate anything.
+        # Observers may keep the socket alive but not actuate anything, not
+        # even stop_all. A heartbeat is dropped quietly: it actuates nothing.
         if not client.is_controller:
-            await self._reject(client, "observer role cannot send commands")
+            if msg_type != protocol.MSG_HEARTBEAT:
+                await self._reject(client, "observer role cannot send commands")
             return
 
         result = self.validator.validate(
@@ -214,6 +216,43 @@ class ControlServer:
 
         await self.serial.send(result.opcode, result.argument)
         self._last_command_ts = time.monotonic()
+
+    async def _handle_hello(self, client: Client, message: dict[str, Any]) -> None:
+        key = message.get("key")
+        auth = self.gate.check(client.host, key if isinstance(key, str) else None)
+        requested = str(message.get("role", protocol.ROLE_OBSERVER))
+        previous = self.hub.claim_role(client, requested, authorized=auth == access.OK)
+
+        ack: dict[str, Any] = {
+            "type": protocol.MSG_ACK,
+            "of": protocol.MSG_HELLO,
+            "role": client.role,
+            "auth": auth,
+            "session": self.session_id,
+        }
+        if auth == access.LOCKED:
+            ack["retry_after_s"] = self.gate.retry_after(client.host)
+        await self.hub.send(client, ack)
+
+        log = self.log.warning if auth in (access.BAD_KEY, access.LOCKED) else self.log.info
+        log(
+            "WS_ROLE",
+            f"{client.id} from {client.host} is {client.role}",
+            client=client.id,
+            host=client.host,
+            role=client.role,
+            auth=auth,
+        )
+
+        if previous is not None:
+            await self.hub.send(
+                previous,
+                {"type": protocol.MSG_ROLE, "role": previous.role, "reason": "taken_over"},
+            )
+            # Whatever the old controller had the robot doing, the new one
+            # starts from standstill.
+            with contextlib.suppress(Exception):
+                await self.serial.send_stop()
 
     async def _handle_resume(self, client: Client, message: dict[str, Any]) -> None:
         try:
@@ -304,6 +343,13 @@ def create_app(server: ControlServer) -> FastAPI:
             "telemetry_period_ms": protocol.TELEMETRY_PERIOD_MS,
             "heartbeat_period_ms": protocol.HEARTBEAT_PERIOD_MS,
         }
+
+    @app.get("/api/controller")
+    async def controller(request: Request) -> dict[str, Any]:
+        """Which host holds the controller slot; P2 lets only that host talk."""
+        if request.client is None or request.client.host not in LOCAL_HOSTS:
+            raise HTTPException(status_code=403, detail="local only")
+        return {"host": server.hub.controller_host}
 
     @app.get("/api/gps-track")
     async def gps_track() -> dict[str, Any]:

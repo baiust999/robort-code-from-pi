@@ -41,6 +41,16 @@ def _msg(**fields) -> str:
     return json.dumps(fields)
 
 
+CONTROLLER_HOST = "10.0.0.5"
+
+
+def connect_controller(hub: ScreenHub, session_id: str, channel: FakeChannel) -> None:
+    """Connect a keyed session from the host P1 says is the controller."""
+    hub.set_controller_host(CONTROLLER_HOST)
+    hub.grant_control(session_id, CONTROLLER_HOST)
+    hub.operator_connected(session_id, channel)
+
+
 # --- parse_operator_message -------------------------------------------------
 
 
@@ -72,8 +82,8 @@ def test_parse_media_state_defaults():
 
 def test_first_sender_claims_floor_and_others_are_denied(hub):
     a, b = FakeChannel(), FakeChannel()
-    hub.operator_connected("s1", a)
-    hub.operator_connected("s2", b)
+    connect_controller(hub, "s1", a)
+    connect_controller(hub, "s2", b)
     assert a.of_type("talk_status")[-1]["floor"] == "free"
 
     hub.handle_operator_message("s1", _msg(type="media_state", talking=True, video="none"))
@@ -89,8 +99,8 @@ def test_first_sender_claims_floor_and_others_are_denied(hub):
 
 def test_release_and_disconnect_free_the_floor(hub):
     a, b, screen = FakeChannel(), FakeChannel(), FakeChannel()
-    hub.operator_connected("s1", a)
-    hub.operator_connected("s2", b)
+    connect_controller(hub, "s1", a)
+    connect_controller(hub, "s2", b)
     hub.screen_attached(screen)
 
     hub.handle_operator_message("s1", _msg(type="screen_text", text="stay calm"))
@@ -107,8 +117,8 @@ def test_release_and_disconnect_free_the_floor(hub):
 
 
 def test_release_by_non_holder_is_ignored(hub):
-    hub.operator_connected("s1", FakeChannel())
-    hub.operator_connected("s2", FakeChannel())
+    connect_controller(hub, "s1", FakeChannel())
+    connect_controller(hub, "s2", FakeChannel())
     hub.handle_operator_message("s1", _msg(type="screen_clear"))
     hub.handle_operator_message("s2", _msg(type="floor_release"))
     assert hub.floor_holder == "s1"
@@ -119,7 +129,7 @@ def test_release_by_non_holder_is_ignored(hub):
 
 def test_messages_and_state_reach_screen(hub):
     op, screen = FakeChannel(), FakeChannel()
-    hub.operator_connected("s1", op)
+    connect_controller(hub, "s1", op)
     hub.screen_attached(screen)
     assert op.of_type("talk_status")[-1]["screen_online"] is True
 
@@ -139,7 +149,7 @@ def test_messages_and_state_reach_screen(hub):
 
 
 def test_reconnecting_screen_gets_current_text(hub):
-    hub.operator_connected("s1", FakeChannel())
+    connect_controller(hub, "s1", FakeChannel())
     hub.handle_operator_message("s1", _msg(type="screen_text", text="We see you"))
     screen = FakeChannel()
     hub.screen_attached(screen)
@@ -159,7 +169,7 @@ def test_stale_screen_close_does_not_detach_new_screen(hub):
 def test_closed_channel_is_not_written(hub):
     op = FakeChannel()
     op.readyState = "closing"
-    hub.operator_connected("s1", op)
+    connect_controller(hub, "s1", op)
     assert op.sent == []
 
 
@@ -177,8 +187,8 @@ def test_parse_display_mode():
 
 def test_display_mode_starts_robot_and_is_broadcast(hub):
     a, b = FakeChannel(), FakeChannel()
-    hub.operator_connected("s1", a)
-    hub.operator_connected("s2", b)
+    connect_controller(hub, "s1", a)
+    connect_controller(hub, "s2", b)
     assert hub.display_mode == "robot"
     assert a.of_type("talk_status")[-1]["display_mode"] == "robot"
 
@@ -190,8 +200,8 @@ def test_display_mode_starts_robot_and_is_broadcast(hub):
 
 
 def test_display_mode_does_not_need_or_claim_floor(hub):
-    hub.operator_connected("s1", FakeChannel())
-    hub.operator_connected("s2", FakeChannel())
+    connect_controller(hub, "s1", FakeChannel())
+    connect_controller(hub, "s2", FakeChannel())
     hub.handle_operator_message("s1", _msg(type="screen_clear"))
     assert hub.floor_holder == "s1"
 
@@ -202,7 +212,7 @@ def test_display_mode_does_not_need_or_claim_floor(hub):
 
 def test_local_switch_reaches_dashboards(hub):
     op = FakeChannel()
-    hub.operator_connected("s1", op)
+    connect_controller(hub, "s1", op)
     hub.set_display_mode("vnc", source="local")
     hub.set_display_mode("robot", source="local")
     assert [m["display_mode"] for m in op.of_type("talk_status")] == ["robot", "vnc", "robot"]
@@ -211,6 +221,108 @@ def test_local_switch_reaches_dashboards(hub):
 
 
 # --- outbound tracks --------------------------------------------------------
+
+
+# --- view-only observers ----------------------------------------------------
+
+
+def test_observer_cannot_use_robot_screen(hub):
+    screen, ctrl, obs = FakeChannel(), FakeChannel(), FakeChannel()
+    hub.screen_attached(screen)
+    connect_controller(hub, "s1", ctrl)
+    hub.operator_connected("s2", obs)  # no key
+    assert obs.of_type("talk_status")[-1]["can_control"] is False
+    assert ctrl.of_type("talk_status")[-1]["can_control"] is True
+    screen.sent.clear()
+
+    for msg in (
+        _msg(type="media_state", talking=True, video="camera"),
+        _msg(type="screen_text", text="hello"),
+        _msg(type="screen_clear"),
+        _msg(type="display_mode", mode="vnc"),
+        _msg(type="floor_release"),
+    ):
+        hub.handle_operator_message("s2", msg)
+
+    assert len(obs.of_type("view_only")) == 5
+    assert hub.floor_holder is None
+    assert hub.display_mode == "robot"
+    assert screen.sent == []
+
+    # The controller is unaffected.
+    hub.handle_operator_message("s1", _msg(type="screen_text", text="help is coming"))
+    assert hub.floor_holder == "s1"
+
+
+def test_observer_media_never_reaches_screen(hub):
+    class FakeTrack:
+        kind = "audio"
+
+        def __init__(self) -> None:
+            self.frames = [object(), object()]
+
+        async def recv(self):
+            if not self.frames:
+                from aiortc.mediastreams import MediaStreamError
+
+                raise MediaStreamError
+            return self.frames.pop()
+
+    async def run() -> None:
+        hub.operator_connected("s2", FakeChannel())
+        hub.attach_operator_track("s2", FakeTrack())
+        await asyncio.sleep(0.01)
+
+    asyncio.run(run())
+    assert hub.next_audio_frame() is None
+
+
+def test_keyed_session_that_is_not_p1_controller_is_view_only(hub):
+    ctrl, other = FakeChannel(), FakeChannel()
+    connect_controller(hub, "s1", ctrl)
+    # Right key, but P1 demoted this laptop (another one took over).
+    hub.grant_control("s2", "10.0.0.6")
+    hub.operator_connected("s2", other)
+    assert other.of_type("talk_status")[-1]["can_control"] is False
+
+    hub.handle_operator_message("s2", _msg(type="media_state", talking=True, video="none"))
+    assert other.of_type("view_only")
+    assert hub.floor_holder is None
+
+
+def test_takeover_moves_talk_and_frees_the_floor(hub):
+    screen, a, b = FakeChannel(), FakeChannel(), FakeChannel()
+    hub.screen_attached(screen)
+    connect_controller(hub, "s1", a)
+    hub.grant_control("s2", "10.0.0.6")
+    hub.operator_connected("s2", b)
+    hub.handle_operator_message("s1", _msg(type="screen_text", text="stay calm"))
+    assert hub.floor_holder == "s1"
+
+    hub.set_controller_host("10.0.0.6")  # P1: laptop .6 took over
+    assert hub.floor_holder is None
+    assert screen.of_type("screen_clear")
+    assert a.of_type("talk_status")[-1]["can_control"] is False
+    assert b.of_type("talk_status")[-1]["can_control"] is True
+
+    hub.handle_operator_message("s1", _msg(type="screen_text", text="again"))
+    assert a.of_type("view_only")
+    hub.handle_operator_message("s2", _msg(type="screen_text", text="hello"))
+    assert hub.floor_holder == "s2"
+
+
+def test_no_p1_controller_means_nobody_talks(hub):
+    op = FakeChannel()
+    connect_controller(hub, "s1", op)
+    hub.set_controller_host(None)
+    hub.handle_operator_message("s1", _msg(type="screen_text", text="hello"))
+    assert op.of_type("view_only")
+
+
+def test_closing_a_controller_session_revokes_it(hub):
+    connect_controller(hub, "s1", FakeChannel())
+    hub.operator_closed("s1")
+    assert "s1" not in hub.controllers
 
 
 def test_idle_tracks_produce_black_video_and_silence(hub, monkeypatch):

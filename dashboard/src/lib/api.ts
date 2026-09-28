@@ -1,5 +1,7 @@
 /** REST client for P1's control-server endpoints, Section 8.8.1.1. */
 
+import type { Auth, Role } from './protocol';
+
 const ROBOT_HOST = import.meta.env.VITE_ROBOT_HOST ?? window.location.hostname ?? 'localhost';
 const P1_PORT = import.meta.env.VITE_P1_PORT ?? '8080';
 const P2_PORT = import.meta.env.VITE_P2_PORT ?? '8443';
@@ -55,12 +57,22 @@ export async function fetchMediaHealth(): Promise<{
   return getJson(`${P2_HTTP_BASE}/health`);
 }
 
-export async function negotiateWebrtc(offer: RTCSessionDescriptionInit): Promise<RTCSessionDescriptionInit> {
+export interface WebrtcAnswer extends RTCSessionDescriptionInit {
+  role: Role;
+  auth: Auth;
+  retry_after_s: number | null;
+}
+
+/** Sends the controller key, if any; without the right one P2 makes the session view-only. */
+export async function negotiateWebrtc(
+  offer: RTCSessionDescriptionInit,
+  key: string | null,
+): Promise<WebrtcAnswer> {
   const resp = await fetch(`${P2_HTTP_BASE}/webrtc/offer`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sdp: offer.sdp, type: offer.type }),
+    body: JSON.stringify({ sdp: offer.sdp, type: offer.type, key }),
   });
   if (!resp.ok) throw new Error(`webrtc offer failed: ${resp.status}`);
-  return (await resp.json()) as RTCSessionDescriptionInit;
+  return (await resp.json()) as WebrtcAnswer;
 }

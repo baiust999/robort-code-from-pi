@@ -39,6 +39,14 @@ def default_track_factory(width: int, height: int, framerate: int) -> TrackFacto
     )
 
 
+def prefer_opus(pc: RTCPeerConnection, sender: RTCRtpSender) -> None:
+    """Negotiate only Opus for ``sender``, whose track sends ready-made Opus packets."""
+    opus = [c for c in RTCRtpSender.getCapabilities("audio").codecs if c.mimeType == "audio/opus"]
+    for transceiver in pc.getTransceivers():
+        if transceiver.sender is sender:
+            transceiver.setCodecPreferences(opus)
+
+
 class PeerSession:
     """One negotiated WebRTC connection to a dashboard."""
 
@@ -73,7 +81,8 @@ async def negotiate(
     video_track = track_factory.make_video()
     audio_track = track_factory.make_audio()
     pc.addTrack(video_track)
-    pc.addTrack(audio_track)
+    # The mic track sends ready-made Opus packets (see ResilientAudioTrack).
+    prefer_opus(pc, pc.addTrack(audio_track))
 
     def _closed() -> None:
         nonlocal closed
@@ -143,12 +152,8 @@ async def negotiate_screen(
     """Answer the Robot Screen kiosk's recv-only offer with the operator relay tracks."""
     pc = RTCPeerConnection()
     pc.addTrack(ScreenVideoTrack(hub))
-    audio_sender = pc.addTrack(ScreenAudioTrack(hub))
     # ScreenAudioTrack sends ready-made Opus packets, so no other codec will do.
-    opus = [c for c in RTCRtpSender.getCapabilities("audio").codecs if c.mimeType == "audio/opus"]
-    for transceiver in pc.getTransceivers():
-        if transceiver.sender is audio_sender:
-            transceiver.setCodecPreferences(opus)
+    prefer_opus(pc, pc.addTrack(ScreenAudioTrack(hub)))
     screen_channel = None
 
     @pc.on("datachannel")

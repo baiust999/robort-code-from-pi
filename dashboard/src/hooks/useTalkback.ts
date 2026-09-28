@@ -22,6 +22,8 @@ export interface TalkbackState {
   /** Mic and camera need a secure context; images and text work regardless. */
   mediaDevicesAvailable: boolean;
   screenOnline: boolean;
+  /** P2 accepts talk, video, text and display switches from this session (it has the key). */
+  canControl: boolean;
   floor: Floor;
   /** As reported by P2, so it reflects switches made on the robot too. */
   displayMode: DisplayMode;
@@ -82,6 +84,7 @@ export function useTalkback(link: TalkLink | null): TalkbackState {
     typeof window !== 'undefined' && window.isSecureContext && !!navigator.mediaDevices;
 
   const [screenOnline, setScreenOnline] = useState(false);
+  const [canControl, setCanControl] = useState(false);
   const [floor, setFloor] = useState<Floor>('free');
   const [displayMode, setDisplayModeState] = useState<DisplayMode>('robot');
   const [talking, setTalking] = useState(false);
@@ -140,12 +143,15 @@ export function useTalkback(link: TalkLink | null): TalkbackState {
       }
       if (msg.type === 'talk_status') {
         setScreenOnline(Boolean(msg.screen_online));
+        setCanControl(msg.can_control === true);
         setFloor((msg.floor as Floor) ?? 'free');
         setDisplayModeState(msg.display_mode === 'vnc' ? 'vnc' : 'robot');
       } else if (msg.type === 'screen_ack') {
         setLastAckTs(typeof msg.ts === 'number' ? msg.ts : null);
       } else if (msg.type === 'floor_denied') {
         setError('Another operator is using the robot screen.');
+      } else if (msg.type === 'view_only') {
+        setError('View only: enter the controller key to talk to the victim.');
       }
     }
     // The peer connection reports "connected" slightly before the data
@@ -175,6 +181,7 @@ export function useTalkback(link: TalkLink | null): TalkbackState {
       setTalking(false);
       setVideoSource('none');
       setScreenOnline(false);
+      setCanControl(false);
       setFloor('free');
       setDisplayModeState('robot');
       setLastAckTs(null);
@@ -357,6 +364,7 @@ export function useTalkback(link: TalkLink | null): TalkbackState {
   return {
     mediaDevicesAvailable,
     screenOnline,
+    canControl,
     floor,
     displayMode,
     talking,

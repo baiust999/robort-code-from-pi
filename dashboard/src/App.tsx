@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useControlSocket } from './hooks/useControlSocket';
 import { useWebrtcVideo } from './hooks/useWebrtcVideo';
 import { useTalkback } from './hooks/useTalkback';
@@ -13,12 +13,42 @@ import { MapPanel } from './components/MapPanel';
 import { SensorCardGrid } from './components/SensorCardGrid';
 import { GpsStatusCard } from './components/GpsStatusCard';
 import { AlertLog } from './components/AlertLog';
-import { deriveMissionState, FW_STATE_DRIVING } from './lib/protocol';
+import { ControllerKeyBox } from './components/ControllerKeyBox';
+import { describeAuth, deriveMissionState, FW_STATE_DRIVING } from './lib/protocol';
+import { loadControllerKey, saveControllerKey } from './lib/controllerKey';
 
 function App() {
-  const { connected, role, telemetry, lastAckMs, alerts, sendMotor, sendServo, sendStopAll } =
-    useControlSocket();
-  const video = useWebrtcVideo();
+  const [controllerKey, setControllerKey] = useState(loadControllerKey);
+  // Why the last key was refused; kept after the key itself is dropped.
+  const [keyProblem, setKeyProblem] = useState<string | null>(null);
+  const changeKey = (key: string | null) => {
+    saveControllerKey(key);
+    setControllerKey(key);
+    setKeyProblem(null);
+  };
+  const {
+    connected,
+    role,
+    auth,
+    retryAfterS,
+    telemetry,
+    lastAckMs,
+    alerts,
+    sendMotor,
+    sendServo,
+    sendStopAll,
+  } = useControlSocket(controllerKey);
+  const video = useWebrtcVideo(controllerKey);
+
+  // Drop a refused key, or every reconnect would resend it and count toward
+  // the robot's lockout.
+  useEffect(() => {
+    const problem = describeAuth(auth, retryAfterS);
+    if (!problem || !controllerKey) return;
+    saveControllerKey(null);
+    setControllerKey(null);
+    setKeyProblem(problem);
+  }, [auth, retryAfterS, controllerKey]);
   const talk = useTalkback(video.talkLink);
 
   const missionState = useMemo(
@@ -45,7 +75,13 @@ function App() {
         missionState={missionState}
         serialOk={telemetry?.serial_ok ?? false}
         gpsFix={telemetry?.gps_fix ?? false}
-      />
+      >
+        <ControllerKeyBox
+          controllerKey={controllerKey}
+          onChange={changeKey}
+          problem={keyProblem}
+        />
+      </ConnectionStatusBar>
       <div className="grid flex-1 grid-cols-[22%_52%_26%] gap-3 overflow-hidden p-3">
         <aside className="flex flex-col gap-4 overflow-y-auto rounded-lg border border-white/10 bg-white/5 p-3">
           <MissionStateIndicator state={missionState} />
@@ -57,12 +93,12 @@ function App() {
             onTilt={(angle) => sendServo('tilt', angle)}
             disabled={controlsDisabled}
           />
-          <EmergencyStop onStop={sendStopAll} />
+          <EmergencyStop onStop={sendStopAll} disabled={controlsDisabled} />
+          <TalkPanel talk={talk} linkUp={video.connected} isController={!controlsDisabled} />
         </aside>
 
         <main className="flex flex-col gap-3 overflow-hidden">
           <VideoSurface video={video} />
-          <TalkPanel talk={talk} linkUp={video.connected} />
           <div className="flex-1 overflow-hidden rounded-lg border border-white/10">
             <MapPanel telemetry={telemetry} />
           </div>

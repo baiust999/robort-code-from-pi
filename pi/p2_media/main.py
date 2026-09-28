@@ -17,9 +17,14 @@ kiosk page and desktop shortcut switch it with ``POST /screen/mode``
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
 import faulthandler
 import itertools
+import json
 import sys
+import urllib.request
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
@@ -30,10 +35,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
+from common import access, protocol
 from common.config import P2Config
 from common.logging_setup import EventLogger, setup_logging
 
-from .media import SharedCapture, open_camera_track, open_mic_track
+from .media import (
+    PrivateVideoTrack,
+    ResilientAudioTrack,
+    SharedCapture,
+    open_camera_track,
+    open_mic_track,
+)
 from .signaling import PeerSession, TrackFactory, default_track_factory, negotiate, negotiate_screen
 from .talkback import DISPLAY_MODES, ScreenHub
 
@@ -42,16 +54,23 @@ SCREEN_PAGE = Path(__file__).with_name("screen") / "index.html"
 # Only the kiosk on the robot itself may become the Robot Screen; a remote
 # host must not be able to hijack what the victim sees and hears.
 LOCAL_HOSTS = {"127.0.0.1", "::1", "localhost"}
+# How often P2 asks P1 which dashboard is the controller (talk follows it).
+CONTROLLER_POLL_S = 1.0
 
 
 class OfferRequest(BaseModel):
     sdp: str
     type: str
+    # Controller key; without the right one the session is view-only.
+    key: str | None = None
 
 
 class AnswerResponse(BaseModel):
     sdp: str
     type: str
+    role: str = protocol.ROLE_OBSERVER
+    auth: str = access.NO_KEY
+    retry_after_s: int | None = None
 
 
 class DisplayMode(BaseModel):
@@ -68,6 +87,7 @@ class MediaServer:
         self._ids = itertools.count(1)
         self.track_factory = self._build_track_factory()
         self.hub = ScreenHub(log)
+        self.gate = access.KeyGate(config.controller_key)
         self.screen_pc: RTCPeerConnection | None = None
 
     def _build_track_factory(self) -> TrackFactory:
@@ -92,7 +112,8 @@ class MediaServer:
 
         def make_video():
             try:
-                return camera.subscribe()
+                # Each session's encoder gets frames of its own (see PrivateVideoTrack).
+                return PrivateVideoTrack(camera.subscribe())
             except Exception as exc:  # noqa: BLE001 - fall back to synthetic on any capture failure
                 self.log.warning("CAMERA_OPEN_FAIL", str(exc), device=self.config.video_device)
                 from .media import SyntheticVideoTrack
@@ -102,27 +123,40 @@ class MediaServer:
                 )
 
         def make_audio():
-            try:
-                return mic.subscribe()
-            except Exception as exc:  # noqa: BLE001
-                self.log.warning("MIC_OPEN_FAIL", str(exc), device=self.config.audio_device)
-                from .media import SilentAudioTrack
-
-                return SilentAudioTrack()
+            # Silence until the mic opens, and again if it drops off USB;
+            # the track keeps retrying so no session is left silent for good.
+            return ResilientAudioTrack(
+                mic.subscribe,
+                on_lost=lambda exc: self.log.warning(
+                    "MIC_OPEN_FAIL", str(exc), device=self.config.audio_device
+                ),
+                on_restored=lambda: self.log.info(
+                    "MIC_RESTORED", "microphone reopened", device=self.config.audio_device
+                ),
+            )
 
         return TrackFactory(make_video=make_video, make_audio=make_audio)
 
-    async def offer(self, sdp: str, sdp_type: str) -> RTCSessionDescription:
+    async def offer(
+        self, sdp: str, sdp_type: str, *, controller: bool, host: str
+    ) -> RTCSessionDescription:
         session_id = f"s{next(self._ids)}"
-        session, answer = await negotiate(
-            sdp,
-            sdp_type,
-            track_factory=self.track_factory,
-            session_id=session_id,
-            log=self.log,
-            hub=self.hub,
-            on_closed=lambda sid: self.sessions.pop(sid, None),
-        )
+        # Granted before negotiating so the session's first messages count.
+        if controller:
+            self.hub.grant_control(session_id, host)
+        try:
+            session, answer = await negotiate(
+                sdp,
+                sdp_type,
+                track_factory=self.track_factory,
+                session_id=session_id,
+                log=self.log,
+                hub=self.hub,
+                on_closed=lambda sid: self.sessions.pop(sid, None),
+            )
+        except Exception:
+            self.hub.operator_closed(session_id)
+            raise
         self.sessions[session_id] = session
         return answer
 
@@ -132,6 +166,23 @@ class MediaServer:
             await self.screen_pc.close()
         self.screen_pc, answer = await negotiate_screen(sdp, sdp_type, hub=self.hub, log=self.log)
         return answer
+
+    def _fetch_controller_host(self) -> str | None:
+        with urllib.request.urlopen(f"{self.config.p1_url}/api/controller", timeout=2) as resp:
+            return json.load(resp).get("host")
+
+    async def follow_controller(self) -> None:
+        """Keep the hub's controller host in step with P1's controller slot.
+
+        While P1 can't be reached nobody may talk: control is P1's to grant.
+        """
+        while True:
+            try:
+                host = await asyncio.to_thread(self._fetch_controller_host)
+            except Exception:  # noqa: BLE001 - P1 restarting or not up yet
+                host = None
+            self.hub.set_controller_host(host)
+            await asyncio.sleep(CONTROLLER_POLL_S)
 
     async def close_all(self) -> None:
         for session in list(self.sessions.values()):
@@ -151,7 +202,15 @@ class MediaServer:
 
 
 def create_app(server: MediaServer) -> FastAPI:
-    app = FastAPI()
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI):
+        task = asyncio.create_task(server.follow_controller(), name="follow-controller")
+        yield
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+
+    app = FastAPI(lifespan=lifespan)
 
     # The dashboard's origin varies (Vite dev server, the Pi's own static
     # mount, or a CDN), same rationale as P1's CORS setup.
@@ -168,13 +227,25 @@ def create_app(server: MediaServer) -> FastAPI:
         return server.health()
 
     @app.post("/webrtc/offer", response_model=AnswerResponse)
-    async def webrtc_offer(offer: OfferRequest) -> AnswerResponse:
+    async def webrtc_offer(offer: OfferRequest, request: Request) -> AnswerResponse:
+        host = request.client.host if request.client else "unknown"
+        auth = server.gate.check(host, offer.key)
+        controller = auth == access.OK
+        role = protocol.ROLE_CONTROLLER if controller else protocol.ROLE_OBSERVER
+        log = server.log.warning if auth in (access.BAD_KEY, access.LOCKED) else server.log.info
+        log("WEBRTC_ROLE", f"viewer from {host} is {role}", host=host, role=role, auth=auth)
         try:
-            answer = await server.offer(offer.sdp, offer.type)
+            answer = await server.offer(offer.sdp, offer.type, controller=controller, host=host)
         except Exception as exc:  # noqa: BLE001
             server.log.error("WEBRTC_NEGOTIATE_FAIL", str(exc))
             raise HTTPException(status_code=500, detail="negotiation failed") from exc
-        return AnswerResponse(sdp=answer.sdp, type=answer.type)
+        return AnswerResponse(
+            sdp=answer.sdp,
+            type=answer.type,
+            role=role,
+            auth=auth,
+            retry_after_s=server.gate.retry_after(host) if auth == access.LOCKED else None,
+        )
 
     @app.post("/webrtc/screen-offer", response_model=AnswerResponse)
     async def webrtc_screen_offer(offer: OfferRequest, request: Request) -> AnswerResponse:
@@ -227,6 +298,8 @@ def main() -> int:
     app = create_app(server)
 
     log.info("P2_START", "media server starting", mock=config.mock_hardware, port=config.port)
+    if not server.gate.enabled:
+        log.warning("NO_CONTROLLER_KEY", "CONTROLLER_KEY is not set; nobody can talk to the victim")
     uvicorn.run(app, host=config.host, port=config.port, log_level="warning", access_log=False)
     return 0
 

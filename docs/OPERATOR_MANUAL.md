@@ -38,14 +38,27 @@ Work through this list before the robot is sent in.
 | Indicator | Good | Problem |
 |---|---|---|
 | Connection | `WS connected` (green) | `WS offline` (red): the dashboard can't reach the robot. It retries automatically. |
-| Role | `role: controller` | `role: observer`: someone else is already controlling. You can watch but not drive. |
+| Role | `CONTROLLER` (green) | `OBSERVER — view only` (amber): you haven't entered the controller key. You can watch everything but control nothing. |
 | Mission state | `READY` (green) | `STOP` (red): see [Section 4](#4-mission-states). |
 | Serial | `serial ok` | `serial down`: the Pi can't talk to the Arduino. Motion is disabled. |
 | GPS | `GPS fix` | `GPS no fix`: no location yet. Driving still works. It normally gets a fix within a few minutes outdoors. |
 
-**Only one person can control the robot at a time.** The first dashboard to
-connect becomes the controller; any others become observers. When the
-controller closes their dashboard, the next one to connect takes over.
+**Only the person with the controller key can control the robot.** Type the
+key into the **Controller key** box at the top right and click **Unlock**.
+The browser remembers it, so you only do this once per laptop. **Forget key**
+removes it.
+
+- **Controller** (right key): drive, move the camera, emergency stop, and
+  talk to the victim.
+- **Observer** (no key): sees the video, sound, sensors, map and alerts, but
+  every button that does something is greyed out, including
+  **EMERGENCY STOP**.
+- Only one controller at a time. If a second dashboard enters the key, it
+  takes over. The robot stops, and the first dashboard becomes an observer
+  and sees "another dashboard took control".
+- **Wrong key:** the box shows "Wrong controller key." After **5 wrong
+  tries** that laptop is locked out for **5 minutes**, and even the right key
+  is refused until then. It can still watch as an observer.
 
 ---
 
@@ -123,7 +136,9 @@ or disconnected.
 Click the red **EMERGENCY STOP** button (or the ■ on the drive pad).
 
 - It stops all motors immediately.
-- It always works, even when you're an observer.
+- **Only the controller can use it.** On an observer's dashboard it is greyed
+  out. If the controller's dashboard is lost, the robot's dead-man stop halts
+  the motors within 2 seconds ([Section 5](#built-in-safety)).
 - It isn't delayed or dropped by the checks that ordinary commands go through.
 
 Use it whenever the robot does something unexpected. Driving works again as
@@ -168,6 +183,11 @@ The **Talk to victim** panel (under the video) uses the robot's speaker and
 display. The victim sees and hears you; you see and hear the victim through
 the robot's camera and microphone.
 
+Only the controller can use this panel. Observers see "View only" and the
+panel is greyed out, including the Robot Display / VNC switch. This includes
+a laptop that knows the key but was taken over by another dashboard: talking
+moves to the new controller within about a second.
+
 **Before you start**, check the panel's top right shows
 `robot screen online` (green). If it's amber, the robot's display isn't
 running.
@@ -210,7 +230,10 @@ Always switch back to **Robot Display** before a mission.
 |---|---|---|
 | Page won't load | Laptop not on the mesh, or robot still starting. | Check you're connected to `robot-mesh-ap`. Wait 30 s and reload. |
 | `WS offline` | Wi-Fi link to the robot lost. | The dashboard reconnects on its own (retrying for up to 30 s). Move closer or add a relay. |
-| `role: observer` | Another dashboard is the controller. | Close the other dashboard, then reload yours. |
+| `OBSERVER — view only` | No controller key entered, or another dashboard took over. | Enter the key and click **Unlock**. |
+| "Wrong controller key." | Key mistyped. | Type it again. Ask whoever set up the robot if you don't have it. |
+| "Too many wrong keys. Try again in 5 min." | 5 wrong tries from this laptop. | Wait 5 minutes, or restart the robot service to clear it. |
+| "The robot has no controller key set" | `CONTROLLER_KEY` isn't configured on the robot. | Nobody can control until it is set; see the README. |
 | `serial down` / state `STOP` | Arduino disconnected or restarting. | The watchdog restarts services automatically; wait about 20 s. If it persists, check the Arduino USB cable. |
 | Robot stops by itself while driving | Dead-man stop after a 2-second link drop. | Check the connection indicator, then press drive again. |
 | No video | Media service restarting or weak link. | Wait a few seconds. Reload the page if it doesn't return. |
@@ -225,7 +248,8 @@ Always switch back to **Robot Display** before a mission.
 
 1. Drive the robot back or wait for recovery.
 2. Click **Release screen** if you were talking to the victim.
-3. Close the dashboard so the controller role is freed.
+3. Close the dashboard so the controller role is freed. On a shared laptop,
+   click **Forget key** first.
 4. Power off the robot and charge the battery.
 5. Save the mission logs if needed. They are on the Pi in `/var/log/robot/`,
    and include telemetry and the GPS track.

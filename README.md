@@ -64,6 +64,7 @@ python3 -m venv ../venv && source ../venv/bin/activate
 pip install -r requirements.txt                 # P1 + P3
 pip install -r requirements-media.txt           # P2 (aiortc, larger download)
 
+export CONTROLLER_KEY=dev-key                   # key the dashboard must enter to control
 MOCK_HARDWARE=1 python -m p1_control.main       # control server on :8080
 MOCK_HARDWARE=1 python -m p2_media.main         # media server on :8443
 # or run both under the watchdog:
@@ -99,10 +100,14 @@ npm run dev
 4. **Finish the manual steps** printed at the end of the script: enable the
    GPS UART, set the Pi's static IP `192.168.10.10`, enable desktop autologin,
    and set the 3.5 mm jack as the default audio output.
-5. **Provision the mesh routers** (OpenWrt) with `deploy/mesh/robot.sh`,
+5. **Set the controller key.** Add `CONTROLLER_KEY=<your key>` to
+   `/etc/robot/p1.env` (P2 reads it too). Only a dashboard that enters this
+   key can drive, stop or talk to the victim; without it every dashboard is
+   view-only. Keep the real key out of git.
+6. **Provision the mesh routers** (OpenWrt) with `deploy/mesh/robot.sh`,
    `relay1.sh` and `relay2.sh`. The addressing plan is in
    `deploy/etc-robot/mesh.conf`.
-6. **Start it:**
+7. **Start it:**
    ```bash
    sudo systemctl start robot-watchdog.service
    ```
@@ -115,7 +120,7 @@ Runtime settings live in `/etc/robot/` on the Pi. Templates are in
 
 | File | Used by | Key settings |
 |---|---|---|
-| `p1.env` | P1 | `SERIAL_PORT` (usually `/dev/ttyACM0`, check with `ls /dev/tty{USB,ACM}*`), `GPS_PORT`, `P1_PORT`, `MOCK_HARDWARE` |
+| `p1.env` | P1 (and P2) | `CONTROLLER_KEY` (required to control; empty = view-only for everyone), `SERIAL_PORT` (usually `/dev/ttyACM0`, check with `ls /dev/tty{USB,ACM}*`), `GPS_PORT`, `P1_PORT`, `MOCK_HARDWARE` |
 | `p2.env` | P2 | camera/audio device, resolution, FPS, bitrate |
 | `p3.env` | P3 | child commands, health-check URLs, mesh gateway |
 | `thresholds.json` | P1 | alert thresholds for temperature, gas and range |

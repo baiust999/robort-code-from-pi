@@ -1,9 +1,10 @@
 """WebSocket client registry and broadcast fan-out, Section 8.10.1.
 
 Multiple dashboards may connect, but only one holds the controller role; the
-rest are observers whose motor and servo commands are rejected. The controller
-slot is claimed by the first client to send a ``hello`` with role=controller and
-is released when that client disconnects.
+rest are observers whose commands (motor, servo and stop alike) are rejected.
+Only a client that presented the controller key may hold the slot. The most
+recent such client takes it over, demoting the previous holder to observer,
+and it is released when its holder disconnects.
 """
 
 from __future__ import annotations
@@ -25,6 +26,7 @@ class Client:
 
     id: str
     socket: WebSocket
+    host: str = "unknown"
     role: str = protocol.ROLE_OBSERVER
     queue: asyncio.Queue = field(default_factory=lambda: asyncio.Queue(maxsize=32))
 
@@ -50,15 +52,25 @@ class WebSocketHub:
     def controller_id(self) -> str | None:
         return self._controller_id
 
+    @property
+    def controller_host(self) -> str | None:
+        client = self._clients.get(self._controller_id) if self._controller_id else None
+        return client.host if client is not None else None
+
     def has_controller(self) -> bool:
         return self._controller_id is not None
 
     async def register(self, socket: WebSocket) -> Client:
         await socket.accept()
-        client = Client(id=f"c{next(self._ids)}", socket=socket)
+        host = socket.client.host if socket.client else "unknown"
+        client = Client(id=f"c{next(self._ids)}", socket=socket, host=host)
         self._clients[client.id] = client
         self._log.info(
-            "WS_CONNECT", "client connected", client=client.id, total=len(self._clients)
+            "WS_CONNECT",
+            "client connected",
+            client=client.id,
+            host=host,
+            total=len(self._clients),
         )
         return client
 
@@ -71,22 +83,34 @@ class WebSocketHub:
             "WS_DISCONNECT", "client disconnected", client=client.id, total=len(self._clients)
         )
 
-    def claim_role(self, client: Client, requested: str) -> str:
-        """Assign a role, granting controller only if the slot is free."""
-        if requested != protocol.ROLE_CONTROLLER:
+    def claim_role(self, client: Client, requested: str, authorized: bool) -> Client | None:
+        """Assign ``client`` its role; controller needs ``authorized`` (the right key).
+
+        An authorized claim always wins, taking the slot over from any other
+        holder. Returns the client demoted by that takeover, if any, so the
+        caller can tell it.
+        """
+        if requested != protocol.ROLE_CONTROLLER or not authorized:
+            if self._controller_id == client.id:
+                self._controller_id = None
             client.role = protocol.ROLE_OBSERVER
-        elif self._controller_id in (None, client.id):
-            self._controller_id = client.id
-            client.role = protocol.ROLE_CONTROLLER
-        else:
-            client.role = protocol.ROLE_OBSERVER
+            return None
+
+        previous = None
+        if self._controller_id not in (None, client.id):
+            previous = self._clients.get(self._controller_id)
+            if previous is not None:
+                previous.role = protocol.ROLE_OBSERVER
             self._log.info(
-                "WS_CONTROLLER_BUSY",
-                "controller slot taken; assigned observer",
+                "WS_TAKEOVER",
+                "controller taken over",
                 client=client.id,
-                holder=self._controller_id,
+                host=client.host,
+                previous=self._controller_id,
             )
-        return client.role
+        self._controller_id = client.id
+        client.role = protocol.ROLE_CONTROLLER
+        return previous
 
     async def send(self, client: Client, message: dict[str, Any]) -> None:
         try:

@@ -22,6 +22,12 @@ from aiortc.mediastreams import MediaStreamError, MediaStreamTrack
 VIDEO_CLOCK_RATE = 90000
 AUDIO_CLOCK_RATE = 48000
 AUDIO_SAMPLES_PER_FRAME = 960  # 20ms @ 48kHz
+# P2's own audio tracks hand aiortc ready-made Opus packets of this length
+# (see ResilientAudioTrack); aiortc would otherwise encode every 20 ms frame
+# on its thread pool, which a busy Pi can't keep up with.
+AUDIO_PACKET_MS = 60
+AUDIO_PACKET_SAMPLES = AUDIO_CLOCK_RATE * AUDIO_PACKET_MS // 1000
+MIC_BITRATE = 32000
 
 
 class SyntheticVideoTrack(VideoStreamTrack):
@@ -171,7 +177,183 @@ class SharedCapture:
         return proxy
 
 
+class PrivateVideoTrack(MediaStreamTrack):
+    """A session's own yuv420p copy of every frame from a shared video track.
+
+    The camera frames that ``SharedCapture`` fans out are one object shared
+    by every session, and each session's VP8 encoder runs on its own thread.
+    Given a YUYV camera frame, each encoder called ``frame.reformat()``,
+    which PyAV runs through a converter cached on the frame itself with the
+    GIL released, so two viewers converted the same frame through the same
+    converter at once and P2 died with a segmentation fault. Converting here,
+    on the event loop, hands each encoder a frame nobody else touches, already
+    in the format it needs.
+    """
+
+    kind = "video"
+
+    def __init__(self, source: MediaStreamTrack) -> None:
+        from av.video.reformatter import VideoReformatter
+
+        super().__init__()
+        self._source = source
+        self._reformatter = VideoReformatter()
+
+    async def recv(self) -> av.VideoFrame:
+        frame = await self._source.recv()
+        private = self._reformatter.reformat(frame, format="yuv420p")
+        if private is frame:
+            # Already yuv420p: reformat hands back the shared frame itself.
+            private = av.VideoFrame.from_ndarray(frame.to_ndarray(), format="yuv420p")
+            private.pts = frame.pts
+            private.time_base = frame.time_base
+        return private
+
+    def stop(self) -> None:
+        super().stop()
+        self._source.stop()
+
+
 ALSA_CONF = Path(__file__).with_name("alsa.conf")
+
+
+def opus_encoder(bitrate: int) -> av.CodecContext:
+    """A mono voice Opus encoder that emits one packet per AUDIO_PACKET_MS frame."""
+    encoder = av.CodecContext.create("libopus", "w")
+    encoder.sample_rate = AUDIO_CLOCK_RATE
+    encoder.format = "s16"
+    encoder.layout = "mono"
+    encoder.bit_rate = bitrate
+    encoder.options = {"application": "voip", "frame_duration": str(AUDIO_PACKET_MS)}
+    encoder.time_base = fractions.Fraction(1, AUDIO_CLOCK_RATE)
+    return encoder
+
+
+def encode_packet(encoder: av.CodecContext, frame: av.AudioFrame) -> av.Packet:
+    """Encode exactly one AUDIO_PACKET_MS frame, keeping the frame's timestamp."""
+    # libopus emits exactly one packet per full frame of frame_duration.
+    packet = encoder.encode(frame)[0]
+    packet.pts = frame.pts
+    packet.time_base = frame.time_base
+    return packet
+
+
+class ResilientAudioTrack(MediaStreamTrack):
+    """A session's mic track that survives the mic being missing or going away.
+
+    Opening the mic once per session and falling back to silence for good
+    left a dashboard silent until reloaded whenever the mic wasn't there at
+    connect time — and the robot's USB webcam/mic does drop off the bus and
+    come back (e.g. right after P2 restarts). Instead this sends silence
+    while the mic is unavailable, retries every ``retry_s``, and switches to
+    the mic as soon as it opens; if the mic ends mid-session it goes back to
+    silence and retries.
+
+    It sends ready-made mono Opus packets of AUDIO_PACKET_MS, stamped on one
+    counter so the receiver sees a single continuous stream across those
+    switches. Left to itself, aiortc encodes each 20 ms mic frame on its
+    thread pool, behind every viewer's video encoding; on a busy Pi that
+    sent only ~37 of the 50 packets a second, and the dashboard played the
+    robot's audio choppy.
+    """
+
+    kind = "audio"
+
+    def __init__(
+        self,
+        open_track: Callable[[], MediaStreamTrack],
+        on_lost: Callable[[Exception], None] | None = None,
+        on_restored: Callable[[], None] | None = None,
+        retry_s: float = 2.0,
+    ) -> None:
+        super().__init__()
+        self._open = open_track
+        self._on_lost = on_lost
+        self._on_restored = on_restored
+        self._retry_s = retry_s
+        self._source: MediaStreamTrack | None = None
+        self._next_retry = 0.0
+        self._lost = False
+        self._next_silence: float | None = None
+        self._samples = 0
+        # The mic is mono, but MediaPlayer hands over stereo.
+        self._resampler = av.AudioResampler(format="s16", layout="mono", rate=AUDIO_CLOCK_RATE)
+        self._fifo = av.AudioFifo()
+        self._encoder = opus_encoder(MIC_BITRATE)
+
+    async def recv(self) -> av.Packet:
+        if self.readyState != "live":
+            raise MediaStreamError
+        while self._fifo.samples < AUDIO_PACKET_SAMPLES:
+            source_frame = await self._next_frame()
+            source_frame.pts = None  # mic and silence carry unrelated clocks
+            for mono in self._resampler.resample(source_frame):
+                mono.pts = None
+                self._fifo.write(mono)
+        frame = self._fifo.read(AUDIO_PACKET_SAMPLES)
+        frame.pts = self._samples
+        frame.time_base = fractions.Fraction(1, AUDIO_CLOCK_RATE)
+        self._samples += AUDIO_PACKET_SAMPLES
+        return encode_packet(self._encoder, frame)
+
+    async def _next_frame(self) -> av.AudioFrame:
+        """The next mic frame, or 20 ms of silence while the mic is unavailable."""
+        if self._source is None and time.monotonic() >= self._next_retry:
+            self._try_open()
+
+        frame = None
+        if self._source is not None:
+            try:
+                frame = await self._source.recv()
+            except MediaStreamError:
+                self._source = None
+                self._mark_lost(MediaStreamError("mic stream ended"))
+        if frame is None:
+            return await self._silence()
+        self._next_silence = None  # the device paces live frames
+        return frame
+
+    def stop(self) -> None:
+        super().stop()
+        if self._source is not None:
+            self._source.stop()
+            self._source = None
+
+    def _try_open(self) -> None:
+        try:
+            self._source = self._open()
+        except Exception as exc:  # noqa: BLE001 - any failure means "try again later"
+            self._mark_lost(exc)
+            return
+        if self._lost and self._on_restored is not None:
+            self._on_restored()
+        self._lost = False
+
+    def _mark_lost(self, exc: Exception) -> None:
+        self._next_retry = time.monotonic() + self._retry_s
+        if not self._lost and self._on_lost is not None:
+            self._on_lost(exc)  # once per outage, not once per retry
+        self._lost = True
+
+    async def _silence(self) -> av.AudioFrame:
+        import asyncio
+
+        # 20 ms of silence in the same format the mic delivers (MediaPlayer
+        # resamples to stereo s16), since the resampler rejects a change of
+        # layout mid-stream.
+        now = time.monotonic()
+        if self._next_silence is None or self._next_silence < now - 0.1:
+            self._next_silence = now
+        wait = self._next_silence - now
+        if wait > 0:
+            await asyncio.sleep(wait)
+        self._next_silence += AUDIO_SAMPLES_PER_FRAME / AUDIO_CLOCK_RATE
+
+        frame = av.AudioFrame(format="s16", layout="stereo", samples=AUDIO_SAMPLES_PER_FRAME)
+        for plane in frame.planes:
+            plane.update(bytes(plane.buffer_size))
+        frame.sample_rate = AUDIO_CLOCK_RATE
+        return frame
 
 
 def _first_capture_card() -> str | None:

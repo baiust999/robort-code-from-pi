@@ -43,10 +43,31 @@ export const MSG_TELEMETRY = 'telemetry';
 export const MSG_RECOVERY_BATCH = 'recovery_batch';
 export const MSG_ACK = 'ack';
 export const MSG_ERROR = 'error';
+/** P1 -> dashboard: this client's role changed after hello (another dashboard took over). */
+export const MSG_ROLE = 'role';
 
 export const ROLE_CONTROLLER = 'controller';
 export const ROLE_OBSERVER = 'observer';
 export type Role = typeof ROLE_CONTROLLER | typeof ROLE_OBSERVER;
+
+/** Outcome of the controller-key check, mirroring pi/common/access.py. */
+export type Auth = 'ok' | 'no_key' | 'bad_key' | 'locked' | 'disabled';
+
+/** What to tell the operator about a key check, or null when there's nothing to say. */
+export function describeAuth(auth: Auth | null, retryAfterS: number | null): string | null {
+  switch (auth) {
+    case 'bad_key':
+      return 'Wrong controller key.';
+    case 'locked': {
+      const minutes = Math.max(1, Math.ceil((retryAfterS ?? 300) / 60));
+      return `Too many wrong keys. Try again in ${minutes} min.`;
+    }
+    case 'disabled':
+      return 'The robot has no controller key set (CONTROLLER_KEY).';
+    default:
+      return null;
+  }
+}
 
 // --- Firmware / mission state ------------------------------------------------
 
@@ -134,6 +155,8 @@ export type ServerMessage = TelemetrySnapshot | RecoveryBatchMessage | AckMessag
 export interface HelloMessage {
   type: typeof MSG_HELLO;
   role: Role;
+  /** Controller key; without the right one P1 assigns observer. */
+  key?: string;
 }
 
 export interface MotorMessage {

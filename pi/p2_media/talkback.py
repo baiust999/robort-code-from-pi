@@ -6,10 +6,14 @@ text messages to P2 over its existing peer connection. P2 forwards all of
 it to the Robot Screen — a kiosk browser on the robot's own display and
 speaker, connected to P2 over localhost.
 
-Only one operator session may drive the robot screen at a time (the
-"floor"), mirroring P1's single-controller slot: the first session to send
-anything claims it, and it is held until that session releases it or
-disconnects. Everything here lives inside P2's failure domain; nothing
+Only the dashboard that is P1's current controller may use any of it (or
+switch the robot display): the session must have presented the controller
+key and come from the host P1 reports as its controller, so talking follows
+P1's single-controller slot, takeovers included. Every other session is a
+view-only observer that still receives the robot's own video and audio.
+Only one session may drive the robot screen at a time (the "floor"): the
+first to send anything claims it, and it is held until that session
+releases it, disconnects, or stops being the controller. Everything here lives inside P2's failure domain; nothing
 touches P1 or the motor path.
 
 Operator media is decoded by aiortc on arrival and re-encoded for the
@@ -38,6 +42,8 @@ from aiortc.mediastreams import MediaStreamError, MediaStreamTrack
 
 from common.logging_setup import EventLogger
 
+from .media import AUDIO_PACKET_SAMPLES, encode_packet, opus_encoder
+
 SCREEN_TEXT_MAX = 280
 VIDEO_SOURCES = ("none", "camera", "image", "screen")
 # What the robot's display shows: the Robot Screen kiosk ("robot"), or the
@@ -50,11 +56,9 @@ AUDIO_RATE = 48000
 # Beyond this many queued 20 ms operator frames the oldest are dropped,
 # capping the operator-to-speaker latency added by P2 at ~200 ms.
 AUDIO_QUEUE_FRAMES = 10
-# Audio to the Robot Screen goes out as one Opus packet per 60 ms (see
+# Audio to the Robot Screen goes out as one Opus packet per AUDIO_PACKET_MS (see
 # ScreenAudioTrack). Later than this, the track resets its clock instead of
 # catching up.
-AUDIO_PACKET_MS = 60
-AUDIO_PACKET_SAMPLES = AUDIO_RATE * AUDIO_PACKET_MS // 1000
 AUDIO_MAX_LATE_S = 0.1
 AUDIO_BITRATE = 32000
 # Voice buffered before playing (again) after running dry, and the most
@@ -134,6 +138,10 @@ class ScreenHub:
         self.log = log
         self.floor_holder: str | None = None
         self.operators: dict[str, Channel | None] = {}
+        # Sessions that presented the controller key, with the host each came
+        # from; only those from P1's controller host may act.
+        self.controllers: dict[str, str] = {}
+        self.controller_host: str | None = None
         self.screen_channel: Channel | None = None
         self.screen_connected = False
         self.media_state: dict[str, Any] = {"talking": False, "video": "none"}
@@ -151,11 +159,30 @@ class ScreenHub:
 
     # --- operator sessions -------------------------------------------------
 
+    def grant_control(self, session_id: str, host: str) -> None:
+        self.controllers[session_id] = host
+
+    def can_control(self, session_id: str) -> bool:
+        host = self.controllers.get(session_id)
+        return host is not None and host == self.controller_host
+
+    def set_controller_host(self, host: str | None) -> None:
+        """Follow P1's controller; a floor holder that lost control loses the floor."""
+        if host == self.controller_host:
+            return
+        self.log.info("TALK_CONTROLLER", "talk now follows P1 controller", host=host)
+        self.controller_host = host
+        if self.floor_holder is not None and not self.can_control(self.floor_holder):
+            self._release_floor()  # also broadcasts
+        else:
+            self._broadcast_status()
+
     def operator_connected(self, session_id: str, channel: Channel) -> None:
         self.operators[session_id] = channel
         self._send_status(session_id)
 
     def operator_closed(self, session_id: str) -> None:
+        self.controllers.pop(session_id, None)
         if session_id not in self.operators and self.floor_holder != session_id:
             return
         self.operators.pop(session_id, None)
@@ -166,6 +193,14 @@ class ScreenHub:
         msg = parse_operator_message(raw)
         if msg is None:
             self.log.warning("TALK_BAD_MSG", "ignored malformed operator message", session=session_id)
+            return
+
+        if not self.can_control(session_id):
+            self.log.warning(
+                "TALK_VIEW_ONLY", "observer session tried to use the robot screen",
+                session=session_id, kind=msg["type"],
+            )
+            _send(self.operators.get(session_id), {"type": "view_only"})
             return
 
         if msg["type"] == "floor_release":
@@ -229,6 +264,7 @@ class ScreenHub:
                 "screen_online": self.screen_connected,
                 "floor": floor,
                 "display_mode": self.display_mode,
+                "can_control": self.can_control(session_id),
             },
         )
 
@@ -378,13 +414,7 @@ class ScreenAudioTrack(MediaStreamTrack):
         self._resampler = av.AudioResampler(format="s16", layout="mono", rate=AUDIO_RATE)
         self._fifo = av.AudioFifo()
         self._refilling = True
-        self._encoder = av.CodecContext.create("libopus", "w")
-        self._encoder.sample_rate = AUDIO_RATE
-        self._encoder.format = "s16"
-        self._encoder.layout = "mono"
-        self._encoder.bit_rate = AUDIO_BITRATE
-        self._encoder.options = {"application": "voip", "frame_duration": str(AUDIO_PACKET_MS)}
-        self._encoder.time_base = fractions.Fraction(1, AUDIO_RATE)
+        self._encoder = opus_encoder(AUDIO_BITRATE)
 
     async def recv(self) -> av.Packet:
         if self.readyState != "live":
@@ -402,13 +432,7 @@ class ScreenAudioTrack(MediaStreamTrack):
                 # would play back sped up.
                 self._start = now - self._samples / AUDIO_RATE
 
-        frame = self._next_frame()
-        packets = self._encoder.encode(frame)
-        # libopus emits exactly one packet per full frame of frame_duration.
-        packet = packets[0]
-        packet.pts = frame.pts
-        packet.time_base = frame.time_base
-        return packet
+        return encode_packet(self._encoder, self._next_frame())
 
     def _next_frame(self) -> av.AudioFrame:
         """The next 60 ms of operator voice, or silence while (re)filling the cushion."""

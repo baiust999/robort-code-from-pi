@@ -151,6 +151,8 @@ MSG_TELEMETRY = "telemetry"
 MSG_RECOVERY_BATCH = "recovery_batch"
 MSG_ACK = "ack"
 MSG_ERROR = "error"
+# Sent when a client's role changes after hello (another dashboard took over).
+MSG_ROLE = "role"
 
 CLIENT_MESSAGE_TYPES = frozenset(
     {MSG_MOTOR, MSG_SERVO, MSG_HEARTBEAT, MSG_STOP_ALL, MSG_HELLO, MSG_RESUME_FROM}
