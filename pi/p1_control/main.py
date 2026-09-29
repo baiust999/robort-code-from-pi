@@ -403,6 +403,12 @@ def create_app(server: ControlServer) -> FastAPI:
                 with contextlib.suppress(Exception):
                     await server.serial.send_stop()
 
+    # Offline map for the dashboard. The browser reads only the tiles it shows
+    # via HTTP range requests, off the event loop in Starlette's threadpool.
+    # Mounted before "/", which would otherwise swallow the path.
+    if server.config.map_dir is not None:
+        app.mount("/maps", StaticFiles(directory=str(server.config.map_dir)), name="maps")
+
     if server.config.static_dir is not None:
         app.mount(
             "/",

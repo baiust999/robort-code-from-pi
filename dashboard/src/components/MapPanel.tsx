@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Marker, Polyline } from 'react-leaflet';
 import L from 'leaflet';
 import type { TelemetrySnapshot } from '../lib/protocol';
 import { fetchGpsTrack } from '../lib/api';
+import { OfflineMapLayer } from './OfflineMapLayer';
 
 const robotIcon = L.divIcon({
   className: '',
@@ -41,6 +42,7 @@ export function MapPanel(props: { telemetry: TelemetrySnapshot | null }) {
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         attribution="&copy; OpenStreetMap contributors"
       />
+      <OfflineMapLayer />
       {recoveredTrack.length > 1 && (
         <Polyline positions={recoveredTrack} pathOptions={{ color: '#90CAF9', weight: 3 }} />
       )}

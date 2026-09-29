@@ -107,6 +107,8 @@ class P1Config:
     thresholds: dict[str, dict[str, float]]
     stun_url: str
     static_dir: Path | None
+    # Offline map tiles (*.pmtiles), served at /maps; None when absent.
+    map_dir: Path | None
     telemetry_log_enabled: bool
     controller_key: str
 
@@ -118,6 +120,7 @@ class P1Config:
         static_dir = Path(static_raw) if static_raw else None
         if static_dir is not None and not static_dir.exists():
             static_dir = None
+        map_dir = _env_path("MAP_DIR", Path("/var/lib/robot/maps"))
         return cls(
             host=os.environ.get("P1_HOST", "0.0.0.0"),
             port=_env_int("P1_PORT", protocol.P1_PORT),
@@ -134,6 +137,7 @@ class P1Config:
             thresholds=load_thresholds(paths.config_dir),
             stun_url=os.environ.get("STUN_URL", "stun:192.168.10.1:3478"),
             static_dir=static_dir,
+            map_dir=map_dir if map_dir.is_dir() else None,
             telemetry_log_enabled=_env_bool("TELEMETRY_LOG", True),
             controller_key=_controller_key(),
         )
