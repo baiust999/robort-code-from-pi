@@ -15,6 +15,9 @@ const robotIcon = L.divIcon({
 
 const DEFAULT_CENTER: [number, number] = [23.8103, 90.4125];
 
+// Mirrors MIN_TRACK_STEP_M in pi/p1_control/gps_reader.py.
+const MIN_TRACK_STEP_M = 10;
+
 export function MapPanel(props: { telemetry: TelemetrySnapshot | null }) {
   const t = props.telemetry;
   const [recoveredTrack, setRecoveredTrack] = useState<[number, number][]>([]);
@@ -30,7 +33,15 @@ export function MapPanel(props: { telemetry: TelemetrySnapshot | null }) {
 
   useEffect(() => {
     if (t?.gps_fix && t.lat !== null && t.lon !== null) {
-      setLiveTrack((prev) => [...prev.slice(-999), [t.lat as number, t.lon as number]]);
+      const point: [number, number] = [t.lat, t.lon];
+      setLiveTrack((prev) => {
+        // Only add a point once the robot has really moved, so GPS drift
+        // around a stationary robot doesn't scribble the line. Telemetry also
+        // repeats each 1 Hz fix five times; this drops those duplicates too.
+        const last = prev[prev.length - 1];
+        if (last && L.latLng(last).distanceTo(point) < MIN_TRACK_STEP_M) return prev;
+        return [...prev.slice(-999), point];
+      });
     }
   }, [t]);
 

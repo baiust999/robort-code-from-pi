@@ -12,6 +12,7 @@ that package is absent on a dev host.
 from __future__ import annotations
 
 import json
+import math
 import threading
 import time
 from datetime import datetime, timezone
@@ -21,6 +22,21 @@ from typing import Any
 from common.config import P1Config
 from common.logging_setup import EventLogger
 from common.mock_hardware import MockGPS
+
+# A fix wanders by ~10 m even when the robot stands still (more with few
+# satellites), so the track only takes a point once the robot has moved this
+# far from the last one. Mirrored in the dashboard's MapPanel.tsx.
+MIN_TRACK_STEP_M = 10.0
+
+
+def distance_m(a: tuple[float, float], b: tuple[float, float]) -> float:
+    """Approximate ground distance between two (lat, lon) points, in metres."""
+    # Equirectangular approximation: accurate to well under 1% over the few
+    # hundred metres between track points.
+    mean_lat = math.radians((a[0] + b[0]) / 2)
+    dy = math.radians(b[0] - a[0])
+    dx = math.radians(b[1] - a[1]) * math.cos(mean_lat)
+    return 6_371_000.0 * math.hypot(dx, dy)
 
 
 class GPSReader:
@@ -102,9 +118,9 @@ class GPSReader:
             self._state.update(update)
             lat, lon = self._state.get("lat"), self._state.get("lon")
             if self._state.get("gps_fix") and lat is not None and lon is not None:
-                # Only record a point once it differs from the previous one, so
-                # a stationary robot does not inflate the track.
-                if not self._track or self._track[-1] != (lat, lon):
+                # Only record a point once the robot has really moved, so GPS
+                # drift around a stationary robot doesn't scribble the track.
+                if not self._track or distance_m(self._track[-1], (lat, lon)) >= MIN_TRACK_STEP_M:
                     self._track.append((lat, lon))
 
     def _mark_no_fix(self) -> None:
