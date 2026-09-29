@@ -4,6 +4,7 @@ import L from 'leaflet';
 import type { TelemetrySnapshot } from '../lib/protocol';
 import { fetchGpsTrack } from '../lib/api';
 import { OfflineMapLayer } from './OfflineMapLayer';
+import { LocateRobotButton } from './LocateRobotButton';
 
 const robotIcon = L.divIcon({
   className: '',
@@ -33,8 +34,9 @@ export function MapPanel(props: { telemetry: TelemetrySnapshot | null }) {
     }
   }, [t]);
 
-  const position: [number, number] =
-    t?.gps_fix && t.lat !== null && t.lon !== null ? [t.lat, t.lon] : DEFAULT_CENTER;
+  const robotPosition: [number, number] | null =
+    t?.gps_fix && t.lat !== null && t.lon !== null ? [t.lat, t.lon] : null;
+  const position = robotPosition ?? DEFAULT_CENTER;
 
   return (
     <MapContainer center={position} zoom={17} className="h-full w-full rounded-lg">
@@ -50,6 +52,7 @@ export function MapPanel(props: { telemetry: TelemetrySnapshot | null }) {
         <Polyline positions={liveTrack} pathOptions={{ color: '#2196F3', weight: 3 }} />
       )}
       {t?.gps_fix && <Marker position={position} icon={robotIcon} />}
+      <LocateRobotButton position={robotPosition} />
     </MapContainer>
   );
 }
