@@ -2,7 +2,7 @@ import type { MissionState } from '../lib/protocol';
 
 const DESCRIPTIONS: Record<MissionState, string> = {
   STOP: 'Link or hardware fault — motion disabled',
-  DRIVING_LIMITED: 'Video or mesh degraded — drive with caution',
+  DRIVING_LIMITED: 'Video degraded — drive with caution',
   READY: 'All systems nominal — awaiting command',
   DRIVING: 'Actively driving',
 };

@@ -70,13 +70,11 @@ flowchart TB
         dash["Dashboard<br/>React 19 · Vite · Tailwind · Leaflet<br/>restart: operator reload"]
     end
 
-    subgraph mesh["IEEE 802.11s MESH — 192.168.10.0/24"]
-        m1[".1 robot router<br/>gateway + DHCP"]
-        m2[".2 relay 1<br/>+ operator AP"]
-        m3[".3 relay 2<br/>pure relay"]
+    subgraph lan["LOCAL WI-FI NETWORK"]
+        wifi["Wi-Fi router<br/>Pi and laptop on the same network"]
     end
 
-    subgraph pi["RASPBERRY PI 4 — 192.168.10.10"]
+    subgraph pi["RASPBERRY PI 4"]
         systemd["systemd<br/>robot-watchdog.service"]
         p3["P3 Watchdog<br/>asyncio, no ports<br/>restart: systemd"]
         p1["P1 Control<br/>FastAPI :8080<br/>holds p1.lock + O_EXCL serial<br/>restart: P3"]
@@ -87,8 +85,8 @@ flowchart TB
         fw["Firmware<br/>cooperative scheduler<br/>restart: power cycle only"]
     end
 
-    dash <--> mesh
-    mesh <--> pi
+    dash <--> lan
+    lan <--> pi
     systemd --> p3
     p3 -. spawn/monitor .-> p1
     p3 -. spawn/monitor .-> p2
@@ -105,7 +103,7 @@ flowchart TB
 | P2 media server | Python 3 / aiortc | TCP 8443, `/dev/video0` | P3 watchdog |
 | P3 watchdog | Python 3 / asyncio | — | systemd (`Restart=on-failure`) |
 | Dashboard | Browser / React 19 | — | Operator reload |
-| Mesh fabric | OpenWrt / 802.11s | 192.168.10.0/24 | Manual (physical nodes) |
+| Wi-Fi network | Ordinary Wi-Fi router | Local network | Manual (power cycle the router) |
 
 **Only P3 is a systemd unit.** P1 and P2 are its children, because systemd can
 only see a process exit — it can't detect a process that's alive but wedged
@@ -236,7 +234,7 @@ function of current inputs, evaluated as first-match rules.
 ```mermaid
 flowchart TD
     check1{"WebSocket down?<br/>OR serial down?<br/>OR ack older than 3000ms?"}
-    check2{"Video lost?<br/>OR mesh degraded?"}
+    check2{"Video lost?"}
     check3{"Command<br/>currently active?"}
 
     check1 -- yes --> STOP["STOP"]
@@ -456,7 +454,7 @@ flowchart LR
         f3["P1 crash"]
         f4["P1 wedged"]
         f5["Camera failure"]
-        f6["Mesh partition"]
+        f6["Wi-Fi network outage"]
         f7["Corrupt frame"]
         f8["Obstacle <= 20cm"]
         f9["Invariant violated"]
@@ -515,33 +513,29 @@ automatic recovery from a falsified invariant can't be trusted.
 flowchart TB
     subgraph fs["/opt/robot, /etc/robot, /var/log/robot, /run/robot (tmpfs)"]
         opt["/opt/robot/<br/>pi/ dashboard/dist venv/"]
-        etc["/etc/robot/<br/>p1.env p2.env p3.env<br/>thresholds.json mesh.conf"]
+        etc["/etc/robot/<br/>p1.env p2.env p3.env<br/>thresholds.json"]
         log["/var/log/robot/<br/>telemetry.log<br/>p{1,2,3}_events.log<br/>gps_track/"]
         run["/run/robot/<br/>p1.lock (never survives reboot)"]
     end
 
-    subgraph pi4["RASPBERRY PI 4 — 192.168.10.10 (static)"]
+    subgraph pi4["RASPBERRY PI 4 — fixed address set in the Wi-Fi router"]
         svc["robot-watchdog.service"] --> p3s["P3"] --> p1s["P1"] & p2s["P2"]
     end
 
-    subgraph meshnet["MESH — 192.168.10.0/24, mesh_id=robot-mesh, WPA3-SAE, ch.6 HT20"]
-        n1[".1 robot router<br/>gateway + DHCP server"]
-        n2[".2 relay 1<br/>+ operator AP (robot-mesh-ap)"]
-        n3[".3 relay 2<br/>pure relay"]
-        pool[".50-.99 operator DHCP pool"]
+    subgraph lan["LOCAL WI-FI NETWORK"]
+        n1["Wi-Fi router<br/>DHCP server"]
+        op["Operator laptop<br/>opens http://pi-ip:8080"]
     end
 
     fs -.mounted by.-> pi4
     pi4 <--> n1
-    n1 <--> n2
-    n2 <--> n3
-    n2 --> pool
+    n1 <--> op
 ```
 
 `install.sh` is an idempotent eight-stage script: install packages → create
 `robot` user (`dialout`, `video`, `audio` groups) → rsync code → build
 venv → copy config templates *only where absent* → register systemd unit +
-logrotate → print manual steps (GPS UART enable, static IP, verify serial
+logrotate → print manual steps (GPS UART enable, verify serial
 device).
 
 ---
@@ -555,23 +549,17 @@ default and made it configurable.
 flowchart LR
     subgraph issues["Contradiction"]
         i1["Serial device:<br/>ttyUSB0 vs ttyAMA0"]
-        i2["Router IP plan"]
-        i3["Mesh ID naming"]
         i4["Dead-man:<br/>millis() vs Timer1 ISR"]
         i6["Telemetry fields:<br/>12 / 22 / 26"]
         i7["Operational modes:<br/>4 vs 5"]
     end
     subgraph resolved["Resolution"]
         r1["ttyUSB0<br/>(§8.7/8.8 authoritative)"]
-        r2["robot router = .1<br/>gateway (§8.14.5)"]
-        r3["robot-mesh<br/>(matches UCI snippet)"]
         r4["software millis() check<br/>(Timer1 owned by Servo)"]
         r6["20-key schema<br/>(§8.10.1.2 canonical)"]
-        r7["Mode 2, Local Mesh Only<br/>(§8.11.6)"]
+        r7["Mode 2, Local network only<br/>(§8.11.6)"]
     end
     i1-->r1
-    i2-->r2
-    i3-->r3
     i4-->r4
     i6-->r6
     i7-->r7
@@ -580,11 +568,9 @@ flowchart LR
 | Contradiction | Resolution | Configurable at |
 |---|---|---|
 | Serial device `ttyUSB0` vs `ttyAMA0` | `ttyUSB0` (§8.7/8.8 authoritative) | `p1.env: SERIAL_PORT` |
-| Router IP plan | Robot router `.1` as gateway (§8.14.5) | Mesh UCI scripts |
-| Mesh ID naming | `robot-mesh` (matches UCI snippet) | Mesh script variable |
 | Dead-man: `millis()` vs Timer1 ISR | Software check — Timer1 owned by Servo lib | `DEADMAN_MS` |
 | Telemetry field count (12/22/26) | 20-key schema of §8.10.1.2 | `pi/common/protocol.py` |
-| Operational mode count | Mode 2, Local Mesh Only (§8.11.6) | `p3.env: ENABLE_OVERLAY=0` |
+| Operational mode count | Mode 2, Local network only (§8.11.6) | `p3.env: ENABLE_OVERLAY=0` |
 
 ---
 

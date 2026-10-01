@@ -62,7 +62,7 @@ python3 -m venv "$INSTALL_ROOT/venv"
 chown -R "$ROBOT_USER:$ROBOT_USER" "$INSTALL_ROOT"
 
 echo "== stage 5: config templates (won't overwrite existing) =="
-for f in p1.env p2.env p3.env thresholds.json mesh.conf; do
+for f in p1.env p2.env p3.env thresholds.json; do
   if [ ! -f "/etc/robot/$f" ]; then
     cp "$REPO_ROOT/deploy/etc-robot/$f" "/etc/robot/$f"
   fi
@@ -105,15 +105,7 @@ Remaining manual steps (Section 8.14.4, Stage 5):
        sudo raspi-config nonint do_serial_cons 1
   2. Verify GPS: minicom -D /dev/serial0 -b 9600
   3. Verify Arduino USB: ls /dev/ttyUSB*
-  4. Set the Ethernet static IP in /etc/dhcpcd.conf:
-       interface eth0
-       static ip_address=192.168.10.10/24
-       static routers=192.168.10.1
-       static domain_name_servers=8.8.8.8
-     then: sudo systemctl restart dhcpcd
-  5. Flash and provision the three mesh routers with deploy/mesh/*.sh
-     (Section 8.14.5.1).
-  6. Robot Screen (talk-to-victim, Section 16):
+  4. Robot Screen (talk-to-victim, Section 16):
        - Enable desktop autologin so the kiosk starts at boot:
            sudo raspi-config nonint do_boot_behaviour B4
        - VNC shows the same display as the kiosk. To use the Pi desktop,
@@ -125,7 +117,9 @@ Remaining manual steps (Section 8.14.4, Stage 5):
            wpctl set-default <id>
        - Operator laptops need a secure context for mic/camera: open Chrome
          with chrome://flags/#unsafely-treat-insecure-origin-as-secure set to
-         http://192.168.10.10:8080 (images and text messages work without it).
+         http://<pi-ip>:8080 (images and text messages work without it).
+         Give the Pi a fixed address in your Wi-Fi router's settings so this
+         does not change.
 
 Then start the stack:
   sudo systemctl start robot-watchdog.service

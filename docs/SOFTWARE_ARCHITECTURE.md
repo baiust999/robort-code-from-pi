@@ -1,16 +1,16 @@
 # **Software Architecture — Autonomous Rescue Robot System**
 
 **Document status:** Architecture of the system *as implemented*.
-**Scope:** The complete software stack in `robot/` — Arduino UNO firmware, the Raspberry Pi 4 three-process edge stack, the IEEE 802.11s mesh fabric, and the React operator dashboard.
+**Scope:** The complete software stack in `robot/` — Arduino UNO firmware, the Raspberry Pi 4 three-process edge stack, the local Wi-Fi network, and the React operator dashboard.
 **Relationship to the methodology:** The methodology chapters (Sections 8.1–8.15 and the consolidated Sections 1–40) specify the system *as designed*. This document describes the system *as built*, and is numbered independently (A.1–A.11) so that it stands alongside those chapters without renumbering them. Where the implementation resolved a contradiction between the two source documents, or departed from the original design intent, this document states the behaviour of the code and records the divergence explicitly. Every architectural claim is traceable either to a methodology section or to a specific source file.
 
 ---
 
 ## **A.1  Architectural Overview**
 
-The rescue robot is a teleoperated ground vehicle intended for search-and-rescue reconnaissance in environments an operator cannot safely enter. Its software is distributed across four physical tiers connected by three distinct transports: an Arduino UNO executing the real-time control loop, a Raspberry Pi 4 running three cooperating Python processes, a three-node IEEE 802.11s wireless mesh extending radio range into the structure, and a React single-page application on the operator's laptop. The vehicle carries no autonomy in the navigational sense; every motion originates as an operator intent, and the entire architecture exists to carry that intent to the motors quickly and to carry sensory evidence back, while guaranteeing that the vehicle stops safely when any part of that path fails.
+The rescue robot is a teleoperated ground vehicle intended for search-and-rescue reconnaissance in environments an operator cannot safely enter. Its software is distributed across four physical tiers connected by three distinct transports: an Arduino UNO executing the real-time control loop, a Raspberry Pi 4 running three cooperating Python processes, an ordinary local Wi-Fi network that the Pi and the operator laptop share, and a React single-page application on the operator's laptop. The vehicle carries no autonomy in the navigational sense; every motion originates as an operator intent, and the entire architecture exists to carry that intent to the motors quickly and to carry sensory evidence back, while guaranteeing that the vehicle stops safely when any part of that path fails.
 
-The organising principle of the architecture — the single idea from which most of its structure follows — is that **each tier is an independent failure domain, and safety authority descends to the lowest tier that can still act when the tiers above it are gone.** The dashboard can crash, the operator's laptop can lose radio contact, the mesh can partition, and the Raspberry Pi can lock up or be killed by the kernel, and in every one of those cases the Arduino still stops the motors within two seconds because its dead-man timer is evaluated unconditionally in its own main loop and depends on nothing outside the board. This is not defence-in-depth applied decoratively; it is the reason the system is decomposed the way it is. A monolithic design in which the Pi drove the motor pins directly would place the vehicle's safety behaviour behind a general-purpose preemptive kernel, a Python interpreter, and a scheduler — none of which can offer a bounded guarantee that a stop instruction executes.
+The organising principle of the architecture — the single idea from which most of its structure follows — is that **each tier is an independent failure domain, and safety authority descends to the lowest tier that can still act when the tiers above it are gone.** The dashboard can crash, the operator's laptop can lose radio contact, the Wi-Fi network can drop out, and the Raspberry Pi can lock up or be killed by the kernel, and in every one of those cases the Arduino still stops the motors within two seconds because its dead-man timer is evaluated unconditionally in its own main loop and depends on nothing outside the board. This is not defence-in-depth applied decoratively; it is the reason the system is decomposed the way it is. A monolithic design in which the Pi drove the motor pins directly would place the vehicle's safety behaviour behind a general-purpose preemptive kernel, a Python interpreter, and a scheduler — none of which can offer a bounded guarantee that a stop instruction executes.
 
 The second organising principle is that **the wire protocol is the architecture's only true coupling.** The four tiers share no code and no runtime. What they share is a set of constants and message schemas defined canonically in `pi/common/protocol.py` and hand-mirrored into `arduino/protocol.h` and `dashboard/src/lib/protocol.ts`. Each of the three files names the other two in its header docstring. Because the coupling is narrow and explicit, each tier is independently testable, independently deployable, and — as Section A.10 describes — independently replaceable by a simulator.
 
@@ -18,19 +18,19 @@ The second organising principle is that **the wire protocol is the architecture'
   System Tier Decomposition and Failure Domains:
   ---------------------------------------------------------------
 
-  TIER 4  OPERATOR LAPTOP                    (192.168.10.50)
+  TIER 4  OPERATOR LAPTOP                    (opens http://<pi-ip>:8080)
           React 19 + TypeScript dashboard, browser-hosted
           Failure => Pi keeps logging; Arduino stops in <=2s
                  |
                  |  WebSocket :8080  (control + telemetry)
                  |  WebRTC    :8443  (video + audio)
                  v
-  TIER 3  IEEE 802.11s MESH FABRIC           (192.168.10.0/24)
-          3 x OpenWrt nodes, WPA3-SAE, mesh_id=robot-mesh
+  TIER 3  LOCAL WI-FI NETWORK
+          Pi and operator laptop on the same Wi-Fi network
           Failure => mission state degrades; Arduino stops in <=2s
                  |
                  v
-  TIER 2  RASPBERRY PI 4 EDGE STACK          (192.168.10.10)
+  TIER 2  RASPBERRY PI 4 EDGE STACK          (<pi-ip>)
           P1 control (8080) | P2 media (8443) | P3 watchdog
           Failure => P3 respawns the child; Arduino stops in <=2s
                  |
@@ -69,7 +69,7 @@ An architecture is best understood through the forces that shaped it. Six driver
 
 **Driver 1 — A stop command must execute within a bounded time, on hardware that cannot be trusted to be responsive.** This is the dominant safety requirement and it produces the dead-man timer in `robot_state.cpp`, the Category 1 unconditional scheduler slot in `arduino.ino`, and the decision to place motor authority on the Arduino rather than the Pi. The timer is a `millis()` comparison rather than a timer interrupt because Timer1 is claimed by the Servo library; the arithmetic uses unsigned subtraction so it remains correct across the approximately 49-day `millis()` rollover.
 
-**Driver 2 — The radio link is unreliable by nature and will partition mid-mission.** A multi-hop 2.4 GHz mesh inside a damaged structure will drop frames, and the operator may walk out of range of the nearest relay. This produces the 300-entry ring buffer providing 60 seconds of telemetry history, the `resume_from` replay protocol, the exponential-backoff reconnection in `useControlSocket.ts`, and the four-state mission machine that degrades the interface rather than freezing it.
+**Driver 2 — The radio link is unreliable by nature and will partition mid-mission.** A 2.4 GHz Wi-Fi link inside a damaged structure will drop frames, and the robot may drive out of range of the Wi-Fi router. This produces the 300-entry ring buffer providing 60 seconds of telemetry history, the `resume_from` replay protocol, the exponential-backoff reconnection in `useControlSocket.ts`, and the four-state mission machine that degrades the interface rather than freezing it.
 
 **Driver 3 — The compute tier is a general-purpose Linux system and will occasionally fail.** Python processes leak, deadlock on blocking device reads, and are killed by the OOM killer. This produces P3, the two-level liveness model (OS-level `poll()` for crashes plus HTTP `/health` for wedged-but-alive processes), and the exit-code contract by which P1 and P2 tell the supervisor *why* they died so that a misconfiguration does not become a restart loop.
 
@@ -77,7 +77,7 @@ An architecture is best understood through the forces that shaped it. Six driver
 
 **Driver 5 — The system must be developable and testable without hardware.** A capstone project cannot depend on continuous access to an assembled robot. This produces `mock_hardware.py`, which is architecturally significant precisely because it is not a stub: `MockArduino` reimplements the firmware's framing/opcode/argument-clamp validation, its dead-man semantics, and its 200 ms telemetry cadence faithfully enough that P1 cannot distinguish it from a real board across the serial boundary for driving and telemetry purposes; it does not model the firmware's fourth validation stage, the ESTOP/PANIC state-machine gate, since the mock has no fault states to gate against.
 
-**Driver 6 — One operator, one vehicle, no ambiguity about who is driving.** Multiple dashboards may observe a mission, but a second controller sending contradictory motion commands would be actively dangerous. This produces the single-controller slot in `WebSocketHub.claim_role()`. Originally the first client to ask held it until disconnect, so any laptop that joined the mesh before the operator became the controller. The slot now requires the **controller key** (`CONTROLLER_KEY`, checked by `KeyGate` in `pi/common/access.py`): a dashboard that presents it in `hello` becomes controller, taking the slot over from any earlier holder, which is demoted, told with a `role` message, and the robot is stopped; every other dashboard is a view-only observer. Observers receive all telemetry, video and audio but P1 rejects every command they send, `stop_all` included (their heartbeats are dropped silently), and P2 ignores their media and data-channel messages. Blocking the emergency stop for observers is a deliberate choice: only the operator acts on the robot, and the Arduino's 2 s dead-man remains the backstop if the operator's dashboard is lost. The key may be short, so `KeyGate` locks a host out for 5 minutes after 5 wrong keys, during which even the right key is refused; connecting without a key is not counted, so a locked-out laptop can still watch.
+**Driver 6 — One operator, one vehicle, no ambiguity about who is driving.** Multiple dashboards may observe a mission, but a second controller sending contradictory motion commands would be actively dangerous. This produces the single-controller slot in `WebSocketHub.claim_role()`. Originally the first client to ask held it until disconnect, so any laptop that joined the network before the operator became the controller. The slot now requires the **controller key** (`CONTROLLER_KEY`, checked by `KeyGate` in `pi/common/access.py`): a dashboard that presents it in `hello` becomes controller, taking the slot over from any earlier holder, which is demoted, told with a `role` message, and the robot is stopped; every other dashboard is a view-only observer. Observers receive all telemetry, video and audio but P1 rejects every command they send, `stop_all` included (their heartbeats are dropped silently), and P2 ignores their media and data-channel messages. Blocking the emergency stop for observers is a deliberate choice: only the operator acts on the robot, and the Arduino's 2 s dead-man remains the backstop if the operator's dashboard is lost. The key may be short, so `KeyGate` locks a host out for 5 minutes after 5 wrong keys, during which even the right key is refused; connecting without a key is not counted, so a locked-out laptop can still watch.
 
 | **Driver** | **Structural Consequence** | **Implementing Mechanism** |
 | --- | --- | --- |
@@ -90,7 +90,7 @@ An architecture is best understood through the forces that shaped it. Six driver
 
 ***Table A.2 — Architectural Drivers and Their Structural Consequences***
 
-Two constraints bound these drivers. The Arduino UNO offers 32 KB of flash, 2 KB of SRAM, and no operating system, which rules out threading, dynamic allocation, and any library that assumes a heap; the firmware is consequently written against a fixed set of module-local static variables. The 802.11s mesh is deployed on unlicensed 2.4 GHz spectrum shared with every other radio in the environment, which places a hard ceiling on video bitrate — hence the 640×480 at 10 fps, 500 kbps budget in `P2Config`.
+Two constraints bound these drivers. The Arduino UNO offers 32 KB of flash, 2 KB of SRAM, and no operating system, which rules out threading, dynamic allocation, and any library that assumes a heap; the firmware is consequently written against a fixed set of module-local static variables. The Wi-Fi network runs on unlicensed 2.4 GHz spectrum shared with every other radio in the environment, which places a hard ceiling on video bitrate — hence the 640×480 at 10 fps, 500 kbps budget in `P2Config`.
 
 ---
 
@@ -98,7 +98,7 @@ Two constraints bound these drivers. The Arduino UNO offers 32 KB of flash, 2 KB
 
 The system boundary encloses four software tiers and the physical vehicle. Outside it sit three external entities: the human operator, who supplies all navigational intent and interprets all sensory evidence; the disaster environment, which the vehicle senses but does not model; and the OpenStreetMap tile service, which supplies map imagery to the dashboard outside the operating area and is the only external network dependency in the entire architecture — and one that is not on any mission-critical path. Inside the operating area the map is drawn from a vector map file stored on the Pi and served by P1, so it needs no internet at all; outside that area the loss of map tiles degrades the map to a blank canvas with the live GPS polyline still drawn over it.
 
-There is no cloud tier in the deployed configuration. The methodology defines five operational modes; the implementation targets **Mode 2, Local Mesh Only**, per Section 8.11.6, and `ENABLE_OVERLAY=0` in `deploy/etc-robot/p3.env` disables the internet overlay by default. This is a deliberate architectural position: a rescue deployment cannot assume internet connectivity, so the primary mode assumes none, and everything required to fly a mission is present on the local mesh. The ICE configuration endpoint reflects this — `GET /api/ice-config` returns a STUN server on the mesh gateway and `turn: null`, because in a single-subnet local mesh there is no NAT to traverse and therefore no TURN relay to fund.
+There is no cloud tier in the deployed configuration. The methodology defines five operational modes; the implementation targets **Mode 2, Local network only**, per Section 8.11.6, and `ENABLE_OVERLAY=0` in `deploy/etc-robot/p3.env` disables the internet overlay by default. This is a deliberate architectural position: a rescue deployment cannot assume internet connectivity, so the primary mode assumes none, and everything required to fly a mission is present on the local network. The ICE configuration endpoint reflects this — `GET /api/ice-config` returns an optional STUN server and `turn: null`, because on a single local subnet there is no NAT to traverse and therefore no TURN relay to fund.
 
 ```
   System Context:
@@ -148,7 +148,7 @@ The system comprises six independently deployable units. The table below is the 
 | P2 media server | Python 3 / aiortc | TCP 8443, `/dev/video0` | Video and audio | P3 watchdog |
 | P3 watchdog | Python 3 / asyncio | — | Process supervision | systemd (`Restart=on-failure`) |
 | Operator dashboard | Browser / React 19 | — | Operator interface | Operator reload |
-| Mesh fabric | OpenWrt / 802.11s | 192.168.10.0/24 | Network transport | Manual (physical nodes) |
+| Wi-Fi network | Ordinary Wi-Fi router | Local network | Network transport | Manual (power cycle the router) |
 
 ***Table A.4 — Container Inventory, Failure Domains, and Restart Authority***
 
@@ -161,13 +161,13 @@ The most consequential structural decision visible in this table is that **P1 an
   OPERATOR LAPTOP
   +--------------------------------------------------------------+
   |  Dashboard (React 19 + TS + Vite + Tailwind + Leaflet)        |
-  |  useControlSocket() ------> ws://192.168.10.10:8080/control/ws|
+  |  useControlSocket() ------> ws://<pi-ip>:8080/control/ws      |
   |  useWebrtcVideo()   ------> POST :8443/webrtc/offer           |
   +--------------------------------------------------------------+
               |                              |
-              |   802.11s mesh: .1 gateway / .2 relay+AP / .3 relay
+              |   local Wi-Fi network (same network as the Pi)
               v                              v
-  RASPBERRY PI 4  (192.168.10.10)
+  RASPBERRY PI 4  (<pi-ip>)
   +--------------------------------------------------------------+
   |  systemd: robot-watchdog.service                              |
   |     |                                                         |
@@ -254,7 +254,7 @@ The WebSocket endpoint primes each newly registered client with an immediate sna
 
 P2 is deliberately the smallest and simplest server component, because a media path that fails should degrade the mission rather than end it. It exposes exactly two endpoints: `POST /webrtc/offer`, which accepts an SDP offer and returns an SDP answer in the same HTTP response, and `GET /health` for the watchdog.
 
-The signaling design is minimal by intent. There is no separate signaling channel and no trickle-ICE round trip; the dashboard POSTs its offer and receives the answer synchronously. This is sound specifically because of the deployment topology: on a single local mesh subnet with no NAT between the peers, candidate gathering is trivial and the elaborate machinery WebRTC normally requires for internet traversal would add latency and failure modes for no benefit.
+The signaling design is minimal by intent. There is no separate signaling channel and no trickle-ICE round trip; the dashboard POSTs its offer and receives the answer synchronously. This is sound specifically because of the deployment topology: on a single local subnet with no NAT between the peers, candidate gathering is trivial and the elaborate machinery WebRTC normally requires for internet traversal would add latency and failure modes for no benefit.
 
 The track factory implements a fallback whose architectural value is that it makes two different situations behave identically. `open_camera_track()` is wrapped so that *any* capture failure logs the fault and substitutes `SyntheticVideoTrack`. Consequently mock mode on a developer laptop and a real Pi whose camera has been knocked loose in the field follow exactly the same code path — the mission continues with a synthetic stream, and the operator sees plainly that video is not live. The microphone goes one step further, because the robot's USB webcam/mic has been seen to drop off the bus and re-enumerate: each session's mic is a `ResilientAudioTrack`, which sends silence while the mic cannot be opened, retries every 2 s, and switches to the mic as soon as it opens — and back to silence and retrying if it ends mid-session. A session that connected during an outage therefore recovers on its own instead of staying silent until the dashboard is reloaded. Each outage is logged once as `MIC_OPEN_FAIL` and its end as `MIC_RESTORED`. `SyntheticVideoTrack` renders a sweeping bar, a slow hue cycle, and a font-free clock encoded as a bar whose width grows with elapsed seconds, deliberately avoiding a fontconfig dependency in the media path.
 
@@ -282,7 +282,7 @@ The feature that most distinguishes this supervisor from a naive restart loop is
 
 The dashboard is a React 19 single-page application in TypeScript, built by Vite, styled with Tailwind, and rendering GPS data through Leaflet. Fourteen components are arranged in a grid of three columns — controls at 22%, video at 52%, telemetry and alerts at 26% — with the controls spanning the full height and one map filling the bottom of the middle and right columns together.
 
-**The map works offline and follows the robot.** `OfflineMapLayer` draws the operating area from `area.pmtiles`, a Protomaps vector map that P1 serves from `MAP_DIR` at `/maps`; the browser reads only the tiles it shows through HTTP range requests, and the layer is limited to the file's bounds so the online OpenStreetMap layer still shows outside it. Its libraries (`protomaps-leaflet`, `pmtiles`) load as a separate chunk after the dashboard starts, which keeps the first load over the mesh unchanged, and if P1 has no map file the layer adds nothing. `LocateRobotButton` is a Leaflet control with follow mode: on by default, so a dashboard opened before the first fix moves to the robot once it arrives; turned off by the operator dragging the map; turned back on by the button, which flies to the robot. Panning waits for that fly-to to finish so a fix arriving mid-flight cannot cut it short. The live path takes a point only once the robot has moved 10 m, mirroring `MIN_TRACK_STEP_M` in `gps_reader.py`, so GPS drift around a stationary robot does not scribble the map.
+**The map works offline and follows the robot.** `OfflineMapLayer` draws the operating area from `area.pmtiles`, a Protomaps vector map that P1 serves from `MAP_DIR` at `/maps`; the browser reads only the tiles it shows through HTTP range requests, and the layer is limited to the file's bounds so the online OpenStreetMap layer still shows outside it. Its libraries (`protomaps-leaflet`, `pmtiles`) load as a separate chunk after the dashboard starts, which keeps the first load over the local network unchanged, and if P1 has no map file the layer adds nothing. `LocateRobotButton` is a Leaflet control with follow mode: on by default, so a dashboard opened before the first fix moves to the robot once it arrives; turned off by the operator dragging the map; turned back on by the button, which flies to the robot. Panning waits for that fly-to to finish so a fix arriving mid-flight cannot cut it short. The live path takes a point only once the robot has moved 10 m, mirroring `MIN_TRACK_STEP_M` in `gps_reader.py`, so GPS drift around a stationary robot does not scribble the map.
 
 **A documented divergence from the original design.** The original methodology specified "no Redux — context providers per state slice," and `dashboard/src/context/` exists in the tree. It is empty. The implemented architecture uses **no context providers at all**: all shared state lives in a single `useControlSocket()` hook invoked once in `App.tsx` and threaded to children as explicit props. For a dashboard of this size the simpler structure is defensible — every component's data dependencies are visible in its props, and there is no indirection between the socket and the render. The empty directory should be removed to prevent it from implying a structure that does not exist.
 
@@ -414,7 +414,7 @@ Safety in this system is not a subsystem but a property distributed across every
 
 **Dual-mechanism dead-man.** The Arduino's 2,000 ms timer is the guarantee. P1's immediate stop on controller disconnect is the optimisation. Either alone is sufficient to halt the vehicle.
 
-**Mission state as an operator-visible contract.** `derive_mission_state()` evaluates first-match rules: any of WebSocket down, serial down, or command acknowledgement older than 3,000 ms yields `STOP`; loss of video or mesh yields `DRIVING_LIMITED`; otherwise `DRIVING` when a command is active and `READY` when idle. Because it is a pure function of current inputs, the indicator can never disagree with the state it describes. It is computed identically on both sides of the link.
+**Mission state as an operator-visible contract.** `derive_mission_state()` evaluates first-match rules: any of WebSocket down, serial down, or command acknowledgement older than 3,000 ms yields `STOP`; loss of video yields `DRIVING_LIMITED`; otherwise `DRIVING` when a command is active and `READY` when idle. Because it is a pure function of current inputs, the indicator can never disagree with the state it describes. It is computed identically on both sides of the link.
 
 **Single-writer enforcement.** Two independent mechanisms — `flock` on tmpfs and `O_EXCL` on the device — each sufficient alone.
 
@@ -428,7 +428,7 @@ Safety in this system is not a subsystem but a property distributed across every
 | P1 wedged | 3 health misses (~30 s) | SIGKILL, then respawn | Automatic |
 | P1 misconfigured | Exit code 3 | Logged as config fault, not a crash | Manual — deliberately not looped |
 | Camera failure | Capture exception | Synthetic track substituted | Mission continues in `DRIVING_LIMITED` |
-| Mesh partition | Telemetry gap, ack timeout | Mission state → `STOP` | Backoff reconnect + replay |
+| Wi-Fi network outage | Telemetry gap, ack timeout | Mission state → `STOP` | Backoff reconnect + replay |
 | Corrupt frame | Parse or range check | Frame discarded silently | Next frame within 200 ms |
 | Obstacle distance ≤ 20 cm | HC-SR04, Category 2 poll | Range warning/critical alert; operator decides movement | N/A — not a fault, no recovery needed |
 | State invariant violated | `checkInvariants()` | Panic; motors stopped, latched | Board reset only |
@@ -442,28 +442,26 @@ Reading this table by recovery column reveals the architecture's intent clearly:
 
 ## **A.9  Deployment View**
 
-The Pi is provisioned by `deploy/install.sh`, an idempotent eight-stage script that may be re-run after a code update without disturbing operator-customised configuration. It installs system packages, creates the unprivileged `robot` user in the `dialout`, `video`, and `audio` groups, rsyncs the code to `/opt/robot`, builds a virtualenv, copies configuration templates **only where absent**, registers the systemd unit and logrotate policy, and finally prints the manual steps it cannot safely automate — enabling the GPS UART, verifying the serial device, and setting the static IP.
+The Pi is provisioned by `deploy/install.sh`, an idempotent eight-stage script that may be re-run after a code update without disturbing operator-customised configuration. It installs system packages, creates the unprivileged `robot` user in the `dialout`, `video`, and `audio` groups, rsyncs the code to `/opt/robot`, builds a virtualenv, copies configuration templates **only where absent**, registers the systemd unit and logrotate policy, and finally prints the manual steps it cannot safely automate — enabling the GPS UART, and verifying the serial device. The Pi's fixed address is set in the Wi-Fi router's settings.
 
 ```
   /opt/robot/          pi/ (P1,P2,P3,common) | dashboard/dist | venv/
-  /etc/robot/          p1.env p2.env p3.env thresholds.json mesh.conf
+  /etc/robot/          p1.env p2.env p3.env thresholds.json
   /var/log/robot/      telemetry.log  p{1,2,3}_events.log  gps_track/
   /run/robot/          p1.lock (tmpfs — never survives reboot)
 
   systemd: robot-watchdog.service  --> P3 --> spawns P1 + P2
 
-  Mesh (192.168.10.0/24, mesh_id=robot-mesh, WPA3-SAE, ch.6 HT20):
-    .1  robot router   gateway; Ethernet to Pi; DHCP server
-    .2  relay 1        mesh relay + operator AP (robot-mesh-ap)
-    .3  relay 2        pure relay, extends range
-    .10 Raspberry Pi   static
-    .50-.99            operator DHCP pool
+  Local Wi-Fi network:
+    Wi-Fi router       DHCP server; fixed address reserved for the Pi
+    Raspberry Pi       P1 :8080, P2 :8443
+    Operator laptop    opens http://<pi-ip>:8080
 ```
-***Figure A.9 — Deployment Layout and Mesh Addressing***
+***Figure A.9 — Deployment Layout and Network***
 
 Configuration is environment-file driven, with three files that map one-to-one onto the three processes. Alert thresholds live separately in `thresholds.json` so that they can be tuned in the field without touching process configuration; `load_thresholds()` merges the file over the built-in defaults and falls back silently to those defaults if the file is missing or malformed — a field-tuning error degrades to known-good behaviour rather than a failed start.
 
-The mesh comprises three OpenWrt nodes on a single `/24`. The robot router at `.1` is the gateway, Ethernet-connected to the Pi and running DHCP. Relay 1 at `.2` both extends the mesh and hosts the operator access point. Relay 2 at `.3` is a pure relay for positions where direct radio range is insufficient. `mesh.conf` in `/etc/robot` is documentation only — no Pi process reads it; `MESH_GATEWAY` in `p3.env` is the value actually consumed.
+The network is an ordinary Wi-Fi network: the Pi and the operator laptop join the same network, and the operator opens `http://<pi-ip>:8080` in the browser. The Pi's address is fixed with a DHCP reservation in the Wi-Fi router's settings so it does not change between missions.
 
 Log rotation is tiered by write rate: `telemetry.log` daily at 50 MB retaining 7; event and fault logs weekly at 10 MB retaining 8; session logs monthly. All use `copytruncate` so running processes keep their open file handles. GPS tracks and CSV exports fall outside logrotate and are pruned by a documented `find -mtime +90 -delete` cron equivalent.
 
@@ -477,7 +475,7 @@ Two housekeeping defects are worth recording. The systemd unit advertises `Docum
 
 **Safety** is the attribute to which all others are subordinated, and it is achieved by placing the guarantee at the lowest tier and making every higher-level mechanism redundant rather than necessary. The measurable claim is that the vehicle halts within 2 seconds of losing operator contact by any cause, including total failure of every tier above the Arduino.
 
-**Availability** is pursued through supervision and graceful degradation rather than redundancy — there is no second Pi. P3 restores a crashed or wedged process within roughly 10 to 40 seconds, and during that window the vehicle is stopped but undamaged. Degradation is graded rather than binary: video loss, mesh loss, and GPS loss each reduce capability by a defined amount while keeping the mission alive.
+**Availability** is pursued through supervision and graceful degradation rather than redundancy — there is no second Pi. P3 restores a crashed or wedged process within roughly 10 to 40 seconds, and during that window the vehicle is stopped but undamaged. Degradation is graded rather than binary: video loss, network loss, and GPS loss each reduce capability by a defined amount while keeping the mission alive.
 
 **Latency** is budgeted at every hop: sensor to telemetry at most 200 ms, telemetry to render one broadcast period, keypress to motor a validation pass plus UART transit. The 200 ms cadence, the 5 ms serial poll, and the absolute-scheduled broadcast loop all exist to keep the operator's perception of the vehicle current.
 
@@ -492,11 +490,9 @@ The methodology's two source documents disagreed in several places. The implemen
 | **Contradiction** | **Resolution** | **Configurable At** |
 | --- | --- | --- |
 | Serial device `ttyUSB0` vs `ttyAMA0` | `ttyUSB0` (Sections 8.7/8.8 authoritative) | `p1.env: SERIAL_PORT` |
-| Router IP plan | Robot router `.1` as gateway (§8.14.5) | Mesh UCI scripts |
-| Mesh ID naming | `robot-mesh` (matches the UCI snippet) | Mesh script variable |
 | Dead-man: `millis()` vs Timer1 ISR | Software check — Timer1 belongs to Servo | `DEADMAN_MS` |
 | Telemetry field count (12/22/26) | 20-key schema of §8.10.1.2 | `pi/common/protocol.py` |
-| Operational mode count | Build Mode 2, Local Mesh Only (§8.11.6) | `p3.env: ENABLE_OVERLAY=0` |
+| Operational mode count | Build Mode 2, Local network only (§8.11.6) | `p3.env: ENABLE_OVERLAY=0` |
 
 ***Table A.10 — Specification Contradictions and Their Resolutions***
 
@@ -516,10 +512,10 @@ Recorded plainly, as the architecture's own account of where it is incomplete:
 2. **Test coverage is uneven.** The protocol, validator, ring buffer, and mission-state logic are well covered. `SerialBridge`, `WebSocketHub`, `TelemetryLog`, `ProcessLock`, and `SupervisedProcess` have no direct tests, `GPSReader` is tested only for its track filtering (not NMEA parsing), and there is no JavaScript test runner configured — `package.json` provides only `oxlint`.
 3. **No real-hardware bring-up has been performed.** The firmware compiles cleanly and the protocol is exercised end-to-end against the emulator, but no flash-and-drive test on the assembled vehicle has been carried out. This is the single largest outstanding validation gap.
 4. **P3 is a single point of supervision failure.** If P3 dies, systemd restarts it and it adopts the surviving orphans — but during that window nothing is watching P1 and P2.
-5. **Controller authentication is a shared key over plain HTTP.** A dashboard must present `CONTROLLER_KEY` to drive, stop or talk (A.3, Driver 6), but the key travels unencrypted over `ws://` and `http://`, so anyone who can capture mesh traffic can read it; confidentiality rests on WPA2/WPA3 at the link layer. A short key (a few digits) is easy to guess, so the 5-tries/5-minute lockout is what makes guessing slow (about 17 hours to try all 1,000 three-digit keys against one service); P1 and P2 count failures separately and in memory, so a restart clears them. There is one key, not per-operator accounts, and logs identify a controller only by IP address. The mesh passwords in `deploy/mesh/*.sh` are committed to the repository and should be changed before deployment.
+5. **Controller authentication is a shared key over plain HTTP.** A dashboard must present `CONTROLLER_KEY` to drive, stop or talk (A.3, Driver 6), but the key travels unencrypted over `ws://` and `http://`, so anyone who can capture Wi-Fi traffic can read it; confidentiality rests on WPA2/WPA3 at the link layer. A short key (a few digits) is easy to guess, so the 5-tries/5-minute lockout is what makes guessing slow (about 17 hours to try all 1,000 three-digit keys against one service); P1 and P2 count failures separately and in memory, so a restart clears them. There is one key, not per-operator accounts, and logs identify a controller only by IP address.
 6. **The logrotate policy names logs no code writes**, and the empty `src/context/` directory implies a structure that does not exist. Both are housekeeping defects that mislead a reader of the deployment configuration.
 7. **Talk-to-victim is only partly tested on hardware and needs a secure context.** Both audio directions work on the robot, but operator video, images and text have not been shown on a physical display. Mic/camera capture on the operator laptop requires HTTPS or a per-laptop Chrome flag, and a VNC viewer left open can switch the display to VNC mode by accident (Section A.11).
-8. **Mesh link quality is not measured.** The dashboard enters `DRIVING_LIMITED` when the WebRTC video link drops, but no process reports mesh signal strength or loss, so the mesh input to the mission state is fixed at healthy. A degraded but still-connected mesh shows up only indirectly, as frozen video or, once replies stop for 3 s, as `STOP`.
+8. **Wi-Fi link quality is not measured.** The dashboard enters `DRIVING_LIMITED` when the WebRTC video link drops, but no process reports Wi-Fi signal strength or loss. A degraded but still-connected link shows up only indirectly, as frozen video or, once replies stop for 3 s, as `STOP`.
 
 ---
 
@@ -601,7 +597,7 @@ Six decisions shape the feature.
 
 The kiosk plays through the desktop session's default PipeWire sink, so that default must be the 3.5 mm jack (`bcm2835 Headphones`). On the robot it had been saved as the HDMI output and only fell back to the jack because no HDMI audio sink was present; attaching an HDMI display with audio would have moved the operator's voice off the speaker. It is now set with `wpctl set-default <jack sink id>`, which WirePlumber keeps across reboots.
 
-Two constraints remain. Browsers expose the microphone and camera only in a secure context, and the dashboard is served over plain HTTP at `192.168.10.10:8080`; until it is served over HTTPS, each operator laptop's Chrome must list that origin under `chrome://flags/#unsafely-treat-insecure-origin-as-secure`. The origin must match the address bar exactly (scheme, IP and port; on a bench Wi-Fi network the Pi has a DHCP address rather than `192.168.10.10`). Where the flags page is ignored, as on a managed browser, starting Chrome with `--unsafely-treat-insecure-origin-as-secure=<origin> --user-data-dir=<dir>` works, and `isSecureContext` in the console confirms it. Firefox and Safari have no supported equivalent, so the operator browser for talking is Chrome or Edge. Images and text messages need no secure context and work regardless, and the panel says so. And the operator-to-robot video adds roughly 300 kbps to the mesh budget when the camera is on — within capacity, but it should be measured alongside the existing 500 kbps downstream stream.
+Two constraints remain. Browsers expose the microphone and camera only in a secure context, and the dashboard is served over plain HTTP at `<pi-ip>:8080`; until it is served over HTTPS, each operator laptop's Chrome must list that origin under `chrome://flags/#unsafely-treat-insecure-origin-as-secure`. The origin must match the address bar exactly (scheme, IP and port). Where the flags page is ignored, as on a managed browser, starting Chrome with `--unsafely-treat-insecure-origin-as-secure=<origin> --user-data-dir=<dir>` works, and `isSecureContext` in the console confirms it. Firefox and Safari have no supported equivalent, so the operator browser for talking is Chrome or Edge. Images and text messages need no secure context and work regardless, and the panel says so. And the operator-to-robot video adds roughly 300 kbps to the Wi-Fi budget when the camera is on — within capacity, but it should be measured alongside the existing 500 kbps downstream stream.
 
 ---
 

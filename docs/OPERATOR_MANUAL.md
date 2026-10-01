@@ -11,20 +11,19 @@ Work through this list before the robot is sent in.
 
 **Robot**
 - [ ] Battery charged and connected.
-- [ ] Arduino, Raspberry Pi and the robot's mesh router powered on.
+- [ ] Arduino and Raspberry Pi powered on.
 - [ ] Camera, speaker (3.5 mm jack) and robot display connected.
 - [ ] Nothing loose on the chassis; wheels turn freely.
 
 **Network**
-- [ ] Relay routers placed and powered, forming a chain from you to the
-      robot (you → relay → relay → robot).
-- [ ] Your laptop is connected to the Wi-Fi network `robot-mesh-ap`.
+- [ ] The Wi-Fi router is powered on, and the robot is within its range.
+- [ ] Your laptop is connected to the same Wi-Fi network as the robot.
 
 **Laptop**
 - [ ] Chrome is installed.
 - [ ] To use your microphone and camera, the Chrome flag is set once:
       open `chrome://flags/#unsafely-treat-insecure-origin-as-secure`, add
-      `http://192.168.10.10:8080`, enable it and restart Chrome. Without
+      `http://<pi-ip>:8080`, enable it and restart Chrome. Without
       it, video from the robot, images and text messages still work.
 
 ---
@@ -32,7 +31,7 @@ Work through this list before the robot is sent in.
 ## 2. Opening the dashboard
 
 1. Wait about 30 seconds after powering the robot so all services start.
-2. In Chrome, open **`http://192.168.10.10:8080`**.
+2. In Chrome, open **`http://<pi-ip>:8080`** (the robot's address on the Wi-Fi network).
 3. Check the status bar at the top:
 
 | Indicator | Good | Problem |
@@ -245,8 +244,8 @@ Always switch back to **Robot Display** before a mission.
 
 | Problem | Likely cause | What to do |
 |---|---|---|
-| Page won't load | Laptop not on the mesh, or robot still starting. | Check you're connected to `robot-mesh-ap`. Wait 30 s and reload. |
-| `WS offline` | Wi-Fi link to the robot lost. | The dashboard reconnects on its own (retrying for up to 30 s). Move closer or add a relay. |
+| Page won't load | Laptop not on the robot's Wi-Fi network, or robot still starting. | Check you're connected to the same Wi-Fi network as the robot. Wait 30 s and reload. |
+| `WS offline` | Wi-Fi link to the robot lost. | The dashboard reconnects on its own (retrying for up to 30 s). Move the robot closer to the Wi-Fi router. |
 | `OBSERVER — view only` | No controller key entered, or another dashboard took over. | Enter the key and click **Unlock**. |
 | "Wrong controller key." | Key mistyped. | Type it again. Ask whoever set up the robot if you don't have it. |
 | "Too many wrong keys. Try again in 5 min." | 5 wrong tries from this laptop. | Wait 5 minutes, or restart the robot service to clear it. |

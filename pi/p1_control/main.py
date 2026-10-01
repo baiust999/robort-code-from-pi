@@ -302,7 +302,7 @@ class ControlServer:
             raise HTTPException(status_code=429, detail="rate limit exceeded")
         history.append(now)
 
-        # Local-mesh mode: STUN only. A TURN relay is issued by the internet
+        # Local network mode: STUN only. A TURN relay is issued by the internet
         # overlay when that mode is enabled (Section 8.10.2.1).
         return {
             "stun": self.config.stun_url,

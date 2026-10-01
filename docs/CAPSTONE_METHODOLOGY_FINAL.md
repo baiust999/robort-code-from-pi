@@ -25,10 +25,10 @@ robot, it is marked as such; measured results belong in
 8. Motor & Servo Control Systems
 9. Sensor Suite & Environmental Monitoring
 
-**PART 3: MESH NETWORK ARCHITECTURE**
-10. IEEE 802.11s Mesh Network (Overview)
-11. HWMP Routing Protocol
-12. Three-Router Deployment Strategy
+**PART 3: NETWORK ARCHITECTURE**
+10. Local Wi-Fi Network (Overview)
+11. Wi-Fi Link Quality Guide
+12. Network Deployment Strategy
 13. Link Quality & Performance Metrics
 
 **PART 4: COMMUNICATION PROTOCOLS**
@@ -82,22 +82,14 @@ robot, it is marked as such; measured results belong in
 │  Browser dashboard (React)   │
 │  WebSocket :8080 + WebRTC    │
 └──────────────┬───────────────┘
-               │ Wi-Fi (SSID robot-mesh-ap)
+               │ Wi-Fi
        ┌───────▼────────┐
-       │ Relay Router 1 │ 192.168.10.2  (operator access point)
+       │ Wi-Fi router   │ local network (laptop and Pi on the same network)
        └───────┬────────┘
-               │ IEEE 802.11s mesh "robot-mesh"
-       ┌───────▼────────┐
-       │ Relay Router 2 │ 192.168.10.3  (interior relay)
-       └───────┬────────┘
-               │ IEEE 802.11s mesh
-       ┌───────▼────────┐
-       │ Robot Router   │ 192.168.10.1  (on chassis, mesh gateway)
-       └───────┬────────┘
-               │ Ethernet
+               │ Wi-Fi
        ┌───────▼────────────────────┐     ┌──────────────────────────┐
        │ Raspberry Pi 4             │────▶│ ROBOT DISPLAY (HDMI) +   │
-       │ 192.168.10.10              │     │ SPEAKER (3.5 mm jack)    │
+       │ <pi-ip> (fixed in router)  │     │ SPEAKER (3.5 mm jack)    │
        │ P3 → P1 (:8080), P2 (:8443)│     │ victim-facing            │
        └───┬──────────────┬─────────┘     └──────────────────────────┘
            │ USB serial   │ GPIO UART (/dev/serial0, 9600 baud)
@@ -109,8 +101,8 @@ robot, it is marked as such; measured results belong in
    └────────────────┘
 ```
 
-The mesh is self-forming: any node can reach any other in radio range, so
-the chain above is the planned deployment, not a fixed wiring.
+The operator opens `http://<pi-ip>:8080` in the browser. The Pi's address
+is fixed with a reservation in the Wi-Fi router's settings.
 
 ## 1.2 System Composition (5 Subsystems)
 
@@ -121,10 +113,9 @@ the chain above is the planned deployment, not a fixed wiring.
    └─ WebRTC client (robot video/audio in; operator voice, video
       and text messages out to the robot display)
 
-2. MESH NETWORK
-   ├─ 3× OpenWrt routers, IEEE 802.11s, mesh ID "robot-mesh"
-   ├─ HWMP path selection (802.11s default), WPA3-SAE encryption
-   └─ 2.4 GHz channel 6, 20 MHz (HT20)
+2. LOCAL WI-FI NETWORK
+   ├─ One ordinary Wi-Fi router; the Pi and the operator laptop join it
+   └─ Operator opens http://<pi-ip>:8080
 
 3. EMBEDDED STACK (Raspberry Pi 4)
    ├─ P3: Watchdog — the only systemd-managed process
@@ -137,15 +128,13 @@ the chain above is the planned deployment, not a fixed wiring.
    ├─ Pan-tilt camera mount (2 servos)
    ├─ Sensors: DHT11, MQ-136, HC-SR04 (Arduino); NEO-6M GPS (Pi)
    ├─ USB camera + USB mic (victim → operator)
-   ├─ 7" HDMI display + speaker (operator → victim)
-   └─ On-board mesh router
+   └─ 7" HDMI display + speaker (operator → victim)
 
 5. FAULT-TOLERANCE
    ├─ Arduino dead-man stop (2000 ms, firmware)
    ├─ P1 sends stop when the controlling dashboard disconnects
    ├─ P3 watchdog (restarts crashed or hung P1/P2)
-   ├─ systemd (restarts the watchdog service, 5 s)
-   └─ Mesh path re-selection (802.11s)
+   └─ systemd (restarts the watchdog service, 5 s)
 ```
 
 ---
@@ -157,7 +146,7 @@ the chain above is the planned deployment, not a fixed wiring.
 | Layer | Name | Components | Role | Failure Isolation |
 |-------|------|-----------|------|------------------|
 | **4** | Operator Frontend | React SPA, TypeScript, Vite | Human-machine interface | Browser closes → P1 sends stop; the dead-man stops the motors within 2 s anyway |
-| **3** | Mesh Network | 3× OpenWrt routers, IEEE 802.11s | Wireless backbone | Link loss → path re-selection if another route exists; otherwise the operator link drops and the dead-man stops the robot |
+| **3** | Local Network | Ordinary Wi-Fi router | Wireless link | Link loss → the operator link drops and the dead-man stops the robot |
 | **2** | Edge Processing | Pi: P1/P2/P3 (Python 3.11), Debian 12, systemd | Application logic, media, supervision | Process crash → P3 respawns it after a 10 s cooldown |
 | **1** | Hardware | Arduino UNO, motors, servos, sensors | Real-time control, safety | Firmware dead-man stops the motors after 2 s without a command |
 
@@ -169,8 +158,8 @@ Layer 4 → Layer 3 → Layer 2 → Layer 1
 Failure Scenarios:
 ├─ Layer 4 fails: Operator offline; P1 sends S on disconnect, the
 │                 dead-man stops the motors within 2 s at the latest
-├─ Layer 3 fails: Mesh re-selects a path, or the link is lost (no
-│                 automatic fallback network is implemented)
+├─ Layer 3 fails: The Wi-Fi link is lost (no automatic fallback
+│                 network is implemented)
 ├─ Layer 2 fails: P3 respawns the crashed process; if the Pi itself
 │                 is down, commands stop and the dead-man stops the motors
 └─ Layer 1 fails: Arduino hang or reset leaves the motor drivers
@@ -195,14 +184,12 @@ SUBSYSTEM 1: OPERATOR CONTROL
 │  screen share, and text messages shown on the robot display
 └─ Mission state: READY / DRIVING / DRIVING_LIMITED / STOP
 
-SUBSYSTEM 2: MESH NETWORK
-├─ Relay Router 1 (192.168.10.2): mesh node + operator access point
-│  "robot-mesh-ap" (WPA2-PSK), DHCP 192.168.10.50-99
-├─ Relay Router 2 (192.168.10.3): interior mesh relay
-├─ Robot Router (192.168.10.1): on-chassis mesh gateway, Ethernet to Pi
-├─ Protocol: IEEE 802.11s, HWMP, mesh forwarding on
-├─ Security: SAE (WPA3) on the mesh link
-└─ Radio: 2.4 GHz channel 6, HT20, peer RSSI threshold −80 dBm
+SUBSYSTEM 2: LOCAL WI-FI NETWORK
+├─ One ordinary Wi-Fi router with DHCP
+├─ The Pi and the operator laptop join the same Wi-Fi network
+├─ The Pi's address is fixed with a reservation in the router
+├─ Security: the Wi-Fi network's WPA2/WPA3 password
+└─ Operator opens http://<pi-ip>:8080
 
 SUBSYSTEM 3: EMBEDDED COMPUTING
 ├─ Raspberry Pi 4 Model B (4 GB RAM), Debian 12 (Raspberry Pi OS)
@@ -224,14 +211,13 @@ SUBSYSTEM 4: MOBILE UNIT
 ├─ Power: 4S Li-ion pack (14.8 V nominal) with 40 A BMS; buck
 │  converters for the 5 V servo/sensor rails and the Arduino supply;
 │  the Pi runs from its own USB power bank (see hardware diagram)
-└─ Mesh router: on the chassis, Ethernet to the Pi
+└─ Network: the Pi's on-board Wi-Fi
 
 SUBSYSTEM 5: FAULT-TOLERANCE
 ├─ Tier 1: Arduino dead-man (firmware, 2000 ms)
 ├─ Tier 2: P3 watchdog (1 s crash poll; /health every 10 s,
 │          3 misses = hang; 10 s cooldown before respawn)
-├─ Tier 3: systemd (Restart=on-failure, RestartSec=5)
-└─ Tier 4: IEEE 802.11s path re-selection
+└─ Tier 3: systemd (Restart=on-failure, RestartSec=5)
 ```
 
 ---
@@ -248,7 +234,7 @@ SUBSYSTEM 5: FAULT-TOLERANCE
 | **IV** | Control and media on independent paths | Control: WebSocket (TCP 8080, P1). Media: WebRTC (P2; signalling on TCP 8443, media over UDP on ports chosen by ICE) | Killing P2 leaves driving working |
 | **V** | Operator state always simple | Mission state derived by one pure function (`deriveMissionState`) into 4 states | `pi/tests/test_mission_state.py` |
 | **VI** | Only one process controls the Arduino | `flock` on `/run/robot/p1.lock` + serial port opened with `exclusive=True`; only one WebSocket client holds the controller role | A second P1 exits with code 0 (`LOCK_HELD`) |
-| **VII** | Primary operation needs no internet | Mesh, dashboard, control and media all run on the local network | Works offline, including the map inside the operating area, drawn from a map file stored on the Pi; outside that area the map background comes from openstreetmap.org (Section 27) |
+| **VII** | Primary operation needs no internet | Dashboard, control and media all run on the local network | Works offline, including the map inside the operating area, drawn from a map file stored on the Pi; outside that area the map background comes from openstreetmap.org (Section 27) |
 
 ---
 
@@ -386,7 +372,7 @@ operator's emergency stop is an ordinary `S` (Section 34).
 | CPU | ARM Cortex-A72, 4 cores @ 1.5 GHz |
 | RAM | 4 GB |
 | Storage | microSD |
-| Network | Gigabit Ethernet to the Robot Router |
+| Network | On-board Wi-Fi, same network as the operator laptop |
 | USB | Arduino (serial), camera, microphone |
 | HDMI | micro-HDMI → robot display |
 | Audio out | 3.5 mm jack → speaker |
@@ -532,80 +518,36 @@ Details are in Section 25.
 
 ---
 
-# PART 3: MESH NETWORK ARCHITECTURE
+# PART 3: NETWORK ARCHITECTURE
 
-# SECTION 10: IEEE 802.11s MESH NETWORK (OVERVIEW)
+# SECTION 10: LOCAL WI-FI NETWORK (OVERVIEW)
 
-## 10.1 Mesh Configuration (as provisioned by `deploy/mesh/*.sh`)
+## 10.1 Network Setup
 
 | Feature | Value |
 |---------|-------|
-| Standard | IEEE 802.11s mesh (OpenWrt, `mode='mesh'`) |
-| Mesh ID | `robot-mesh` |
-| Band / channel | 2.4 GHz, channel 6 |
-| Channel width | 20 MHz (`HT20`) |
-| Encryption | SAE (WPA3) |
-| Forwarding | `mesh_fwding=1` (layer-2 multi-hop) |
-| Peer threshold | `mesh_rssi_threshold=-80` dBm |
-| Routing | HWMP (the 802.11s default path-selection protocol) |
-| Subnet | 192.168.10.0/24 |
+| Network | One ordinary Wi-Fi network (any Wi-Fi router) |
+| Pi interface | On-board Wi-Fi (`wlan0`) |
+| Pi address | From the router's DHCP, fixed with a reservation in the router's settings |
+| Operator laptop | Joins the same Wi-Fi network |
+| Security | The Wi-Fi network's WPA2/WPA3 password |
 
-The mesh and AP keys are set in the provisioning scripts; change them there
-before deployment rather than using the repository defaults.
-
-## 10.2 Three-Router Chain Topology
+## 10.2 Topology
 
 ```
-DEPLOYMENT (addresses from deploy/etc-robot/mesh.conf):
+Operator laptop ──Wi-Fi──▶ Wi-Fi router ◀──Wi-Fi── Raspberry Pi 4 (<pi-ip>)
 
-Relay Router 1 — 192.168.10.2 (operator site)
-├─ Mesh node
-├─ Access point for the operator laptop: SSID "robot-mesh-ap", WPA2-PSK
-└─ DHCP for operator laptops: 192.168.10.50-99
-
-Relay Router 2 — 192.168.10.3 (interior point)
-└─ Mesh relay node only
-
-Robot Router — 192.168.10.1 (on the chassis)
-├─ Mesh node and gateway for the mesh subnet
-└─ Ethernet to the Raspberry Pi (static 192.168.10.10)
-
-Operator reaches the robot at:  http://192.168.10.10:8080
+Operator reaches the robot at:  http://<pi-ip>:8080
 ```
 
-Hop latency and range depend on the site; see Section 13 and the network
+Range depends on the router and the site; see Section 13 and the network
 tests N1–N8 in `TEST_REPORT.md`.
 
 ---
 
-# SECTION 11: HWMP ROUTING PROTOCOL
+# SECTION 11: WI-FI LINK QUALITY GUIDE
 
-## 11.1 Hybrid Wireless Mesh Protocol (Route Selection)
-
-HWMP is provided by the Linux mac80211 mesh stack on each OpenWrt router;
-the project does not configure it beyond the defaults. How it works:
-
-```
-Reactive (on-demand, the default mode):
-├─ Source broadcasts PREQ (Path Request) for the destination
-├─ Intermediate nodes forward PREQ, accumulating the path metric
-├─ Destination answers with PREP (Path Reply) along the best path
-├─ Paths are cached and refreshed while traffic flows
-└─ A broken link produces PERR (Path Error) and a new discovery
-
-Proactive (root announcements):
-└─ Optional; not enabled by the provisioning scripts
-
-Metric: Airtime Link Metric
-├─ ca = (O + Bt / r) × 1 / (1 − ef)
-├─ O  = channel-access / protocol overhead
-├─ Bt = test frame size (8192 bits)
-├─ r  = data rate in use on the link
-├─ ef = frame error rate
-└─ Lower = better; HWMP picks the path with the lowest sum
-```
-
-## 11.2 Link Quality Guide
+## 11.1 Link Quality Guide
 
 These are general Wi-Fi planning figures, used for site survey; the system
 does not measure them itself (Section 40.3).
@@ -616,47 +558,41 @@ does not measure them itself (Section 40.3).
 | **Good** | −50 to −65 dBm | Stable |
 | **Acceptable** | −65 to −75 dBm | Usable |
 | **Poor** | −75 to −80 dBm | Weak |
-| **Not peered** | below −80 dBm | Below `mesh_rssi_threshold`; no mesh link |
+| **Unusable** | below −80 dBm | Link drops |
 
-**Planning target for teleoperation:** RSSI better than −75 dBm per hop,
+**Planning target for teleoperation:** RSSI better than −75 dBm,
 ping to the Pi under 200 ms, packet loss under 5 %.
 
 ---
 
-# SECTION 12: THREE-ROUTER DEPLOYMENT STRATEGY
+# SECTION 12: NETWORK DEPLOYMENT STRATEGY
 
 ## 12.1 Pre-Deployment Site Survey
 
 ```
 CHECKLIST:
 
-Relay Router 1 (Operator Position):
-  ├─ Location: Safe perimeter, elevated
-  ├─ Height: 1.5-2 m (tripod or pole)
-  ├─ LOS: Clear line of sight toward Relay 2
+Wi-Fi Router:
+  ├─ Location: Safe perimeter, elevated, toward the search area
   ├─ Power: Battery or mains
-  └─ Role: Operator laptop joins its "robot-mesh-ap" network
+  └─ Check: The Pi keeps its reserved address
 
-Relay Router 2 (Interior Point):
-  ├─ Location: Where it can see both Relay 1 and the robot's area
-  ├─ Height: Elevated (2-3 m)
-  ├─ Power: Battery sized for the mission
-  └─ Check: Joins the mesh (visible in the peer list)
+Robot (Raspberry Pi Wi-Fi):
+  ├─ Position: Keep the Pi's antenna area clear of metal
+  └─ Check: The robot stays within the router's range over the course
 
-Robot Mesh Router (On Robot):
-  ├─ Position: Top of the chassis, antennas clear of metal
-  ├─ Power: From the robot's supply
-  └─ Connectivity: Ethernet to the Pi
+Operator Laptop:
+  └─ Joins the same Wi-Fi network as the robot
 ```
 
 ## 12.2 Link Quality Verification
 
 ```bash
-# On an OpenWrt router: list mesh peers with signal and bitrate
-iw dev <mesh-interface> station dump
+# On the Pi: signal and bitrate of the Wi-Fi link
+iw dev wlan0 link
 
 # From the operator laptop:
-ping -c 20 192.168.10.10          # the Pi
+ping -c 20 <pi-ip>                # the Pi
 # Target: < 5 % loss, < 200 ms
 ```
 
@@ -668,7 +604,7 @@ ping -c 20 192.168.10.10          # the Pi
 
 | Metric | Good | Acceptable | Poor |
 |--------|------|-----------|------|
-| **RSSI per hop (dBm)** | > −65 | −65 to −75 | −75 to −80 |
+| **RSSI (dBm)** | > −65 | −65 to −75 | −75 to −80 |
 | **Ping to Pi (ms)** | < 60 | 60-200 | > 200 |
 | **Packet loss (%)** | < 1 | 1-5 | > 5 |
 
@@ -777,7 +713,7 @@ then rejects it.
 | Aspect | Value |
 |--------|-------|
 | Server | P1 (FastAPI/uvicorn) |
-| Endpoint | `ws://192.168.10.10:8080/control/ws` |
+| Endpoint | `ws://<pi-ip>:8080/control/ws` |
 | Keep-alive | uvicorn WebSocket ping every 20 s, 20 s timeout |
 | Roles | First client to ask for `controller` gets it; all others are `observer` |
 | Reconnect | Dashboard retries with exponential backoff, 1 s to 30 s |
@@ -862,11 +798,11 @@ sensor values with a new `seq` and `server_ts`.
 | Aspect | Value |
 |--------|-------|
 | Server | P2 (aiortc) |
-| Signalling | `POST http://192.168.10.10:8443/webrtc/offer` — full SDP offer in, SDP answer out (no trickle ICE) |
-| ICE | Host candidates on the local mesh; the dashboard creates its peer connection without STUN/TURN servers |
+| Signalling | `POST http://<pi-ip>:8443/webrtc/offer` — full SDP offer in, SDP answer out (no trickle ICE) |
+| ICE | Host candidates on the local network; the dashboard creates its peer connection without STUN/TURN servers |
 | Transceivers | One video and one audio transceiver, both `sendrecv` |
 | Data Channel | Label `screen` (ordered, reliable), created by the dashboard |
-| Browser requirement | For the laptop mic/camera, the page must be a secure context: HTTPS, or Chrome/Edge with `chrome://flags/#unsafely-treat-insecure-origin-as-secure` set to `http://192.168.10.10:8080`. Robot video, images and text work without it |
+| Browser requirement | For the laptop mic/camera, the page must be a secure context: HTTPS, or Chrome/Edge with `chrome://flags/#unsafely-treat-insecure-origin-as-secure` set to `http://<pi-ip>:8080`. Robot video, images and text work without it |
 
 ## 16.2 Media Tracks
 
@@ -1019,8 +955,8 @@ Layer 4: React dashboard
   ├─ WebSocket client (TCP, reliable) → P1
   └─ WebRTC client (UDP/RTP + SCTP data channel) → P2
 
-Layer 3: Mesh network (IEEE 802.11s, HWMP)
-  └─ Layer-2 forwarding, transparent to IP
+Layer 3: Local Wi-Fi network
+  └─ One Wi-Fi router, transparent to IP
 
 Layer 2: Raspberry Pi (Linux)
   ├─ P1: WebSocket server + serial bridge + GPS
@@ -1225,7 +1161,7 @@ P3 logs every event to `/var/log/robot/p3_events.log` (`PROC_SPAWN`,
 
 # SECTION 23: FAULT-TOLERANCE MECHANISMS
 
-## 23.1 Four-Tier Supervision Hierarchy
+## 23.1 Three-Tier Supervision Hierarchy
 
 ```
 TIER 1 (Firmware Level):
@@ -1250,13 +1186,6 @@ TIER 3 (OS Level):
    ├─ Trigger: abnormal exit (Restart=on-failure)
    ├─ Action: stop the control group, restart after 5 s
    └─ Guarantee: supervision comes back without operator action
-
-TIER 4 (Network Level):
-└─ IEEE 802.11s Path Selection
-   ├─ Trigger: link breakage (PERR)
-   ├─ Action: HWMP path discovery
-   └─ Guarantee: re-routes when an alternative path exists; with the
-      three-router chain, losing Relay 2 breaks the link (test N8)
 
 Kiosk: robot-screen.sh relaunches Chromium 3 s after a crash.
 ```
@@ -1535,7 +1464,7 @@ Retention:     7 days of telemetry + 8 weeks of events; a 16 GB or
 | USB | First ALSA capture card (e.g. "U20") | USB microphone (P2 picks it by card id) |
 | 3.5 mm jack | ALSA card "Headphones" (default PipeWire sink) | Speaker |
 | micro-HDMI 0 | HDMI-A-1 | Robot display (Robot Screen kiosk) |
-| Ethernet | eth0, static 192.168.10.10 | Robot Mesh Router |
+| Wi-Fi | wlan0, address reserved in the Wi-Fi router | Local Wi-Fi network |
 
 ---
 
@@ -1543,10 +1472,10 @@ Retention:     7 days of telemetry + 8 weeks of events; a 16 GB or
 
 # SECTION 30: OPERATIONAL MODES
 
-## 30.1 Mode 1: Primary — Local Mesh Only (implemented, default)
+## 30.1 Mode 1: Primary — Local Network Only (implemented, default)
 
 ```
-Network path: Operator → Relay 1 (AP) → Relay 2 → Robot Router → Pi → Arduino
+Network path: Operator → Wi-Fi router → Pi → Arduino
 
 Services: P3 ✓ → P1 ✓, P2 ✓; Robot Screen kiosk ✓
 Capability:
@@ -1605,9 +1534,8 @@ Dashboard: STOP (red), "WS offline", reconnects automatically
            (1 s, doubling to 30 s), then replays missed telemetry.
 ```
 
-A direct Wi-Fi fallback without the mesh (the laptop joining the robot
-router directly) is not provisioned by the scripts; the operator AP exists
-only on Relay 1.
+No fallback network is provisioned; the operator and the Pi share one
+Wi-Fi network.
 
 ## 30.5 Mode 5: Pi Offline — Arduino Alone
 
@@ -1639,7 +1567,6 @@ Recovery:
                     or  serial_ok = false
                     or  no telemetry for > 3000 ms
 2. DRIVING_LIMITED  if  WebRTC video not connected
-                    or  mesh not OK (fixed to OK — no mesh metric yet)
 3. DRIVING          if  fw_state = 2 (Arduino ACTIVE)
 4. READY            otherwise
 ```
@@ -1728,7 +1655,7 @@ Transport:
 | **P2 crash** | P3 poll (≤ 1 s) | Respawn after 10 s | Retry video |
 | **P3 crash** | systemd | Service restarted after 5 s (P1, P2 too) | Automatic |
 | **Robot Screen crash** | Launcher sees Chromium exit | Relaunch after 3 s (or `vnc` if closed by hand) | Automatic |
-| **Mesh link break** | HWMP PERR | Re-route if a path exists | Automatic, or reposition a relay |
+| **Wi-Fi link break** | WebSocket closes, video drops | Dead-man stops the motors | Dashboard reconnects once the link is back; move the robot or router closer |
 | **Pi offline** | Everything stops | Dead-man stops the motors | Pi reboot; services start on their own |
 
 ---
@@ -1798,7 +1725,7 @@ real value).
 | 10 | P1 | Starts GPS thread, telemetry log, 200 ms broadcast; HTTP on 8080 |
 | 11 | P2 | HTTP on 8443 (camera and mic open on the first viewer) |
 | 12 | Desktop | Autologin; `robot-screen.sh` waits for P2, then opens the kiosk |
-| 13 | Operator | Opens `http://192.168.10.10:8080`; WebSocket `hello` → controller |
+| 13 | Operator | Opens `http://<pi-ip>:8080`; WebSocket `hello` → controller |
 | 14 | Dashboard | WebRTC offer to P2 (retried every 3 s until P2 answers) |
 | — | **Operational** | Mission state READY |
 
@@ -1912,11 +1839,11 @@ The unit waits for `dev-ttyUSB0.device`, but the UNO in use enumerates as
 3. On the Pi: sudo ./deploy/install.sh
    (packages, "robot" user, /opt/robot, venv, /etc/robot templates,
    robot-watchdog.service enabled, kiosk autostart, logrotate)
-4. Manual steps printed by the script: enable the GPS UART, static IP
-   192.168.10.10, desktop autologin, 3.5 mm jack as default output,
-   check SERIAL_PORT in /etc/robot/p1.env (ls /dev/tty{USB,ACM}*)
-5. Provision the routers: deploy/mesh/robot.sh, relay1.sh, relay2.sh
-   (change the mesh and AP keys first)
+4. Manual steps printed by the script: enable the GPS UART, desktop
+   autologin, 3.5 mm jack as default output, check SERIAL_PORT in
+   /etc/robot/p1.env (ls /dev/tty{USB,ACM}*)
+5. Join the Pi to the Wi-Fi network and reserve its address in the
+   Wi-Fi router's settings
 6. Offline map (optional, needs internet once): make area.pmtiles for
    the operating area and copy it to /var/lib/robot/maps/ (Section 27.2)
 7. sudo systemctl start robot-watchdog.service
@@ -1934,18 +1861,15 @@ ROBOT UNIT:
   ☐ USB microphone mounted
   ☐ Speaker on the 3.5 mm jack, audible at 2 m
   ☐ Robot display mounted facing forward, at the victim's eye level
-  ☐ Mesh router on board, antennas clear, Ethernet to the Pi
   ☐ Pi secured, ventilation not blocked
   ☐ Arduino secured, USB cable to the Pi strain-relieved
   ☐ 4S battery charged, polarity checked, BMS connected
   ☐ Buck converters set (5 V rails, Arduino supply); Pi power bank charged
 
-MESH ROUTERS:
-  ☐ Robot Router 192.168.10.1, Relay 1 192.168.10.2, Relay 2 192.168.10.3
-  ☐ Mesh ID "robot-mesh", SAE key changed from the default
-  ☐ Channel 6, HT20 on all three
-  ☐ Relay 1 AP "robot-mesh-ap" up, DHCP 192.168.10.50-99
-  ☐ Relays elevated, line of sight along the chain, batteries sized
+WI-FI NETWORK:
+  ☐ Wi-Fi router powered, placed toward the search area
+  ☐ Pi's address reserved in the router (it does not change)
+  ☐ Wi-Fi password is not the factory default
 
 OPERATOR LAPTOP:
   ☐ Chrome or Edge, current version
@@ -1961,17 +1885,15 @@ OPERATOR LAPTOP:
 
 ```
 1. POWER UP (in order):
-   ☐ Relay 1 on; wait for it to boot
-   ☐ Relay 2 on; wait for it to boot
-   ☐ Robot on (router, Pi, Arduino); wait for the kiosk idle screen
+   ☐ Wi-Fi router on; wait for it to boot
+   ☐ Robot on (Pi, Arduino); wait for the kiosk idle screen
 
 2. LINK VERIFICATION:
-   ☐ Laptop joins "robot-mesh-ap", gets a 192.168.10.50-99 address
-   ☐ On a router: `iw dev <mesh-if> station dump` shows the peers
-   ☐ ping 192.168.10.10: < 5 % loss, < 200 ms
+   ☐ Laptop joins the same Wi-Fi network as the robot
+   ☐ ping <pi-ip>: < 5 % loss, < 200 ms
 
 3. ROBOT SYSTEMS VERIFICATION:
-   ☐ Open http://192.168.10.10:8080
+   ☐ Open http://<pi-ip>:8080
    ☐ Status bar: WS connected, role: controller, serial ok; mission READY
    ☐ Sensor cards update; GPS card shows a fix outdoors
    ☐ Video visible (640×480)
@@ -1987,13 +1909,13 @@ OPERATOR LAPTOP:
 4. FAILSAFE CHECKS:
    ☐ Turn laptop Wi-Fi off while driving → robot stops within 2 s
    ☐ Turn it back on → dashboard reconnects, alert log shows recovery
-   ☐ Power off Relay 2 → link lost (it is the only path in a chain);
+   ☐ Power off the Wi-Fi router → robot stops within 2 s;
      power on → link and telemetry return
 
 5. MISSION START:
    ☐ Battery charged; spare Pi power bank
    ☐ Operator familiar with the dashboard (OPERATOR_MANUAL.md)
-   ☐ Relay positions planned for the area to be searched
+   ☐ Wi-Fi coverage checked for the area to be searched
 ```
 
 ---
@@ -2004,9 +1926,8 @@ OPERATOR LAPTOP:
 
 | Stage | Path | Estimate |
 |-------|------|----------|
-| Browser → Relay 1 | Wi-Fi | ~5-15 ms |
-| Mesh hops | Relay 1 → Relay 2 → Robot Router | ~10-100 ms (site dependent) |
-| Router → Pi | Ethernet | < 1 ms |
+| Browser → Wi-Fi router | Wi-Fi | ~5-15 ms |
+| Router → Pi | Wi-Fi | ~5-15 ms (site dependent) |
 | P1 | Validate, write serial | < 5 ms |
 | Serial | "F120\n" (5 bytes at 115,200 baud) | ~0.5 ms |
 | Arduino | Parse in main loop; next motor tick | ≤ 10 ms (+ up to ~25 ms if a sensor read is in progress) |
@@ -2032,11 +1953,11 @@ Operator → robot (only while in use):
 ├─ Camera 640×480 @ 10 fps / screen share 5 fps / still image
 └─ Text messages: negligible
 
-P2 → Robot Screen: localhost only, not on the mesh.
+P2 → Robot Screen: localhost only, not on the network.
 
 Rough worst case, one dashboard, VP8, operator camera on (estimate):
 ≈ 16 kbps + 0.5-1.5 Mbps + 32 kbps + several hundred kbps (operator
-video) + voice ≈ 1-2 Mbps — within a 20 MHz 2.4 GHz mesh link, which is
+video) + voice ≈ 1-2 Mbps — within a 20 MHz 2.4 GHz Wi-Fi link, which is
 why the camera and screen share are capped at 640×480 and 10/5 fps.
 Each extra viewer adds another video + audio stream.
 ```
@@ -2062,22 +1983,22 @@ measured yet; they belong in `TEST_REPORT.md` once the field test is run.
 
 ```
 OPERATOR DASHBOARD
-  ├─ Depends on: mesh, P1 (served from it), P2 for media
+  ├─ Depends on: Wi-Fi network, P1 (served from it), P2 for media
   ├─ Failure: tab closed/crash → P1 sends S; dead-man as backstop
   └─ Recovery: reload; reconnect + resume_from
 
-MESH NETWORK (3 routers)
-  ├─ Depends on: line of sight, router power
-  ├─ Failure: link loss → re-route if possible, else control lost
-  └─ Recovery: reposition or re-power a relay
+LOCAL WI-FI NETWORK (1 router)
+  ├─ Depends on: router power, robot within range
+  ├─ Failure: link loss → control lost; dead-man stops the robot
+  └─ Recovery: move the robot or router closer, or re-power the router
 
 P1 CONTROL SERVER
-  ├─ Depends on: Arduino (USB serial), GPS (UART), mesh
+  ├─ Depends on: Arduino (USB serial), GPS (UART), Wi-Fi network
   ├─ Failure: crash → P3 respawns after 10 s
   └─ Recovery: dashboard reconnects on its own
 
 P2 MEDIA SERVER
-  ├─ Depends on: camera, mic, mesh
+  ├─ Depends on: camera, mic, Wi-Fi network
   ├─ Failure: crash → P3 respawns after 10 s
   └─ Recovery: operator clicks Retry video
 
@@ -2109,7 +2030,7 @@ CRITICAL PATH (Motor Safety):
 ├─ Pi: Python 3.11 — FastAPI, uvicorn, pyserial, aiortc, PyAV, aiohttp
 ├─ Frontend: React 19, TypeScript, Vite, Tailwind CSS, Leaflet
 ├─ Kiosk: Chromium in kiosk mode, bash launcher
-├─ Network: OpenWrt, IEEE 802.11s (HWMP), WPA3-SAE
+├─ Network: ordinary Wi-Fi network (WPA2/WPA3)
 ├─ Supervision: systemd (P3), P3 (P1, P2)
 └─ Tests: pytest (69 tests: command validation, telemetry parsing,
    mission state, ring buffer, dead-man emulation, shared capture,
@@ -2118,8 +2039,8 @@ CRITICAL PATH (Motor Safety):
 
 ## 40.3 Known Limitations
 
-1. **No mesh link-quality monitoring.** No process measures signal
-   strength or loss; the mesh input to the mission state is fixed at OK.
+1. **No Wi-Fi link-quality monitoring.** No process measures signal
+   strength or loss.
 2. **Serial loss needs a P1 restart.** If the Arduino is unplugged, P1 marks
    `serial_ok=false` but does not reopen the port, and `/health` still
    returns 200, so P3 does not restart it.
@@ -2131,9 +2052,9 @@ CRITICAL PATH (Motor Safety):
    download date. Everything else runs offline.
 5. **Gas is uncalibrated.** Readings and thresholds are raw ADC counts,
    labelled "ppm" on the dashboard.
-6. **No authentication.** Any host on the mesh can open the dashboard and
-   take the controller role if it is free; security rests on the mesh and
-   AP keys.
+6. **No authentication.** Any host on the Wi-Fi network can open the dashboard and
+   take the controller role if it is free; security rests on the Wi-Fi
+   password.
 7. **Housekeeping.** The systemd unit waits for `dev-ttyUSB0.device` while
    the UNO is `/dev/ttyACM0`; `p3_events.log` is not rotated; logrotate
    names logs no code writes; the GPS-track clean-up cron is not installed;
@@ -2149,10 +2070,10 @@ CRITICAL PATH (Motor Safety):
 ```
 RESCUE ROBOT SYSTEM
 
-Architecture: 5 subsystems, 4-tier fault tolerance
+Architecture: 5 subsystems, 3-tier fault tolerance
 
 Capabilities:
-├─ Teleoperation over a local 802.11s mesh (WebSocket control)
+├─ Teleoperation over a local Wi-Fi network (WebSocket control)
 ├─ Live video + audio from the robot (WebRTC)
 ├─ Talk-to-victim: operator voice, face/image/screen and text on
 │  the robot's own display and speaker
@@ -2179,14 +2100,14 @@ Strengths:
   and tests
 
 Constraints:
-- Range limited by the three-router chain and line of sight
+- Range limited by the Wi-Fi router's coverage
 - One controller at a time; one talker at a time
-- Relay 2 is a single point of failure in a chain deployment
+- The Wi-Fi router is a single point of failure
 - Items in Section 40.3
 ```
 
 This architecture gives a rescue team a robot they can drive, watch and
-listen through over a self-contained mesh network, and that lets them speak
+listen through over a self-contained local Wi-Fi network, and that lets them speak
 to, be seen by and send messages to a trapped victim. Its core safety
 property — the motors stop when commands stop — is enforced in the
 Arduino firmware and does not depend on any other part of the system.

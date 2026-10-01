@@ -3,7 +3,7 @@
 P2 speaks a minimal signaling protocol: the dashboard POSTs its SDP offer to
 ``/webrtc/offer`` and receives an SDP answer in the same response — there is
 no separate signaling channel or trickle ICE round-trip, which keeps the
-local-mesh deployment simple (no STUN/TURN needed for the answer itself; the
+local network deployment simple (no STUN/TURN needed for the answer itself; the
 STUN server from P1's ``/api/ice-config`` is only used for candidate
 gathering inside the browser).
 """

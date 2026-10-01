@@ -20,7 +20,7 @@ unusual. If a test fails, describe it in [Section 9](#9-issues-found).
 | Pi software logic (validation, parsing, mission state, buffering, talkback) | Automated unit tests (Section 3) |
 | Arduino firmware and safety | Hardware tests (Section 4) |
 | Dashboard and operator controls | Integration tests (Section 5) |
-| Mesh network range and performance | Network tests (Section 6) |
+| Wi-Fi network range and performance | Network tests (Section 6) |
 | Recovery from crashes and disconnections | Failure-injection tests (Section 7) |
 | Complete rescue scenario | Field test (Section 8) |
 
@@ -30,7 +30,7 @@ unusual. If a test fails, describe it in [Section 9](#9-issues-found).
 |---|---|
 | Edge computer | Raspberry Pi 4, Linux 6.12 (aarch64), Python 3.11.2 |
 | Microcontroller | Arduino UNO, firmware RESCUE-UNO 1.0.0 |
-| Mesh routers | 3 × OpenWrt, IEEE 802.11s, channel 6 |
+| Network | Local Wi-Fi network (Pi and operator laptop on the same network) |
 | Operator laptop | _fill in: model, OS, Chrome version_ |
 | Test location(s) | _fill in_ |
 
@@ -39,13 +39,13 @@ unusual. If a test fails, describe it in [Section 9](#9-issues-found).
 ## 3. Automated unit tests
 
 **Command:** `cd pi && pytest`
-**Run on:** Raspberry Pi 4, 2026-09-29
-**Result:** **112 passed, 0 failed** (11.6 s, with the robot services running)
+**Run on:** Raspberry Pi 4, 2026-10-01
+**Result:** **111 passed, 0 failed** (3.3 s)
 
 | Test file | Tests | What it verifies | Result |
 |---|---|---|---|
 | `test_command_validator.py` | 13 | Motor/servo commands are validated; speed is clamped to 0–180 PWM; unknown directions and axes are rejected; stale sequence numbers are rejected per client; emergency stop bypasses the sequence check. | PASS |
-| `test_mission_state.py` | 10 | Mission state goes to STOP on WebSocket loss, serial loss or an ack timeout over 3 s; DRIVING_LIMITED on degraded video/mesh; READY and DRIVING when nominal; STOP takes priority. | PASS |
+| `test_mission_state.py` | 9 | Mission state goes to STOP on WebSocket loss, serial loss or an ack timeout over 3 s; DRIVING_LIMITED on degraded video; READY and DRIVING when nominal; STOP takes priority. | PASS |
 | `test_mock_deadman.py` | 10 | Simulated firmware: dead-man timer trips after 2 s and stops the motors; heartbeat re-arms it; oversized and unknown commands are rejected; PWM is clamped; telemetry arrives at the expected rate. | PASS |
 | `test_ring_buffer.py` | 9 | The 300-slot telemetry buffer keeps order, overwrites the oldest entries, returns only newer frames on resume, and reports gaps. | PASS |
 | `test_telemetry_parser.py` | 8 | Arduino telemetry lines are parsed correctly; wrong field counts, non-numeric, out-of-range, empty and oversized lines are rejected. | PASS |
@@ -55,7 +55,7 @@ unusual. If a test fails, describe it in [Section 9](#9-issues-found).
 | `test_resilient_audio.py` | 4 | The robot mic track sends silence while the mic is missing and switches to it once it opens; a mic lost mid-session is reopened; each outage is reported once; output is one continuous stream of 60 ms Opus packets, paced in real time. | PASS |
 | `test_offline_map.py` | 2 | P1 serves the offline map folder at `/maps`, registered before the dashboard's `/` so it isn't swallowed; with no map folder no route is added and nothing changes. | PASS |
 | `test_gps_track.py` | 4 | Ground distance is computed correctly; GPS drift of up to ~8 m around a stationary robot adds no track points; driving adds a point about every 10 m; a reading without a fix adds nothing. | PASS |
-| **Total** | **112** | | **112 / 112 PASS** |
+| **Total** | **111** | | **111 / 111 PASS** |
 
 **Limitation:** these tests use simulated hardware. They prove the software
 logic, not the real motors, sensors or radio link, which are covered in the
@@ -92,7 +92,7 @@ ending: Newline), or test through the dashboard where noted.
 
 | ID | Test | Procedure | Expected | Result | Pass/Fail | Date / By |
 |---|---|---|---|---|---|---|
-| I1 | Dashboard loads | Open `http://192.168.10.10:8080` and enter the controller key. | `WS connected`, `CONTROLLER`, `READY`. | | | |
+| I1 | Dashboard loads | Open `http://<pi-ip>:8080` and enter the controller key. | `WS connected`, `CONTROLLER`, `READY`. | | | |
 | I2 | Button drive | Hold each drive button, then release. | Robot moves while held and stops on release. | | | |
 | I3 | Keyboard drive | Hold arrow keys and WASD. | Same as I2. | | | |
 | I4 | Typing doesn't drive | Type "wasd" in the message box. | Robot does not move. | | | |
@@ -111,7 +111,7 @@ ending: Newline), or test through the dashboard where noted.
 | I15 | VNC mode | Switch to VNC, then back to Robot Display. | Kiosk closes and reopens; the warning shows while in VNC. | | | |
 | I16 | Sensor alerts | Bring an obstacle within 20 cm. | Range card turns red. | | | |
 | I17 | Map | Drive outdoors with a GPS fix. | Robot position updates on the map. | | | |
-| I17a | Offline map | Disconnect the operator laptop from the internet but keep it on the mesh; reload the dashboard. | Street map still shows around the robot and BAIUST; outside the map area the background is blank. | | | |
+| I17a | Offline map | Disconnect the operator laptop from the internet but keep it on the local Wi-Fi network; reload the dashboard. | Street map still shows around the robot and BAIUST; outside the map area the background is blank. | | | |
 | I17b | Follow mode | Open the dashboard, drive; drag the map away; click the locate button. | Map follows the robot (button blue); dragging stops following (button white); the click flies back and follows again. | | | |
 | I17c | No drift lines | Leave the robot standing outdoors with a fix for 5 minutes. | No new path lines appear, apart from an occasional short one when the fix jumps. | | | |
 | I18 | Video-loss warning | While READY, stop P2 (`sudo pkill -9 -f p2_media`). | Mission state turns amber DRIVING_LIMITED; after P2 restarts, clicking **Retry video** returns it to READY. | | | |
@@ -121,14 +121,14 @@ ending: Newline), or test through the dashboard where noted.
 
 ## 6. Network performance tests
 
-Place the relays in a chain and measure at increasing distances. Use
-`ping 192.168.10.10` from the operator laptop for latency and loss.
+Move the robot away from the Wi-Fi router and measure at increasing distances.
+Use `ping <pi-ip>` from the operator laptop for latency and loss.
 
 | ID | Setup | Distance / obstacles | Latency avg (ms) | Packet loss (%) | Video quality (good / choppy / lost) | Control responsive? | Notes |
 |---|---|---|---|---|---|---|---|
-| N1 | Direct to robot router | ___ m, line of sight | | | | | |
-| N2 | Through 1 relay | ___ m | | | | | |
-| N3 | Through 2 relays | ___ m | | | | | |
+| N1 | Robot near the Wi-Fi router | ___ m, line of sight | | | | | |
+| N2 | Robot at medium distance from the Wi-Fi router | ___ m | | | | | |
+| N3 | Robot far from the Wi-Fi router | ___ m | | | | | |
 | N4 | Through walls | ___ walls | | | | | |
 | N5 | Maximum working range | ___ m | | | | | |
 
@@ -136,7 +136,7 @@ Place the relays in a chain and measure at increasing distances. Use
 |---|---|---|---|
 | N6 | Command latency (key press → wheels move) | Film the screen and robot together at 60 fps; count frames. | ___ ms |
 | N7 | Video delay | Film a stopwatch through the robot camera next to the real stopwatch. | ___ ms |
-| N8 | Relay loss | Power off the middle relay during driving. | Robot stopped? ___ Link recovered in ___ s |
+| N8 | Wi-Fi loss | Power off the Wi-Fi router during driving. | Robot stopped? ___ Link recovered in ___ s |
 
 ---
 
@@ -161,7 +161,7 @@ Place the relays in a chain and measure at increasing distances. Use
 
 Run one complete simulated rescue:
 
-1. Set up the relays and start the robot at the entry point.
+1. Check the Wi-Fi covers the course and start the robot at the entry point.
 2. Drive the robot through a course with at least one obstacle and one turn
    to a "victim" (a person or mannequin).
 3. Use pan/tilt to find the victim on video.

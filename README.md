@@ -1,6 +1,6 @@
 # Rescue Robot
 
-A teleoperated rescue robot. An operator drives it over a wireless mesh
+A teleoperated rescue robot. An operator drives it over the local Wi-Fi
 network from a browser dashboard, watches live video, reads environmental
 sensors (gas, temperature/humidity, sonar range, GPS), and talks two-way with
 a victim through a screen and speaker mounted on the robot.
@@ -11,10 +11,8 @@ a victim through a screen and speaker mounted on the robot.
 
 ```
 Operator laptop (browser dashboard)
-        │  Wi-Fi
-IEEE 802.11s mesh  ── relay routers ──  robot router 192.168.10.1
-        │  Ethernet
-Raspberry Pi 4  192.168.10.10
+        │  Wi-Fi (same local network, http://<pi-ip>:8080)
+Raspberry Pi 4
    ├─ P3 watchdog (systemd)  ── spawns and monitors P1 and P2
    ├─ P1 control server  :8080  WebSocket control, telemetry, GPS, serves the dashboard
    ├─ P2 media server    :8443  WebRTC video/audio, talkback, Robot Screen page
@@ -38,14 +36,14 @@ for 2 seconds.
 | `pi/p3_watchdog/` | P3: process supervisor and health checks. |
 | `pi/tests/` | pytest suite. |
 | `dashboard/` | Operator dashboard (React + TypeScript + Vite + Tailwind + Leaflet). |
-| `deploy/` | Pi install script, systemd unit, `/etc/robot` config templates, mesh router scripts, kiosk launcher, logrotate. |
+| `deploy/` | Pi install script, systemd unit, `/etc/robot` config templates, kiosk launcher, logrotate. |
 | `docs/` | Design documentation (see below). |
 
 ## Documentation
 
 | Document | What it covers |
 |---|---|
-| [`docs/CAPSTONE_METHODOLOGY_FINAL.md`](docs/CAPSTONE_METHODOLOGY_FINAL.md) | The full methodology report: hardware, firmware, Pi processes, mesh network, safety, deployment. Start here. |
+| [`docs/CAPSTONE_METHODOLOGY_FINAL.md`](docs/CAPSTONE_METHODOLOGY_FINAL.md) | The full methodology report: hardware, firmware, Pi processes, network, safety, deployment. Start here. |
 | [`docs/SOFTWARE_ARCHITECTURE.md`](docs/SOFTWARE_ARCHITECTURE.md) | Software architecture: components, protocol contract, runtime flows, fault tolerance, design decisions and known limitations. |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Architecture diagrams: containers, state machines, sequences, failure modes, deployment. |
 | [`docs/high level software architure diagram.md`](docs/high%20level%20software%20architure%20diagram.md) | One-page diagram of the whole software stack. |
@@ -87,7 +85,7 @@ npm run dev
    select Arduino UNO, and upload. Check for the `READY RESCUE-UNO` banner
    at 115200 baud.
 2. **Build the dashboard.** In `dashboard/`, run `npm install && npm run build`.
-   `dashboard/.env` points it at the robot (`192.168.10.10`).
+   The built dashboard connects to whichever address it was opened from.
 3. **Install on the Pi.** From the cloned repo:
    ```bash
    sudo ./deploy/install.sh
@@ -98,17 +96,15 @@ npm run dev
    `robot-watchdog.service`, and sets up the Robot Screen kiosk. It is safe to
    re-run after pulling updates.
 4. **Finish the manual steps** printed at the end of the script: enable the
-   GPS UART, set the Pi's static IP `192.168.10.10`, enable desktop autologin,
+   GPS UART, enable desktop autologin,
    and set the 3.5 mm jack as the default audio output.
 5. **Set the controller key.** Add `CONTROLLER_KEY=<your key>` to
    `/etc/robot/p1.env` (P2 reads it too). Only a dashboard that enters this
    key can drive, stop or talk to the victim; without it every dashboard is
    view-only. Keep the real key out of git.
-6. **Provision the mesh routers** (OpenWrt) with `deploy/mesh/robot.sh`,
-   `relay1.sh` and `relay2.sh`. The addressing plan is in
-   `deploy/etc-robot/mesh.conf`. With only one router, run
-   `deploy/mesh/single.sh` on it instead: it puts the router on the robot at
-   `192.168.10.1` with the `robot-mesh-ap` access point, no mesh.
+6. **Connect to the network.** Put the Pi and the operator laptop on the same
+   Wi-Fi network. Give the Pi a fixed address in your Wi-Fi router's settings
+   so it does not change.
 7. **Offline map (optional).** So the map works without internet, make a map
    file for the operating area with the `pmtiles` tool and copy it to
    `/var/lib/robot/maps/area.pmtiles`. See Section 27.2 of
@@ -118,7 +114,7 @@ npm run dev
    ```bash
    sudo systemctl start robot-watchdog.service
    ```
-   Open `http://192.168.10.10:8080` from a laptop on the mesh.
+   Open `http://<pi-ip>:8080` from a laptop on the same Wi-Fi network.
 
 ### Configuration
 
@@ -129,9 +125,8 @@ Runtime settings live in `/etc/robot/` on the Pi. Templates are in
 |---|---|---|
 | `p1.env` | P1 (and P2) | `CONTROLLER_KEY` (required to control; empty = view-only for everyone), `SERIAL_PORT` (usually `/dev/ttyACM0`, check with `ls /dev/tty{USB,ACM}*`), `GPS_PORT`, `P1_PORT`, `MOCK_HARDWARE`, `MAP_DIR` (offline map folder, default `/var/lib/robot/maps`) |
 | `p2.env` | P2 | camera/audio device, resolution, FPS, bitrate |
-| `p3.env` | P3 | child commands, health-check URLs, mesh gateway |
+| `p3.env` | P3 | child commands, health-check URLs |
 | `thresholds.json` | P1 | alert thresholds for temperature, gas and range |
-| `mesh.conf` | reference only | mesh IP plan and SSIDs |
 
 The full list of options is in `pi/common/config.py`.
 
@@ -140,7 +135,7 @@ The full list of options is in `pi/common/config.py`.
 Browsers only allow microphone and camera access on secure origins. To use
 push-to-talk and camera over plain HTTP, open
 `chrome://flags/#unsafely-treat-insecure-origin-as-secure` on the operator
-laptop and add `http://192.168.10.10:8080`. Video, images and text messages
+laptop and add `http://<pi-ip>:8080`. Video, images and text messages
 work without this.
 
 ## Logs

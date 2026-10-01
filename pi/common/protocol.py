@@ -296,14 +296,13 @@ def derive_mission_state(
     ws_connected: bool,
     serial_ok: bool,
     video_active: bool,
-    mesh_ok: bool,
     last_cmd_ack_ms: int,
     command_active: bool,
 ) -> str:
     """Mission state per Section 8.11.1.1. First matching rule wins."""
     if not ws_connected or not serial_ok or last_cmd_ack_ms > COMMAND_ACK_TIMEOUT_MS:
         return MISSION_STOP
-    if not video_active or not mesh_ok:
+    if not video_active:
         return MISSION_DRIVING_LIMITED
     return MISSION_DRIVING if command_active else MISSION_READY
 

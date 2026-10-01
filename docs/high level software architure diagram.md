@@ -1,6 +1,6 @@
 # Autonomous Rescue Robot — High-Level Software Architecture
 
-*One diagram, full stack: firmware → edge compute → mesh network → operator dashboard.*
+*One diagram, full stack: firmware → edge compute → local Wi-Fi network → operator dashboard.*
 
 ```mermaid
 flowchart TB
@@ -55,12 +55,9 @@ flowchart TB
         P2_RLY -.-> SCREEN
     end
 
-    subgraph MESH["IEEE 802.11s MESH — SSID robot-mesh"]
+    subgraph LAN["LOCAL WI-FI NETWORK"]
         direction LR
-        M_R["Robot router\n192.168.10.1 (gateway)"]
-        M_R2["Relay2\n.2"]
-        M_R1["Relay1\n.3"]
-        M_R <--> M_R2 <--> M_R1
+        WIFI["Wi-Fi router\nPi and laptop on the same network"]
     end
 
     subgraph DASH["REACT DASHBOARD — Vite + TS + Tailwind + Leaflet"]
@@ -80,9 +77,9 @@ flowchart TB
     SCREEN -.-> DISPHW[("Robot display + speaker")]
 
     A_TX <-->|"UART 115200 baud\ncommand grammar F/R/L/S/T/H/P/?"| P1_SB
-    P1 <==>|WebSocket JSON| MESH
-    P2 <==>|WebRTC A/V| MESH
-    MESH <==>|WiFi 192.168.10.50-100| DASH
+    P1 <==>|WebSocket JSON| LAN
+    P2 <==>|WebRTC A/V| LAN
+    LAN <==>|WiFi, Pi port 8080| DASH
 
     classDef fw fill:#0f9d6b,color:#fff,stroke:#0b7a54
     classDef app fill:#3b5bdb,color:#fff,stroke:#28409e
@@ -91,7 +88,7 @@ flowchart TB
     class ARDUINO,A_UART,A_DM,A_SM,A_SENS,A_ACT,A_TX fw
     class P1,P1_SB,P1_SAF,P1_GPS,P1_RING,P1_WS,P1_API,P2,P2_SIG,P2_MED,DASH,D_WS,D_RTC,D_MSTATE,D_UI app
     class P3,P3_SUP,P3_HLT,D_ALERT safety
-    class MESH,M_R,M_R2,M_R1 net
+    class LAN,WIFI net
     classDef talk fill:#fff,color:#12181A,stroke:#B7791F,stroke-dasharray:5 4
     class P2_RLY,SCREEN,DISPHW talk
 ```
@@ -103,9 +100,9 @@ flowchart TB
 | 🟩 Green | Arduino real-time firmware |
 | 🟦 Indigo | Application services (control, media, dashboard) |
 | 🟧 Rust | Safety & supervision (watchdog, dead-man, alerts) |
-| ⬜ Grey | Mesh network infrastructure |
+| ⬜ Grey | Local Wi-Fi network |
 | ⬚ Dashed | Talk-to-victim path (operator → robot display + speaker) |
 
-**Data path:** Sensors/commands ↔ Arduino ↔ UART ↔ P1 (Pi) ↔ WebSocket/WebRTC ↔ Mesh ↔ Dashboard. P3 supervises P1/P2 independently of the data path.
+**Data path:** Sensors/commands ↔ Arduino ↔ UART ↔ P1 (Pi) ↔ WebSocket/WebRTC ↔ Wi-Fi ↔ Dashboard. P3 supervises P1/P2 independently of the data path.
 
 **Source:** `CAPSTONE_METHODOLOGY_FINAL.md` §8.7–8.15.

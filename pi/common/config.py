@@ -188,7 +188,6 @@ class P3Config:
     p1_health_url: str
     p2_health_url: str
     enable_overlay: bool
-    mesh_gateway: str
     paths: Paths
 
     @classmethod
@@ -204,7 +203,6 @@ class P3Config:
                 "P2_HEALTH_URL", f"http://127.0.0.1:{protocol.P2_PORT}/health"
             ),
             enable_overlay=_env_bool("ENABLE_OVERLAY", False),
-            mesh_gateway=os.environ.get("MESH_GATEWAY", "192.168.10.1"),
             paths=Paths.from_env(),
         )
 

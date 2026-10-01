@@ -8,7 +8,6 @@ def _base(**overrides) -> dict:
         ws_connected=True,
         serial_ok=True,
         video_active=True,
-        mesh_ok=True,
         last_cmd_ack_ms=0,
         command_active=False,
     )
@@ -41,11 +40,6 @@ def test_stop_takes_priority_over_degraded_video():
 
 def test_video_down_is_driving_limited():
     params = _base(video_active=False)
-    assert protocol.derive_mission_state(**params) == protocol.MISSION_DRIVING_LIMITED
-
-
-def test_mesh_down_is_driving_limited():
-    params = _base(mesh_ok=False)
     assert protocol.derive_mission_state(**params) == protocol.MISSION_DRIVING_LIMITED
 
 

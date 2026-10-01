@@ -90,15 +90,14 @@ export function deriveMissionState(params: {
   wsConnected: boolean;
   serialOk: boolean;
   videoActive: boolean;
-  meshOk: boolean;
   lastCmdAckMs: number;
   commandActive: boolean;
 }): MissionState {
-  const { wsConnected, serialOk, videoActive, meshOk, lastCmdAckMs, commandActive } = params;
+  const { wsConnected, serialOk, videoActive, lastCmdAckMs, commandActive } = params;
   if (!wsConnected || !serialOk || lastCmdAckMs > COMMAND_ACK_TIMEOUT_MS) {
     return MISSION_STOP;
   }
-  if (!videoActive || !meshOk) {
+  if (!videoActive) {
     return MISSION_DRIVING_LIMITED;
   }
   return commandActive ? MISSION_DRIVING : MISSION_READY;

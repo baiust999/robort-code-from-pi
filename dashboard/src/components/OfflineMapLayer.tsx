@@ -7,12 +7,12 @@ const MAP_URL = `${P1_HTTP_BASE}/maps/area.pmtiles`;
 
 /**
  * Street map read from the map file on the robot, so the map still works on
- * the mesh with no internet. It covers only the file's area, drawn over the
+ * the local network with no internet. It covers only the file's area, drawn over the
  * online OpenStreetMap layer, which still shows everywhere else. If P1 has no
  * map file, nothing is added and the map behaves exactly as before.
  *
  * The map libraries are loaded as a separate chunk after the dashboard is up,
- * so they don't slow its first load over the mesh.
+ * so they don't slow its first load over the local network.
  */
 export function OfflineMapLayer() {
   const map = useMap();
