@@ -248,7 +248,7 @@ SUBSYSTEM 5: FAULT-TOLERANCE
 | **IV** | Control and media on independent paths | Control: WebSocket (TCP 8080, P1). Media: WebRTC (P2; signalling on TCP 8443, media over UDP on ports chosen by ICE) | Killing P2 leaves driving working |
 | **V** | Operator state always simple | Mission state derived by one pure function (`deriveMissionState`) into 4 states | `pi/tests/test_mission_state.py` |
 | **VI** | Only one process controls the Arduino | `flock` on `/run/robot/p1.lock` + serial port opened with `exclusive=True`; only one WebSocket client holds the controller role | A second P1 exits with code 0 (`LOCK_HELD`) |
-| **VII** | Primary operation needs no internet | Mesh, dashboard, control and media all run on the local network | Works offline, **except map background tiles**, which come from openstreetmap.org (Section 27) |
+| **VII** | Primary operation needs no internet | Mesh, dashboard, control and media all run on the local network | Works offline, including the map inside the operating area, drawn from a map file stored on the Pi; outside that area the map background comes from openstreetmap.org (Section 27) |
 
 ---
 
@@ -979,6 +979,7 @@ Robot Screen (on the Pi, after desktop login):
 | `/api/ice-config` | GET | ICE server configuration (rate-limited, 5 per minute per client) | 200 JSON, or 429 |
 | `/api/session` | GET | Session id, mock flag, thresholds, cadences | 200 JSON |
 | `/api/gps-track` | GET | GPS track of this P1 session | 200, GeoJSON `LineString` |
+| `/maps/<file>` | GET | Offline map files from `MAP_DIR` (only when that folder exists); supports HTTP range requests | 200 / 206, or 404 |
 | `/control/ws` | WS | Control WebSocket | 101 Switching Protocols |
 | `/` | GET | Built dashboard (static files) | 200 HTML |
 
@@ -1104,7 +1105,8 @@ GPS Reader (NEO-6M on /dev/serial0, 9600 baud):
 ├─ Own thread; parses RMC and GGA sentences (any talker, e.g. $GP/$GN)
 │  with checksum verification
 ├─ Publishes lat, lon, gps_fix, gps_sats
-└─ Keeps the session track (points added only when the position changes)
+└─ Keeps the session track (a point only once the robot is ≥ 10 m from
+   the last one, so GPS drift around a stationary robot adds nothing)
 
 Telemetry:
 ├─ Every 200 ms: merge latest Arduino frame + GPS + seq/server_ts/
@@ -1396,19 +1398,29 @@ Dashboard:
 
 ```
 Map:
-├─ Background: OpenStreetMap tiles, fetched from tile.openstreetmap.org
-│  (needs internet; without it the background is blank but the marker
-│  and paths still draw)
+├─ Position: bottom of the screen, one map across the middle and right
+│  columns, under the video and the sensor/alerts column
+├─ Offline background: area.pmtiles (Protomaps vector tiles, zoom 0-15)
+│  from MAP_DIR on the Pi (default /var/lib/robot/maps), served by P1 at
+│  /maps and drawn in the browser; needs no internet
+├─ Online background: OpenStreetMap tiles from tile.openstreetmap.org,
+│  shown only outside the offline map's area (blank without internet)
 ├─ Zoom 17; default centre 23.8103, 90.4125 until a fix arrives
 └─ Robot marker: blue dot, shown only while gps_fix = true
 
+Locate / follow button (bottom-right of the map):
+├─ Follow mode starts on: the map keeps the robot centred as fixes arrive
+├─ Dragging the map turns it off (button turns white)
+├─ Clicking flies to the robot and turns it back on (button turns blue)
+└─ Greyed out while there is no fix
+
 Live Path (blue #2196F3, weight 3):
-├─ Every telemetry snapshot with a fix adds a point
-└─ Keeps the last 1000 points in the browser
+├─ A point only once the robot is ≥ 10 m from the last one
+└─ Keeps the last 1000 points in the browser (~10 km of driving)
 
 Session Track (light blue #90CAF9, weight 3):
 ├─ Loaded once when the dashboard opens: GET /api/gps-track
-└─ All positions P1 has recorded since it started
+└─ All positions P1 has recorded since it started (same 10 m rule)
 
 Persistence:
 └─ When P1 stops, the track is written to
@@ -1416,6 +1428,32 @@ Persistence:
 ```
 
 No gap markers are drawn; a period without a fix simply adds no points.
+The 10 m rule keeps GPS drift out of the path: a fix wanders by about
+10 m around a stationary robot (more with only 4 satellites), and
+recording every change once drew thousands of points in one spot. With
+few satellites an occasional jump over 10 m can still add a short stray
+segment.
+
+## 27.2 Offline Map
+
+The map file is made once per operating area with the `pmtiles` tool,
+which cuts a rectangle out of the free Protomaps world map (built from
+OpenStreetMap data):
+
+```
+pmtiles extract https://build.protomaps.com/<YYYYMMDD>.pmtiles area.pmtiles \
+  --bbox=<west>,<south>,<east>,<north> --maxzoom=15
+sudo cp area.pmtiles /var/lib/robot/maps/
+```
+
+The current file covers 91.072-91.227 E, 23.431-23.489 N (about
+16 km × 6 km, including BAIUST) and is 2.9 MB. The browser reads only the
+parts of the file it shows (HTTP range requests), and the map code loads
+as a separate chunk after the dashboard starts, so neither the dashboard's
+first load nor P1's control path is slowed: under repeated map panning,
+P1's median `/health` time rose from 5.9 ms to 6.5 ms. With no map
+folder, P1 does not add the `/maps` route and the map uses online tiles
+only, as before.
 
 ---
 
@@ -1518,7 +1556,8 @@ Capability:
 ├─ Video: ✓ 640×480, 10 fps
 ├─ Audio: ✓ two-way (robot mic; operator push-to-talk)
 ├─ Talk-to-victim: ✓ operator video/image + text on the robot display
-├─ GPS tracking: ✓ live path + session track (map tiles need internet)
+├─ GPS tracking: ✓ live path + session track, follow mode, offline map
+│  for the operating area
 ├─ Logging: ✓ telemetry + event logs on the Pi
 └─ Internet dependency: none for control, media or telemetry
 
@@ -1878,7 +1917,9 @@ The unit waits for `dev-ttyUSB0.device`, but the UNO in use enumerates as
    check SERIAL_PORT in /etc/robot/p1.env (ls /dev/tty{USB,ACM}*)
 5. Provision the routers: deploy/mesh/robot.sh, relay1.sh, relay2.sh
    (change the mesh and AP keys first)
-6. sudo systemctl start robot-watchdog.service
+6. Offline map (optional, needs internet once): make area.pmtiles for
+   the operating area and copy it to /var/lib/robot/maps/ (Section 27.2)
+7. sudo systemctl start robot-watchdog.service
 ```
 
 ## 38.2 Pre-Deployment Hardware Checklist
@@ -2085,7 +2126,9 @@ CRITICAL PATH (Motor Safety):
 3. **A silent Arduino is not detected.** `serial_ok` only drops on a serial
    error. If the firmware stops sending without an error, P1 keeps
    broadcasting the last frame, so readings go stale without a warning.
-4. **Map tiles need internet.** Everything else runs offline.
+4. **The offline map covers only its downloaded area.** Outside it the map
+   background needs internet, and the map data is only as current as its
+   download date. Everything else runs offline.
 5. **Gas is uncalibrated.** Readings and thresholds are raw ADC counts,
    labelled "ppm" on the dashboard.
 6. **No authentication.** Any host on the mesh can open the dashboard and

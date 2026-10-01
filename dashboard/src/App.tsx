@@ -82,8 +82,10 @@ function App() {
           problem={keyProblem}
         />
       </ConnectionStatusBar>
-      <div className="grid flex-1 grid-cols-[22%_52%_26%] gap-3 overflow-hidden p-3">
-        <aside className="flex flex-col gap-4 overflow-y-auto rounded-lg border border-white/10 bg-white/5 p-3">
+      {/* Top row: video and the readings beside it. Bottom row: one map spanning
+          both, filling the rest of the height. The controls span both rows. */}
+      <div className="grid flex-1 grid-cols-[22%_52%_26%] grid-rows-[auto_minmax(0,1fr)] gap-3 overflow-hidden p-3">
+        <aside className="row-span-2 flex flex-col gap-4 overflow-y-auto rounded-lg border border-white/10 bg-white/5 p-3">
           <MissionStateIndicator state={missionState} />
           <DriveControl onDrive={sendMotor} onStop={sendStopAll} disabled={controlsDisabled} />
           <ServoControl
@@ -97,11 +99,8 @@ function App() {
           <TalkPanel talk={talk} linkUp={video.connected} isController={!controlsDisabled} />
         </aside>
 
-        <main className="flex flex-col gap-3 overflow-hidden">
+        <main className="flex flex-col">
           <VideoSurface video={video} />
-          <div className="flex-1 overflow-hidden rounded-lg border border-white/10">
-            <MapPanel telemetry={telemetry} />
-          </div>
         </main>
 
         <aside className="flex flex-col gap-3 overflow-y-auto rounded-lg border border-white/10 bg-white/5 p-3">
@@ -114,6 +113,10 @@ function App() {
             <AlertLog alerts={alerts} />
           </div>
         </aside>
+
+        <div className="col-span-2 min-h-0 overflow-hidden rounded-lg border border-white/10">
+          <MapPanel telemetry={telemetry} />
+        </div>
       </div>
     </div>
   );

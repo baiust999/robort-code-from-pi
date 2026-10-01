@@ -96,7 +96,7 @@ Two constraints bound these drivers. The Arduino UNO offers 32 KB of flash, 2 KB
 
 ## **A.3  Context View**
 
-The system boundary encloses four software tiers and the physical vehicle. Outside it sit three external entities: the human operator, who supplies all navigational intent and interprets all sensory evidence; the disaster environment, which the vehicle senses but does not model; and the OpenStreetMap tile service, which supplies map imagery to the dashboard and is the only external network dependency in the entire architecture — and one that is not on any mission-critical path, since the loss of map tiles degrades the map panel to a blank canvas with a live GPS polyline still drawn over it.
+The system boundary encloses four software tiers and the physical vehicle. Outside it sit three external entities: the human operator, who supplies all navigational intent and interprets all sensory evidence; the disaster environment, which the vehicle senses but does not model; and the OpenStreetMap tile service, which supplies map imagery to the dashboard outside the operating area and is the only external network dependency in the entire architecture — and one that is not on any mission-critical path. Inside the operating area the map is drawn from a vector map file stored on the Pi and served by P1, so it needs no internet at all; outside that area the loss of map tiles degrades the map to a blank canvas with the live GPS polyline still drawn over it.
 
 There is no cloud tier in the deployed configuration. The methodology defines five operational modes; the implementation targets **Mode 2, Local Mesh Only**, per Section 8.11.6, and `ENABLE_OVERLAY=0` in `deploy/etc-robot/p3.env` disables the internet overlay by default. This is a deliberate architectural position: a rescue deployment cannot assume internet connectivity, so the primary mode assumes none, and everything required to fly a mission is present on the local mesh. The ICE configuration endpoint reflects this — `GET /api/ice-config` returns a STUN server on the mesh gateway and `turn: null`, because in a single-subnet local mesh there is no NAT to traverse and therefore no TURN relay to fund.
 
@@ -126,7 +126,8 @@ There is no cloud tier in the deployed configuration. The methodology defines fi
                                          obstacles, terrain, GPS sky
 
   Mission-path transports:  WebSocket :8080  |  WebRTC :8443
-  External dependencies:    OSM tiles only (non-critical)
+  External dependencies:    OSM tiles outside the offline map area
+                            only (non-critical)
 ```
 ***Figure A.3 — System Context, External Actors, and the Mission-Path Boundary***
 
@@ -279,7 +280,9 @@ The feature that most distinguishes this supervisor from a naive restart loop is
 
 ### **A.5.5  Operator Dashboard — Hook-Owned State and Two Independent Transports**
 
-The dashboard is a React 19 single-page application in TypeScript, built by Vite, styled with Tailwind, and rendering GPS data through Leaflet. Ten presentational components are arranged in a three-column grid — controls at 22%, video and map at 52%, telemetry and alerts at 26%.
+The dashboard is a React 19 single-page application in TypeScript, built by Vite, styled with Tailwind, and rendering GPS data through Leaflet. Fourteen components are arranged in a grid of three columns — controls at 22%, video at 52%, telemetry and alerts at 26% — with the controls spanning the full height and one map filling the bottom of the middle and right columns together.
+
+**The map works offline and follows the robot.** `OfflineMapLayer` draws the operating area from `area.pmtiles`, a Protomaps vector map that P1 serves from `MAP_DIR` at `/maps`; the browser reads only the tiles it shows through HTTP range requests, and the layer is limited to the file's bounds so the online OpenStreetMap layer still shows outside it. Its libraries (`protomaps-leaflet`, `pmtiles`) load as a separate chunk after the dashboard starts, which keeps the first load over the mesh unchanged, and if P1 has no map file the layer adds nothing. `LocateRobotButton` is a Leaflet control with follow mode: on by default, so a dashboard opened before the first fix moves to the robot once it arrives; turned off by the operator dragging the map; turned back on by the button, which flies to the robot. Panning waits for that fly-to to finish so a fix arriving mid-flight cannot cut it short. The live path takes a point only once the robot has moved 10 m, mirroring `MIN_TRACK_STEP_M` in `gps_reader.py`, so GPS drift around a stationary robot does not scribble the map.
 
 **A documented divergence from the original design.** The original methodology specified "no Redux — context providers per state slice," and `dashboard/src/context/` exists in the tree. It is empty. The implemented architecture uses **no context providers at all**: all shared state lives in a single `useControlSocket()` hook invoked once in `App.tsx` and threaded to children as explicit props. For a dashboard of this size the simpler structure is defensible — every component's data dependencies are visible in its props, and there is no indirection between the socket and the render. The empty directory should be removed to prevent it from implying a structure that does not exist.
 
@@ -510,7 +513,7 @@ Three further decisions are visible only in the code and are recorded here for t
 Recorded plainly, as the architecture's own account of where it is incomplete:
 
 1. **Protocol mirroring is manual.** Three files must change together with no compiler enforcement. Code generation from a single source would eliminate an entire class of silent defect.
-2. **Test coverage is uneven.** The protocol, validator, ring buffer, and mission-state logic are well covered. `SerialBridge`, `WebSocketHub`, `GPSReader`, `TelemetryLog`, `ProcessLock`, and `SupervisedProcess` have no direct tests, and there is no JavaScript test runner configured — `package.json` provides only `oxlint`.
+2. **Test coverage is uneven.** The protocol, validator, ring buffer, and mission-state logic are well covered. `SerialBridge`, `WebSocketHub`, `TelemetryLog`, `ProcessLock`, and `SupervisedProcess` have no direct tests, `GPSReader` is tested only for its track filtering (not NMEA parsing), and there is no JavaScript test runner configured — `package.json` provides only `oxlint`.
 3. **No real-hardware bring-up has been performed.** The firmware compiles cleanly and the protocol is exercised end-to-end against the emulator, but no flash-and-drive test on the assembled vehicle has been carried out. This is the single largest outstanding validation gap.
 4. **P3 is a single point of supervision failure.** If P3 dies, systemd restarts it and it adopts the surviving orphans — but during that window nothing is watching P1 and P2.
 5. **Controller authentication is a shared key over plain HTTP.** A dashboard must present `CONTROLLER_KEY` to drive, stop or talk (A.3, Driver 6), but the key travels unencrypted over `ws://` and `http://`, so anyone who can capture mesh traffic can read it; confidentiality rests on WPA2/WPA3 at the link layer. A short key (a few digits) is easy to guess, so the 5-tries/5-minute lockout is what makes guessing slow (about 17 hours to try all 1,000 three-digit keys against one service); P1 and P2 count failures separately and in memory, so a restart clears them. There is one key, not per-operator accounts, and logs identify a controller only by IP address. The mesh passwords in `deploy/mesh/*.sh` are committed to the repository and should be changed before deployment.

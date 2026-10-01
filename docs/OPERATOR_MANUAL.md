@@ -68,14 +68,16 @@ removes it.
 ┌────────────────────────────────────────────────────────────────────┐
 │ Status bar: connection · role · mission state · serial · GPS       │
 ├──────────────┬──────────────────────────────────┬──────────────────┤
-│ Mission state│  Live video from robot           │ Sensor cards     │
-│ Drive pad    │  Talk to victim panel            │ GPS card         │
-│ Speed slider │  Map                             │ Alerts log       │
-│ Camera pan/  │                                  │                  │
-│   tilt       │                                  │                  │
-│ EMERGENCY    │                                  │                  │
-│   STOP       │                                  │                  │
-└──────────────┴──────────────────────────────────┴──────────────────┘
+│ Mission state│                                  │ Sensor cards     │
+│ Drive pad    │  Live video from robot           │ GPS card         │
+│ Speed slider │                                  │ Alerts log       │
+│ Camera pan/  ├──────────────────────────────────┴──────────────────┤
+│   tilt       │                                                     │
+│ EMERGENCY    │  Map (across the middle and right columns)          │
+│   STOP       │                                                     │
+│ Talk to      │                                                     │
+│   victim     │                                                     │
+└──────────────┴─────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -168,8 +170,23 @@ to tell whether gas is rising, not as an exact concentration.
 - **Range:** the robot is about to hit something. Stop or reverse.
 
 **GPS card and map:** show the robot's latitude and longitude, satellite
-count and position on the map. Indoors or under rubble, GPS may show
-`no fix`.
+count and position on the map (blue dot). Indoors or under rubble, GPS may
+show `no fix`, and the dot disappears until the fix returns. A fix needs at
+least 4 satellites; mount the antenna facing up with open sky above it.
+
+- **Offline map:** inside the robot's operating area the street map is
+  stored on the robot, so it works with no internet. Outside that area the
+  map needs internet and is blank without it.
+- **Locate / follow button** (target icon, bottom-right of the map): when
+  **blue**, the map follows the robot as it moves. **Drag the map** to look
+  around and following stops (the button turns white). **Click the button**
+  to jump back to the robot and follow it again. It is greyed out while
+  there is no GPS fix.
+- **Blue lines** are the robot's path: dark blue since you opened the page,
+  light blue for everything recorded since the robot's software started. A
+  point is added only after the robot moves about 10 m, so a robot standing
+  still doesn't draw lines. With few satellites the position can jump now
+  and then and add a short stray line.
 
 **Alerts log:** a timestamped list of events such as disconnections,
 reconnections (`recovered N buffered telemetry frames`) and command errors.

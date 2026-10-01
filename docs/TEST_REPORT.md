@@ -39,8 +39,8 @@ unusual. If a test fails, describe it in [Section 9](#9-issues-found).
 ## 3. Automated unit tests
 
 **Command:** `cd pi && pytest`
-**Run on:** Raspberry Pi 4, 2026-09-28
-**Result:** **106 passed, 0 failed** (3.3 s)
+**Run on:** Raspberry Pi 4, 2026-09-29
+**Result:** **112 passed, 0 failed** (11.6 s, with the robot services running)
 
 | Test file | Tests | What it verifies | Result |
 |---|---|---|---|
@@ -53,7 +53,9 @@ unusual. If a test fails, describe it in [Section 9](#9-issues-found).
 | `test_controller_access.py` | 25 | Controller key: the right key makes a dashboard controller, no key or a wrong one makes it an observer; a stranger connecting first doesn't block the operator; a second keyed dashboard takes over, demoting and telling the first and stopping the robot; observers' drive, servo and emergency-stop commands are rejected and their heartbeats ignored; 5 wrong keys lock an IP out for 5 minutes, even for the right key, without affecting other IPs; no `CONTROLLER_KEY` means nobody controls; P2 gives the talk path only to offers with the key; P1 reports its controller's host to P2 on a localhost-only endpoint. | PASS |
 | `test_shared_capture.py` | 5 | Several video sessions share one camera device; the device closes after the last session and reopens; open errors are reported; each session gets its own yuv420p copy of every camera frame (never a shared frame object), from YUYV or yuv420p cameras. | PASS |
 | `test_resilient_audio.py` | 4 | The robot mic track sends silence while the mic is missing and switches to it once it opens; a mic lost mid-session is reopened; each outage is reported once; output is one continuous stream of 60 ms Opus packets, paced in real time. | PASS |
-| **Total** | **106** | | **106 / 106 PASS** |
+| `test_offline_map.py` | 2 | P1 serves the offline map folder at `/maps`, registered before the dashboard's `/` so it isn't swallowed; with no map folder no route is added and nothing changes. | PASS |
+| `test_gps_track.py` | 4 | Ground distance is computed correctly; GPS drift of up to ~8 m around a stationary robot adds no track points; driving adds a point about every 10 m; a reading without a fix adds nothing. | PASS |
+| **Total** | **112** | | **112 / 112 PASS** |
 
 **Limitation:** these tests use simulated hardware. They prove the software
 logic, not the real motors, sensors or radio link, which are covered in the
@@ -109,6 +111,9 @@ ending: Newline), or test through the dashboard where noted.
 | I15 | VNC mode | Switch to VNC, then back to Robot Display. | Kiosk closes and reopens; the warning shows while in VNC. | | | |
 | I16 | Sensor alerts | Bring an obstacle within 20 cm. | Range card turns red. | | | |
 | I17 | Map | Drive outdoors with a GPS fix. | Robot position updates on the map. | | | |
+| I17a | Offline map | Disconnect the operator laptop from the internet but keep it on the mesh; reload the dashboard. | Street map still shows around the robot and BAIUST; outside the map area the background is blank. | | | |
+| I17b | Follow mode | Open the dashboard, drive; drag the map away; click the locate button. | Map follows the robot (button blue); dragging stops following (button white); the click flies back and follows again. | | | |
+| I17c | No drift lines | Leave the robot standing outdoors with a fix for 5 minutes. | No new path lines appear, apart from an occasional short one when the fix jumps. | | | |
 | I18 | Video-loss warning | While READY, stop P2 (`sudo pkill -9 -f p2_media`). | Mission state turns amber DRIVING_LIMITED; after P2 restarts, clicking **Retry video** returns it to READY. | | | |
 | I19 | Robot audio | Click **Listen** and speak near the robot for a minute. | Voice is heard clearly on the dashboard, without dropouts, and stays in step with the video. | | | |
 

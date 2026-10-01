@@ -106,8 +106,15 @@ npm run dev
    view-only. Keep the real key out of git.
 6. **Provision the mesh routers** (OpenWrt) with `deploy/mesh/robot.sh`,
    `relay1.sh` and `relay2.sh`. The addressing plan is in
-   `deploy/etc-robot/mesh.conf`.
-7. **Start it:**
+   `deploy/etc-robot/mesh.conf`. With only one router, run
+   `deploy/mesh/single.sh` on it instead: it puts the router on the robot at
+   `192.168.10.1` with the `robot-mesh-ap` access point, no mesh.
+7. **Offline map (optional).** So the map works without internet, make a map
+   file for the operating area with the `pmtiles` tool and copy it to
+   `/var/lib/robot/maps/area.pmtiles`. See Section 27.2 of
+   [`docs/CAPSTONE_METHODOLOGY_FINAL.md`](docs/CAPSTONE_METHODOLOGY_FINAL.md).
+   Without it the map uses online OpenStreetMap tiles.
+8. **Start it:**
    ```bash
    sudo systemctl start robot-watchdog.service
    ```
@@ -120,7 +127,7 @@ Runtime settings live in `/etc/robot/` on the Pi. Templates are in
 
 | File | Used by | Key settings |
 |---|---|---|
-| `p1.env` | P1 (and P2) | `CONTROLLER_KEY` (required to control; empty = view-only for everyone), `SERIAL_PORT` (usually `/dev/ttyACM0`, check with `ls /dev/tty{USB,ACM}*`), `GPS_PORT`, `P1_PORT`, `MOCK_HARDWARE` |
+| `p1.env` | P1 (and P2) | `CONTROLLER_KEY` (required to control; empty = view-only for everyone), `SERIAL_PORT` (usually `/dev/ttyACM0`, check with `ls /dev/tty{USB,ACM}*`), `GPS_PORT`, `P1_PORT`, `MOCK_HARDWARE`, `MAP_DIR` (offline map folder, default `/var/lib/robot/maps`) |
 | `p2.env` | P2 | camera/audio device, resolution, FPS, bitrate |
 | `p3.env` | P3 | child commands, health-check URLs, mesh gateway |
 | `thresholds.json` | P1 | alert thresholds for temperature, gas and range |

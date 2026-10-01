@@ -16,7 +16,7 @@ Who and what the system talks to, and what's outside its boundary.
 ```mermaid
 flowchart TB
     operator["🧑 Operator<br/>(drives, interprets sensors)"]
-    osm["OpenStreetMap tiles<br/>(non-critical, degrades to blank map)"]
+    osm["OpenStreetMap tiles<br/>(outside the offline map area only;<br/>non-critical, degrades to blank map)"]
     env["Disaster environment<br/>(temp, gas, obstacles, GPS sky)"]
 
     subgraph system["RESCUE ROBOT SYSTEM"]
@@ -50,7 +50,9 @@ flowchart TB
 Only two transports cross the mission boundary: **WebSocket :8080** (control +
 telemetry) and **WebRTC :8443** (video + audio). They fail independently — a
 camera failure never touches the control path. The only outbound internet
-dependency is OSM map tiles, and it is not mission-critical.
+dependency is OSM map tiles, and it is not mission-critical: inside the
+operating area the map comes from `area.pmtiles` on the Pi, which P1 serves
+at `/maps`, so the map works with no internet there.
 
 WebRTC is two-way: the same connection carries the operator's voice, video
 and messages back to the victim-facing Robot Screen — see §14.
