@@ -131,9 +131,95 @@ flowchart LR
 
 Figure 5 is the full wiring diagram of the robot.
 
-![Detailed hardware wiring diagram](../hardware%20diagram.drawio.png)
+```mermaid
+flowchart LR
+  subgraph PWR["Power"]
+    BAT["4S battery<br/>14.8 V nom. / 16.8 V full"]
+    BMS["4S 40 A BMS"]
+    BK1["Buck 5 V"]
+    BK2["Buck 5 V"]
+    BK3["Buck 8 V"]
+    PB["USB power bank"]
+  end
+  subgraph UNO["Arduino UNO"]
+    D3["D3"]
+    D4["D4"]
+    D5["D5"]
+    D6["D6"]
+    D7["D7"]
+    D8["D8"]
+    D9["D9"]
+    D10["D10"]
+    D11["D11"]
+    A2["A2"]
+    A3["A3"]
+    JACK["Barrel jack"]
+    UUSB["USB-B"]
+  end
+  subgraph DRV["Motor drivers"]
+    BL["BTS7960 left<br/>RPWM LPWM EN"]
+    BR["BTS7960 right<br/>RPWM LPWM EN"]
+  end
+  ML["Left motors x2"]
+  MR["Right motors x2"]
+  SP["Pan servo"]
+  ST["Tilt servo"]
+  US["HC-SR04"]
+  DHT["DHT11"]
+  MQ["MQ-136"]
+  subgraph PI["Raspberry Pi 4"]
+    PUSB["USB-A"]
+    G14["GPIO14 TXD, pin 8"]
+    G15["GPIO15 RXD, pin 10"]
+    P33["3.3 V pin 1, GND pin 6"]
+    HDMI["micro-HDMI 0"]
+    AJ["3.5 mm jack"]
+    PIN["USB-C"]
+  end
+  GPS["NEO-6M GPS"]
+  CAM["USB webcam<br/>with microphone"]
+  LCD["7-inch display<br/>1024x600"]
+  SPK["Speaker"]
 
-**Figure 5.** Detailed hardware wiring diagram.
+  BAT ==> BMS
+  BMS ==> BL
+  BMS ==> BR
+  BMS ==> BK1
+  BMS ==> BK2
+  BMS ==> BK3
+  BK1 ==> SP
+  BK1 ==> ST
+  BK2 ==> US
+  BK2 ==> DHT
+  BK2 ==> MQ
+  BK3 ==> JACK
+  PB ==> PIN
+  P33 ==> GPS
+
+  D5 -- "PWM fwd" --> BL
+  D6 -- "PWM rev" --> BL
+  D9 -- "PWM fwd" --> BR
+  D10 -- "PWM rev" --> BR
+  D4 -- "enable" --> BL
+  D4 -- "enable" --> BR
+  BL ==> ML
+  BR ==> MR
+  D11 -- "pulse" --> SP
+  D3 -- "pulse" --> ST
+  D7 -- "trigger" --> US
+  US -- "echo" --> D8
+  DHT -- "data" --> A2
+  MQ -- "analog" --> A3
+
+  UUSB <-- "USB serial, 115200 baud" --> PUSB
+  CAM -- "USB video + audio" --> PUSB
+  GPS -- "TX, 9600 baud" --> G15
+  G14 -- "RX" --> GPS
+  HDMI --> LCD
+  AJ --> SPK
+```
+
+**Figure 5.** Detailed hardware wiring diagram. Thick lines carry power; thin lines carry signals. All grounds are common; the Pi shares ground with the Arduino through the USB cable.
 
 The Arduino pins used by the firmware are shown in Figure 6 and detailed in Table 3. Each BTS7960 drives forward on one PWM input and reverse on the other, with only one active at a time; both drivers share one enable line, so one output disables all propulsion.
 
