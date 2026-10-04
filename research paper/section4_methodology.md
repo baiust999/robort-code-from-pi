@@ -12,10 +12,10 @@ Each tier is a separate failure domain, and the authority to stop the robot sits
 
 ```mermaid
 flowchart TB
-  D["Tier 4 · Dashboard<br/>browser closed or crashed"]
-  W["Tier 3 · Wi-Fi network<br/>link lost"]
-  P["Tier 2 · Raspberry Pi<br/>P1 / P2 / P3 crash, Pi power loss"]
-  A["Tier 1 · Arduino firmware<br/>dead-man 2000 ms · gas stop ≥ 1000"]
+  D["Tier 4 | Dashboard<br/>browser closed or crashed"]
+  W["Tier 3 | Wi-Fi network<br/>link lost"]
+  P["Tier 2 | Raspberry Pi<br/>P1 / P2 / P3 crash, Pi power loss"]
+  A["Tier 1 | Arduino firmware<br/>dead-man 2000 ms | gas stop >= 1000"]
   M["Motors stopped"]
   D -- "commands cease" --> W
   W -- "commands cease" --> P
@@ -32,12 +32,12 @@ Six drivers shaped the structure; each maps to one primary mechanism (Table 7).
 
 | Driver | Structural consequence | Mechanism | Detail |
 |---|---|---|---|
-| D1 Bounded stop time on untrusted hardware | Motor authority on the microcontroller | Firmware dead-man in `taskSafety` | §4.3.4 |
-| D2 Unreliable radio link | History buffering and replay | Ring buffer, `resume_from`, mission state | §4.4.7, §4.6 |
-| D3 Fallible general-purpose OS | External supervision with cause discrimination | P3, `/health`, exit-code contract | §4.5 |
-| D4 Exactly one writer on the UART | Dual-mechanism exclusion | `flock` + `O_EXCL` serial open | §4.4.3 |
-| D5 Development without hardware | Protocol re-implementation, not stubs | `MockArduino`, `MockGPS` | §4.1.5 |
-| D6 One operator, no ambiguity | Explicit role arbitration | Controller key, single controller slot | §4.8 |
+| D1 Bounded stop time on untrusted hardware | Motor authority on the microcontroller | Firmware dead-man in `taskSafety` | Section 4.3.4 |
+| D2 Unreliable radio link | History buffering and replay | Ring buffer, `resume_from`, mission state | Section 4.4.7, Section 4.6 |
+| D3 Fallible general-purpose OS | External supervision with cause discrimination | P3, `/health`, exit-code contract | Section 4.5 |
+| D4 Exactly one writer on the UART | Dual-mechanism exclusion | `flock` + `O_EXCL` serial open | Section 4.4.3 |
+| D5 Development without hardware | Protocol re-implementation, not stubs | `MockArduino`, `MockGPS` | Section 4.1.5 |
+| D6 One operator, no ambiguity | Explicit role arbitration | Controller key, single controller slot | Section 4.8 |
 
 ### 4.1.3 Protocol Contract as the Sole Inter-Tier Coupling
 
@@ -47,12 +47,12 @@ The tiers share no code; they share one contract, defined in `pi/common/protocol
 
 | Opcode | Argument | Firmware range | Action | Refreshes dead-man |
 |---|---|---|---|---|
-| `F` / `R` | speed | 0–255 | Both sides forward / reverse | Yes |
-| `L` / `G` | speed | 0–255 | Pivot left / right | Yes |
-| `S` | — | — | Ramp to zero; ACTIVE → READY | Yes |
-| `H` | — | — | Keep-alive | Yes |
-| `P` / `T` | angle | 0–180 | Pan / tilt servo | Yes |
-| `?` | — | — | Reply with `STATUS` line | Yes |
+| `F` / `R` | speed | 0-255 | Both sides forward / reverse | Yes |
+| `L` / `G` | speed | 0-255 | Pivot left / right | Yes |
+| `S` | - | - | Ramp to zero; ACTIVE -> READY | Yes |
+| `H` | - | - | Keep-alive | Yes |
+| `P` / `T` | angle | 0-180 | Pan / tilt servo | Yes |
+| `?` | - | - | Reply with `STATUS` line | Yes |
 
 ### 4.1.4 End-to-End Command, Telemetry and Media Flows
 
@@ -68,10 +68,10 @@ sequenceDiagram
   participant A as Arduino
   participant M as Motors
   D->>P: motor {dir F, speed 120, seq n}
-  Note over P: role, type, clamp 0–180, seq > last
+  Note over P: role, type, clamp 0-180, seq > last
   P->>A: "F120\n" (115,200 baud)
   Note over A: 4-stage validation, dead-man refresh
-  A->>M: target ±120, ramp 15 per 10 ms
+  A->>M: target +/-120, ramp 15 per 10 ms
   A-->>P: ACK F
   loop every 500 ms
     D->>P: heartbeat
@@ -91,8 +91,8 @@ With `MOCK_HARDWARE=1`, P1 opens `MockSerial` instead of the UART and `MockGPS` 
 ```mermaid
 flowchart LR
   DB["Real dashboard"] --> P1["Real P1"]
-  P1 -- "MOCK_HARDWARE=0" --> UART["/dev/ttyACM0 → Arduino"]
-  P1 -- "MOCK_HARDWARE=1" --> MS["MockSerial → MockArduino<br/>parser, dead-man, telemetry"]
+  P1 -- "MOCK_HARDWARE=0" --> UART["/dev/ttyACM0 -> Arduino"]
+  P1 -- "MOCK_HARDWARE=1" --> MS["MockSerial -> MockArduino<br/>parser, dead-man, telemetry"]
   P1 -- "gps" --> MG["MockGPS (1 Hz fixes)"]
   DB --> P2["Real P2"]
   P2 -- "capture fails / mock" --> SY["Synthetic video + silent audio"]
@@ -104,49 +104,49 @@ flowchart LR
 
 | Suite | Tests | Mechanism under test |
 |---|---|---|
-| `test_command_validator` | 13 | Edge validation, clamping, sequence check (§4.3.2) |
-| `test_mission_state` | 9 | First-match mission state (§4.6.1) |
-| `test_mock_deadman` | 10 | Dead-man trip and re-arm (§4.3.4) |
-| `test_ring_buffer` | 9 | Ring buffer, resume, gap (§4.4.7) |
-| `test_telemetry_parser` | 8 | Frame discard rules (§4.4.4) |
-| `test_talkback` | 22 | Floor control, display mode, view-only (§4.7.8–4.7.9) |
-| `test_controller_access` | 25 | Key, takeover, lockout (§4.8) |
-| `test_shared_capture` | 5 | Device sharing, private frames (§4.7.3–4.7.4) |
-| `test_resilient_audio` | 4 | Mic recovery, 60 ms packets (§4.7.5, §4.7.7) |
-| `test_offline_map` | 2 | `/maps` route (§4.9.4) |
-| `test_gps_track` | 4 | Distance and drift filter (§4.9.2–4.9.3) |
+| `test_command_validator` | 13 | Edge validation, clamping, sequence check (Section 4.3.2) |
+| `test_mission_state` | 9 | First-match mission state (Section 4.6.1) |
+| `test_mock_deadman` | 10 | Dead-man trip and re-arm (Section 4.3.4) |
+| `test_ring_buffer` | 9 | Ring buffer, resume, gap (Section 4.4.7) |
+| `test_telemetry_parser` | 8 | Frame discard rules (Section 4.4.4) |
+| `test_talkback` | 22 | Floor control, display mode, view-only (Section 4.7.8-4.7.9) |
+| `test_controller_access` | 25 | Key, takeover, lockout (Section 4.8) |
+| `test_shared_capture` | 5 | Device sharing, private frames (Section 4.7.3-4.7.4) |
+| `test_resilient_audio` | 4 | Mic recovery, 60 ms packets (Section 4.7.5, Section 4.7.7) |
+| `test_offline_map` | 2 | `/maps` route (Section 4.9.4) |
+| `test_gps_track` | 4 | Distance and drift filter (Section 4.9.2-4.9.3) |
 
 ## 4.2 Real-Time Embedded Control
 
 ### 4.2.1 Cooperative Task Scheduler and Bounded Blocking
 
-The firmware has no operating system: `loop()` polls the serial parser, then runs every task whose period has elapsed, using overflow-safe unsigned `millis()` subtraction (Figure 10, Table 10). Only the sonar and DHT11 reads block, each for at most ≈ 25 ms.
+The firmware has no operating system: `loop()` polls the serial parser, then runs every task whose period has elapsed, using overflow-safe unsigned `millis()` subtraction (Figure 10, Table 10). Only the sonar and DHT11 reads block, each for at most ~ 25 ms.
 
 **Figure 10.** Main loop and scheduled tasks.
 
 ```mermaid
 flowchart TB
   L(["loop()"]) --> PP["g_parser.poll()<br/>drain serial, handle full lines"]
-  PP --> SR["g_scheduler.run(now)<br/>if now − last ≥ period: run task"]
+  PP --> SR["g_scheduler.run(now)<br/>if now - last >= period: run task"]
   SR --> L
-  SR --> T1["taskMotorService · 10 ms"]
-  SR --> T2["taskSafety · 10 ms"]
-  SR --> T3["taskSensorFast · 50 ms"]
-  SR --> T4["taskSensorSlow · 2000 ms"]
-  SR --> T5["taskTelemetry · 500 ms"]
-  SR --> T6["taskHeartbeat · 1000 ms"]
+  SR --> T1["taskMotorService | 10 ms"]
+  SR --> T2["taskSafety | 10 ms"]
+  SR --> T3["taskSensorFast | 50 ms"]
+  SR --> T4["taskSensorSlow | 2000 ms"]
+  SR --> T5["taskTelemetry | 500 ms"]
+  SR --> T6["taskHeartbeat | 1000 ms"]
 ```
 
 **Table 10.** Scheduled firmware tasks (registration order = run order).
 
 | Task | Period | Work | Max blocking |
 |---|---|---|---|
-| `taskMotorService` | 10 ms | Ramp PWM 15 units toward target, write pins | — |
-| `taskSafety` | 10 ms | Gas panic, dead-man check, fault recovery | — |
+| `taskMotorService` | 10 ms | Ramp PWM 15 units toward target, write pins | - |
+| `taskSafety` | 10 ms | Gas panic, dead-man check, fault recovery | - |
 | `taskSensorFast` | 50 ms | HC-SR04 `pulseIn` | 25 ms timeout |
-| `taskSensorSlow` | 2000 ms | DHT11 bit-bang + MQ-136 ADC | ≈ 25 ms (20 ms start pulse + 40 bits) |
-| `taskTelemetry` | 500 ms | 8-field CSV line | ≈ 2.4 ms on the wire |
-| `taskHeartbeat` | 1000 ms | `HB <mode> <ms>`, toggle LED D13 | — |
+| `taskSensorSlow` | 2000 ms | DHT11 bit-bang + MQ-136 ADC | ~ 25 ms (20 ms start pulse + 40 bits) |
+| `taskTelemetry` | 500 ms | 8-field CSV line | ~ 2.4 ms on the wire |
+| `taskHeartbeat` | 1000 ms | `HB <mode> <ms>`, toggle LED D13 | - |
 
 ### 4.2.2 Timer Allocation for Motor PWM and Servo Control
 
@@ -160,9 +160,9 @@ Every received line passes framing, syntax, range and state checks; failure at a
 
 ```mermaid
 flowchart LR
-  IN["Serial bytes"] --> S1{"1 Framing<br/>ends in newline,<br/>≤ 31 chars"}
+  IN["Serial bytes"] --> S1{"1 Framing<br/>ends in newline,<br/><= 31 chars"}
   S1 -- ok --> S2{"2 Syntax<br/>known opcode,<br/>digits present"}
-  S2 -- ok --> S3{"3 Range<br/>speed 0–255<br/>angle 0–180"}
+  S2 -- ok --> S3{"3 Range<br/>speed 0-255<br/>angle 0-180"}
   S3 -- ok --> DM["Refresh dead-man"]
   DM --> S4{"4 State<br/>motion needs READY/ACTIVE<br/>and no fault"}
   S4 -- ok --> EX["Execute + ACK"]
@@ -184,8 +184,8 @@ stateDiagram-v2
   BOOT --> READY: setup done, dead-man primed, READY sent
   READY --> ACTIVE: F, R, L or G accepted
   ACTIVE --> READY: S
-  READY --> PANIC: no command 2000 ms or gas ≥ 1000
-  ACTIVE --> PANIC: no command 2000 ms or gas ≥ 1000
+  READY --> PANIC: no command 2000 ms or gas >= 1000
+  ACTIVE --> PANIC: no command 2000 ms or gas >= 1000
   PANIC --> READY: command received (DEADMAN_CLEARED) or gas < 1000 (GAS_CLEARED)
   ESTOP --> READY: S
   note right of ESTOP
@@ -202,7 +202,7 @@ stateDiagram-v2
 | READY | 1 | Yes | HIGH | Boot, `S`, fault cleared | Motion command, fault |
 | ACTIVE | 2 | Yes | HIGH | `F/R/L/G` | `S`, fault |
 | PANIC | 3 | No | LOW | Dead-man or gas fault | Cause removed |
-| ESTOP | 3 | No | — | (none in 1.0.0) | `S` |
+| ESTOP | 3 | No | - | (none in 1.0.0) | `S` |
 
 ### 4.2.5 Differential-Drive Control and PWM Ramping
 
@@ -214,19 +214,19 @@ $$
 
 | Symbol | Meaning |
 |---|---|
-| $u$ | Signed PWM duty (−255…255) |
+| $u$ | Signed PWM duty (-255...255) |
 | $\Delta u$, $T_m$ | Ramp step and motor-task period |
 
 **Table 12.** Differential-drive mixing.
 
-| Command | Left target | Right target | Pins active | Ramp 0 → 180 |
+| Command | Left target | Right target | Pins active | Ramp 0 -> 180 |
 |---|---|---|---|---|
 | `F` | +s | +s | D5, D9 | 120 ms |
-| `R` | −s | −s | D6, D10 | 120 ms |
-| `L` (pivot) | −s | +s | D6, D9 | 120 ms |
-| `G` (pivot) | +s | −s | D5, D10 | 120 ms |
+| `R` | -s | -s | D6, D10 | 120 ms |
+| `L` (pivot) | -s | +s | D6, D9 | 120 ms |
+| `G` (pivot) | +s | -s | D5, D10 | 120 ms |
 | `S` | 0 | 0 | ramp down | 120 ms from 180 |
-| Reversal F180 → R180 | — | — | through zero | 240 ms |
+| Reversal F180 -> R180 | - | - | through zero | 240 ms |
 | Emergency stop | 0 | 0 | all 0, D4 LOW | 0 ms (no ramp) |
 
 **Figure 13.** PWM profile for `F180` at t = 0 followed by a stop at t = 130 ms: ramped `S` (first series) versus dead-man / gas cut (second series).
@@ -250,10 +250,10 @@ Bounds are enforced three times with different purposes: the dashboard for conve
 
 ```mermaid
 flowchart TB
-  L1["Dashboard<br/>slider 0–180, controls disabled for observers"]
+  L1["Dashboard<br/>slider 0-180, controls disabled for observers"]
   L2["P1 CommandValidator<br/>role, type, clamp, sequence"]
   L3["Firmware parser<br/>framing, syntax, range, state"]
-  L4["Firmware safety task<br/>dead-man 2000 ms, gas ≥ 1000"]
+  L4["Firmware safety task<br/>dead-man 2000 ms, gas >= 1000"]
   L1 --> L2 --> L3 --> L4 --> MOT["Motors"]
   X["P1: S on controller disconnect"] -.-> L3
 ```
@@ -282,15 +282,15 @@ flowchart LR
   R -- "no, other" --> E2["error: observer role"]
   R -- yes --> T{"stop_all?"}
   T -- yes --> S["S (no seq check)"]
-  T -- no --> V{"dir ∈ F,R,L,G or<br/>axis ∈ pan,tilt?"}
+  T -- no --> V{"dir in F,R,L,G or<br/>axis in pan,tilt?"}
   V -- no --> E3["error: unknown dir/axis"]
-  V -- yes --> C["Clamp speed 0–180,<br/>angle 0–180 (CMD_CLAMP log)"]
+  V -- yes --> C["Clamp speed 0-180,<br/>angle 0-180 (CMD_CLAMP log)"]
   C --> Q{"seq absent or<br/>seq > last?"}
   Q -- no --> E4["error: stale seq"]
   Q -- yes --> W["Wire command to UART"]
 ```
 
-### 4.3.3 Speed Limiting and the PWM–Voltage Relationship
+### 4.3.3 Speed Limiting and the PWM-Voltage Relationship
 
 P1 caps speed at 180 of 255, which bounds the mean motor voltage to 10.4 V at the nominal 14.8 V and 11.9 V at a full 16.8 V.
 
@@ -300,7 +300,7 @@ $$
 
 | Symbol | Meaning |
 |---|---|
-| $u$ | PWM duty after clamping (0–180) |
+| $u$ | PWM duty after clamping (0-180) |
 | $V_{\text{bat}}$ | Pack voltage: 14.8 V nominal, 16.8 V full |
 
 ### 4.3.4 Heartbeat Keep-Alive and Dead-Man Timeout: Stop-Time Guarantee
@@ -317,9 +317,9 @@ $$
 |---|---|---|
 | $T_{DM}$ | Dead-man window `DEADMAN_TIMEOUT_MS` | 2000 ms |
 | $T_s$ | Safety-task period | 10 ms |
-| $T_{b,\max}$ | Worst blocking in one loop (sonar + DHT11) | ≈ 50 ms |
+| $T_{b,\max}$ | Worst blocking in one loop (sonar + DHT11) | ~ 50 ms |
 | $T_{hb}$ | Heartbeat period | 500 ms (4 per window) |
-| — | PWM after trip | 0 at once, D4 LOW (no ramp) |
+| - | PWM after trip | 0 at once, D4 LOW (no ramp) |
 
 **Figure 16.** Keep-alive and dead-man trip after the link is lost.
 
@@ -332,7 +332,7 @@ sequenceDiagram
   P->>A: H (window restarts)
   D->>P: heartbeat (t = 500 ms)
   P->>A: H
-  Note over D,P: Wi-Fi lost at t ≈ 600 ms
+  Note over D,P: Wi-Fi lost at t ~ 600 ms
   Note over A: no command for 2000 ms
   A->>A: FAULT_DEADMAN, mode PANIC, PWM 0, D4 LOW
   A-->>P: PANIC DEADMAN
@@ -344,7 +344,7 @@ sequenceDiagram
 
 ### 4.3.5 Redundant Stop on Controller Disconnect
 
-When the controller's WebSocket closes, P1 immediately writes `S`, stopping the robot within the 120 ms ramp; if P1 itself is down, the dead-man stops it within ≈ 2 s.
+When the controller's WebSocket closes, P1 immediately writes `S`, stopping the robot within the 120 ms ramp; if P1 itself is down, the dead-man stops it within ~ 2 s.
 
 ### 4.3.6 Emergency-Stop Path and Priority Handling
 
@@ -354,11 +354,11 @@ The emergency stop is an ordinary `stop_all` with two privileges: P1 skips the s
 
 | Stop | Trigger | Ramp | D4 enable | Mode after | Clears |
 |---|---|---|---|---|---|
-| Operator `S` | Button / key release | Yes, ≤ 120 ms | HIGH | READY | — |
-| Disconnect `S` | Controller socket closed | Yes | HIGH | READY | — |
-| Handshake `S` ×3 | P1 start | Yes | HIGH | READY | — |
+| Operator `S` | Button / key release | Yes, <= 120 ms | HIGH | READY | - |
+| Disconnect `S` | Controller socket closed | Yes | HIGH | READY | - |
+| Handshake `S` x3 | P1 start | Yes | HIGH | READY | - |
 | Dead-man | 2000 ms silence | No | LOW | PANIC | Next valid command |
-| Gas panic | ADC ≥ 1000 | No | LOW | PANIC | ADC < 1000 |
+| Gas panic | ADC >= 1000 | No | LOW | PANIC | ADC < 1000 |
 
 ### 4.3.7 Gas-Triggered Autonomous Panic Stop
 
@@ -368,8 +368,8 @@ The firmware checks the MQ-136 alarm before the dead-man in every safety pass, s
 
 ```mermaid
 flowchart TB
-  R["taskSensorSlow (2000 ms)<br/>gasRaw = analogRead(A3)<br/>gasAlarm = gasRaw ≥ 1000"] --> S{"taskSafety (10 ms)<br/>gasAlarm and fault ≠ GAS?"}
-  S -- yes --> P["FAULT_GAS → PANIC<br/>PWM 0, D4 LOW<br/>PANIC GAS"]
+  R["taskSensorSlow (2000 ms)<br/>gasRaw = analogRead(A3)<br/>gasAlarm = gasRaw >= 1000"] --> S{"taskSafety (10 ms)<br/>gasAlarm and fault != GAS?"}
+  S -- yes --> P["FAULT_GAS -> PANIC<br/>PWM 0, D4 LOW<br/>PANIC GAS"]
   S -- no --> C{"fault = GAS and<br/>not gasAlarm?"}
   C -- yes --> CL["Clear fault, enable drivers<br/>EVT GAS_CLEARED"]
   C -- no --> N["Continue (dead-man check)"]
@@ -377,7 +377,7 @@ flowchart TB
 
 ### 4.3.8 Advisory Obstacle Ranging
 
-The ultrasonic range (every 50 ms, capped at 400 cm) is reported in telemetry and coloured on the dashboard at ≤ 30 cm and ≤ 20 cm, but it never gates a motor command; the operator decides.
+The ultrasonic range (every 50 ms, capped at 400 cm) is reported in telemetry and coloured on the dashboard at <= 30 cm and <= 20 cm, but it never gates a motor command; the operator decides.
 
 ## 4.4 Edge Control Server and Telemetry Pipeline
 
@@ -426,7 +426,7 @@ sequenceDiagram
     P1->>A: S
   end
   P1->>A: ?
-  A-->>P1: READY or valid CSV (≤ 5 s)
+  A-->>P1: READY or valid CSV (<= 5 s)
   alt no reply in 5 s
     P1->>P3: exit code 2
   else ok
@@ -486,8 +486,8 @@ gantt
 | P1 serial poll | 5 ms (data) / 20 ms (idle) | `_latest_frame` |
 | P1 snapshot broadcast | 200 ms | All dashboards, ring buffer |
 | P1 disk log | 1000 ms | `telemetry.log` |
-| GPS fixes | ≈ 1000 ms | GPS state |
-| Dashboard heartbeat | 500 ms | P1 → `H` |
+| GPS fixes | ~ 1000 ms | GPS state |
+| Dashboard heartbeat | 500 ms | P1 -> `H` |
 | uvicorn WebSocket ping | 20 s (20 s timeout) | Dead-socket detection |
 
 ### 4.4.6 Telemetry Snapshot Construction and Protection of Server-Owned Fields
@@ -515,7 +515,7 @@ sequenceDiagram
   participant D as Dashboard
   participant P as P1
   participant B as Ring buffer
-  Note over D,P: link lost, backoff 1 → 30 s
+  Note over D,P: link lost, backoff 1 -> 30 s
   D->>P: hello {role, key}
   P-->>D: ack {role, auth, session}
   D->>P: resume_from {last_ts}
@@ -533,11 +533,11 @@ Thresholds load from `thresholds.json` over built-in defaults (Table 18); each 1
 
 | Quantity | Warning | Critical | Direction | Firmware action |
 |---|---|---|---|---|
-| Temperature | 50 °C | 70 °C | Above | None |
-| Gas (raw ADC) | 450 | 600 | Above | PANIC at ≥ 1000 |
+| Temperature | 50 degC | 70 degC | Above | None |
+| Gas (raw ADC) | 450 | 600 | Above | PANIC at >= 1000 |
 | Range | 30 cm | 20 cm | Below | None |
-| Humidity | — | — | Display only | None |
-| GPS | `gps_fix = false` | — | — | None |
+| Humidity | - | - | Display only | None |
+| GPS | `gps_fix = false` | - | - | None |
 
 ## 4.5 Fault-Tolerant Supervision and Recovery
 
@@ -558,7 +558,7 @@ flowchart TB
 
 ### 4.5.2 Process Isolation of Control and Media
 
-P1 and P2 own disjoint resources and share no memory; their only interactions are P3's health polls and P2's localhost query of the current controller (§4.8.4). The effect of losing each process is given in Table 20.
+P1 and P2 own disjoint resources and share no memory; their only interactions are P3's health polls and P2's localhost query of the current controller (Section 4.8.4). The effect of losing each process is given in Table 20.
 
 ### 4.5.3 Two-Level Liveness Detection: Process Polling and HTTP Health Checks
 
@@ -589,7 +589,7 @@ P1 reports why it exited, and P3 logs each cause distinctly; all are retried aft
 | 1 | Lock error | `PROC_CRASH` | +1 |
 | 2 | Arduino handshake failed | `PROC_CRASH` | +1 |
 | 3 | Invalid configuration | `PROC_CONFIG_INVALID` | Not incremented |
-| −11 etc. | Signal (e.g. segfault) | `PROC_CRASH` | +1 |
+| -11 etc. | Signal (e.g. segfault) | `PROC_CRASH` | +1 |
 | None | Killed after 3 health misses | `PROC_KILL`, `PROC_CRASH` | +1 |
 
 ### 4.5.5 Fault Detection and Recovery Time Model
@@ -639,13 +639,13 @@ Each fault removes a defined capability and leaves the rest running; the dashboa
 
 | Mode | Trigger | Drive | Telemetry | Video / talk | Mission state |
 |---|---|---|---|---|---|
-| Nominal | — | ✓ | ✓ | ✓ | READY / DRIVING |
-| Media down | P2 crash, WebRTC loss | ✓ | ✓ | ✗ | DRIVING_LIMITED |
-| Camera/mic fault | Device error | ✓ | ✓ | Synthetic / silence | READY / DRIVING |
-| Control down | WebSocket, P1, link | ✗ (dead-man) | ✗ | ✓ if P2 up | STOP |
-| Serial down | Arduino unplugged | ✗ | Stale | ✓ | STOP |
-| Pi offline | Power, freeze | ✗ (dead-man) | ✗ | ✗ | STOP |
-| GPS lost | No fix | ✓ | ✓ (no position) | ✓ | Unchanged |
+| Nominal | - | Yes | Yes | Yes | READY / DRIVING |
+| Media down | P2 crash, WebRTC loss | Yes | Yes | No | DRIVING_LIMITED |
+| Camera/mic fault | Device error | Yes | Yes | Synthetic / silence | READY / DRIVING |
+| Control down | WebSocket, P1, link | No (dead-man) | No | Yes if P2 up | STOP |
+| Serial down | Arduino unplugged | No | Stale | Yes | STOP |
+| Pi offline | Power, freeze | No (dead-man) | No | No | STOP |
+| GPS lost | No fix | Yes | Yes (no position) | Yes | Unchanged |
 
 ## 4.6 Mission State Derivation and Operator Awareness
 
@@ -665,18 +665,18 @@ flowchart TD
   C -- no --> R["READY (green)"]
 ```
 
-**Table 21.** Truth table (— = don't care).
+**Table 21.** Truth table ( -  = don't care).
 
-| WS up | `serial_ok` | Telemetry age ≤ 3 s | Video up | `fw_state` = 2 | State |
+| WS up | `serial_ok` | Telemetry age <= 3 s | Video up | `fw_state` = 2 | State |
 |---|---|---|---|---|---|
-| No | — | — | — | — | STOP |
-| Yes | No | — | — | — | STOP |
-| Yes | Yes | No | — | — | STOP |
-| Yes | Yes | Yes | No | — | DRIVING_LIMITED |
+| No | - | - | - | - | STOP |
+| Yes | No | - | - | - | STOP |
+| Yes | Yes | No | - | - | STOP |
+| Yes | Yes | Yes | No | - | DRIVING_LIMITED |
 | Yes | Yes | Yes | Yes | Yes | DRIVING |
 | Yes | Yes | Yes | Yes | No | READY |
 
-The age counter grows by 500 ms per heartbeat and resets on each telemetry message, so STOP is shown after the seventh silent heartbeat (≈ 3.5 s).
+The age counter grows by 500 ms per heartbeat and resets on each telemetry message, so STOP is shown after the seventh silent heartbeat (~ 3.5 s).
 
 ### 4.6.2 Asymmetric Reconnection Policy for Control and Media
 
@@ -687,7 +687,7 @@ Control reconnects automatically because the robot is unsafe without it; video, 
 | Path | Before first connection | After loss | Backoff | After reconnect |
 |---|---|---|---|---|
 | Control (WebSocket) | Retry | Automatic, unlimited | 1 s doubling to 30 s | `hello`, then `resume_from` |
-| Media (WebRTC) | Retry every 3 s | Manual **Retry video** | — | New offer, new session |
+| Media (WebRTC) | Retry every 3 s | Manual **Retry video** | - | New offer, new session |
 
 ## 4.7 Two-Way Victim Interaction Channel
 
@@ -725,10 +725,10 @@ flowchart LR
 
 | Track | Direction | Content | Format |
 |---|---|---|---|
-| 1 | Robot → operator | Camera | VP8 or H.264, 640×480, 10 fps |
-| 2 | Robot → operator | Microphone | Mono Opus, 32 kbit/s, 60 ms packets |
-| 3 | Operator → robot | Laptop camera (640×480, 10 fps), image (canvas 1024×600), screen (5 fps) | Browser choice |
-| 4 | Operator → robot | Push-to-talk voice (echo cancellation on) | Opus |
+| 1 | Robot -> operator | Camera | VP8 or H.264, 640x480, 10 fps |
+| 2 | Robot -> operator | Microphone | Mono Opus, 32 kbit/s, 60 ms packets |
+| 3 | Operator -> robot | Laptop camera (640x480, 10 fps), image (canvas 1024x600), screen (5 fps) | Browser choice |
+| 4 | Operator -> robot | Push-to-talk voice (echo cancellation on) | Opus |
 | DC | Both | `screen` data channel | JSON, ordered, reliable |
 
 ### 4.7.2 Single-Shot Signalling on a Local Network
@@ -747,10 +747,10 @@ sequenceDiagram
   P-->>K: SDP answer
   D->>D: sendrecv video + audio, createDataChannel screen
   D->>P: POST /webrtc/offer {sdp, key}
-  P->>P: KeyGate check, add Tracks 1–2
+  P->>P: KeyGate check, add Tracks 1-2
   P-->>D: SDP answer {role, auth}
   Note over D,P: host candidates only, media over UDP
-  D->>P: Tracks 3–4 via replaceTrack (no renegotiation)
+  D->>P: Tracks 3-4 via replaceTrack (no renegotiation)
 ```
 
 ### 4.7.3 Shared Device Capture and Multi-Session Fan-Out
@@ -768,7 +768,7 @@ flowchart LR
   subgraph Before["Before: one frame, two encoders"]
     F1["YUYV frame"] --> E1["Encoder 1<br/>frame.reformat()"]
     F1 --> E2["Encoder 2<br/>frame.reformat()"]
-    E1 -. "shared cached converter,<br/>GIL released → segfault" .- E2
+    E1 -. "shared cached converter,<br/>GIL released -> segfault" .- E2
   end
   subgraph After["After: private yuv420p copy per session"]
     F2["YUYV frame"] --> C1["Convert on event loop,<br/>own converter"] --> G1["Encoder 1"]
@@ -794,8 +794,8 @@ $$
 stateDiagram-v2
   [*] --> Refilling
   Refilling --> Refilling: < 120 ms buffered, send silence
-  Refilling --> Playing: ≥ 120 ms buffered
-  Playing --> Playing: ≥ 60 ms buffered, send 60 ms voice
+  Refilling --> Playing: >= 120 ms buffered
+  Playing --> Playing: >= 60 ms buffered, send 60 ms voice
   Playing --> Refilling: < 60 ms buffered, send silence
   note right of Playing
     Above 400 ms the oldest
@@ -829,13 +829,13 @@ stateDiagram-v2
 
 | Message | Direction | Effect |
 |---|---|---|
-| `media_state {talking, video}` | Dashboard → P2 → screen | Hides idle overlay while video is active |
-| `screen_text {text, ts}` / `screen_clear` | Dashboard → P2 → screen | Banner, trimmed, ≤ 280 chars |
-| `screen_ack {ts}` | Screen → P2 → holder | Confirms text is displayed |
-| `floor_release` | Dashboard → P2 | Frees the robot screen |
-| `talk_status` | P2 → all dashboards | `screen_online`, `floor`, `display_mode`, `can_control` |
-| `floor_denied` / `view_only` | P2 → dashboard | Refusal reason |
-| `display_mode {robot / vnc}` | Dashboard → P2 | Switch display; no floor needed |
+| `media_state {talking, video}` | Dashboard -> P2 -> screen | Hides idle overlay while video is active |
+| `screen_text {text, ts}` / `screen_clear` | Dashboard -> P2 -> screen | Banner, trimmed, <= 280 chars |
+| `screen_ack {ts}` | Screen -> P2 -> holder | Confirms text is displayed |
+| `floor_release` | Dashboard -> P2 | Frees the robot screen |
+| `talk_status` | P2 -> all dashboards | `screen_online`, `floor`, `display_mode`, `can_control` |
+| `floor_denied` / `view_only` | P2 -> dashboard | Refusal reason |
+| `display_mode {robot / vnc}` | Dashboard -> P2 | Switch display; no floor needed |
 
 ### 4.7.9 Display-Mode Arbitration and Protection Against Accidental Input
 
@@ -851,12 +851,12 @@ Any dashboard may watch; only one that presented the controller key and currentl
 
 | Action | Controller | Observer |
 |---|---|---|
-| Receive telemetry, video, audio, map | ✓ | ✓ |
-| Drive, pan/tilt | ✓ | ✗ (`error`) |
-| Emergency stop (`stop_all`) | ✓ | ✗ (`error`) |
-| Heartbeat counted | ✓ | ✗ (dropped) |
-| Talk, show video/image/text | ✓ (with floor) | ✗ (`view_only`) |
-| Switch display mode | ✓ | ✗ |
+| Receive telemetry, video, audio, map | Yes | Yes |
+| Drive, pan/tilt | Yes | No (`error`) |
+| Emergency stop (`stop_all`) | Yes | No (`error`) |
+| Heartbeat counted | Yes | No (dropped) |
+| Talk, show video/image/text | Yes (with floor) | No (`view_only`) |
+| Switch display mode | Yes | No |
 
 ### 4.8.2 Controller-Key Authentication and Takeover
 
@@ -908,7 +908,7 @@ sequenceDiagram
   else otherwise
     P2-->>D: view_only
   end
-  Note over P2: host changed → holder loses floor
+  Note over P2: host changed -> holder loses floor
 ```
 
 ## 4.9 GPS Localisation and Path Tracking
@@ -949,10 +949,10 @@ flowchart LR
   A -- no --> N["No point"]
   A -- yes --> B{"Track empty?"}
   B -- yes --> Y["Append p"]
-  B -- no --> C{"d(last, p) ≥ 10 m?"}
+  B -- no --> C{"d(last, p) >= 10 m?"}
   C -- yes --> Y
   C -- no --> N
-  Y --> G["Session track → /api/gps-track,<br/>GeoJSON on P1 stop"]
+  Y --> G["Session track -> /api/gps-track,<br/>GeoJSON on P1 stop"]
 ```
 
 ### 4.9.4 Offline Vector-Map Serving with HTTP Range Requests
@@ -965,24 +965,24 @@ The operating area is stored on the Pi as one PMTiles file served at `/maps`; th
 
 The code was treated as authoritative. Contradictions found while writing this section:
 
-1. **Firmware state model.** `ARCHITECTURE.md` §5, `SOFTWARE_ARCHITECTURE.md` §A.5.1/A.8 and the high-level diagram describe three states (ARMED/DRIVING/STOPPED), a `checkInvariants()` call and a STOPPED latch cleared only by reset. The code has five modes (`robot_state.h`), no `checkInvariants()`, and PANIC clears automatically. §4.2.4 follows the code.
-2. **Firmware scheduler.** `ARCHITECTURE.md` §4 and `SOFTWARE_ARCHITECTURE.md` §A.5.1 describe three categories, a sonar ISR, sonar 100 ms, gas 500 ms, telemetry 200 ms and LED 500 ms. `arduino.ino` has six `millis()` tasks (10/10/50/2000/500/1000 ms) and reads the sonar with `pulseIn`, with no ISR.
-3. **Telemetry period.** The firmware sends CSV every 500 ms (`TELEMETRY_PERIOD_MS` in `config.h`). `protocol.py` sets `TELEMETRY_PERIOD_MS = 200` and its comment says "Arduino TX and P1 broadcast". `MockArduino` emits at 200 ms, and `ARCHITECTURE.md` §8/§10 and `SOFTWARE_ARCHITECTURE.md` §A.6 say 200 ms.
-4. **Firmware validation.** `SOFTWARE_ARCHITECTURE.md` §A.5.1 says 1–8 characters, `ERR_LEN`/`ERR_TOK`/`WARN_CLAMP` and "clamp, don't discard". The firmware accepts up to 31 characters, replies `NACK <op> <reason>` and rejects out-of-range values (`ARG_RANGE`). `MockArduino` follows the old design, not the firmware.
+1. **Firmware state model.** `ARCHITECTURE.md` Section 5, `SOFTWARE_ARCHITECTURE.md` Section A.5.1/A.8 and the high-level diagram describe three states (ARMED/DRIVING/STOPPED), a `checkInvariants()` call and a STOPPED latch cleared only by reset. The code has five modes (`robot_state.h`), no `checkInvariants()`, and PANIC clears automatically. Section 4.2.4 follows the code.
+2. **Firmware scheduler.** `ARCHITECTURE.md` Section 4 and `SOFTWARE_ARCHITECTURE.md` Section A.5.1 describe three categories, a sonar ISR, sonar 100 ms, gas 500 ms, telemetry 200 ms and LED 500 ms. `arduino.ino` has six `millis()` tasks (10/10/50/2000/500/1000 ms) and reads the sonar with `pulseIn`, with no ISR.
+3. **Telemetry period.** The firmware sends CSV every 500 ms (`TELEMETRY_PERIOD_MS` in `config.h`). `protocol.py` sets `TELEMETRY_PERIOD_MS = 200` and its comment says "Arduino TX and P1 broadcast". `MockArduino` emits at 200 ms, and `ARCHITECTURE.md` Section 8/Section 10 and `SOFTWARE_ARCHITECTURE.md` Section A.6 say 200 ms.
+4. **Firmware validation.** `SOFTWARE_ARCHITECTURE.md` Section A.5.1 says 1-8 characters, `ERR_LEN`/`ERR_TOK`/`WARN_CLAMP` and "clamp, don't discard". The firmware accepts up to 31 characters, replies `NACK <op> <reason>` and rejects out-of-range values (`ARG_RANGE`). `MockArduino` follows the old design, not the firmware.
 5. **P1 misses real firmware rejections.** `serial_bridge.py` logs `FW_REJECT` only for lines that start with `ERR_`/`WARN_`. Real `NACK` lines are logged only as `DEBUG_RX`.
-6. **Dead-man refresh set.** The firmware refreshes the dead-man for every command that passes stages 1–3 (including `P`, `T` and `?`), even if stage 4 then rejects it. `DEADMAN_ARMING_COMMANDS` in `protocol.py`, the mock and `SOFTWARE_ARCHITECTURE.md` §A.5.1 exclude `P`/`T`/`?`.
+6. **Dead-man refresh set.** The firmware refreshes the dead-man for every command that passes stages 1-3 (including `P`, `T` and `?`), even if stage 4 then rejects it. `DEADMAN_ARMING_COMMANDS` in `protocol.py`, the mock and `SOFTWARE_ARCHITECTURE.md` Section A.5.1 exclude `P`/`T`/`?`.
 7. **Boot state of the dead-man.** `SOFTWARE_ARCHITECTURE.md` says the board boots with the window already expired. `setup()` instead primes the timer, enables the drivers and enters READY. Only the mock boots expired.
-8. **Snapshot size.** The docs say a "20-key `TelemetrySnapshot`"; the code has 17 fields plus `type`. `SOFTWARE_ARCHITECTURE.md` says `telemetry.log` has 19 columns; `telemetry_log.py` writes 18 (`CAPSTONE_METHODOLOGY_FINAL.md` §28.1 is correct).
-9. **Start-up order.** `ARCHITECTURE.md` §7 and `SOFTWARE_ARCHITECTURE.md` §A.7.1 show P3 spawning P2 after P1's `/health` succeeds. `p3_watchdog/main.py` starts both at once.
-10. **`adopt()` is never called.** `SOFTWARE_ARCHITECTURE.md` §A.5.4 describes orphan adoption, but no code path uses it, and `KillMode=control-group` kills the children with P3 anyway.
-11. **Exit code 3.** `SOFTWARE_ARCHITECTURE.md` §A.8 says a configuration fault is "not looped". `supervisor.py` still respawns after the cooldown; it only leaves the restart counter unchanged.
-12. **Invariant II (Section 3, Table 1)** says P1 and P2 share "no memory or IPC". P2 polls P1's localhost `GET /api/controller` every 1 s (§4.8.4), so the wording should be "no shared memory; one read-only localhost query".
-13. **Haversine.** The §4.9.2 heading follows the TOC, but `gps_reader.py` uses the equirectangular approximation (also Section 3 note 1). Consider renaming the subsection.
-14. **PWM 180 ≈ 12 V** (Section 3.3.4, `CAPSTONE_METHODOLOGY_FINAL.md` §5.1) holds only at full charge (11.9 V at 16.8 V). At 14.8 V nominal it is 10.4 V (§4.3.3).
-15. **Stop-time bound.** `CAPSTONE_METHODOLOGY_FINAL.md` §23.1 gives ≤ 2010 ms. If the sonar (25 ms) and DHT11 (≈ 25 ms) reads fall in the same loop pass, the design bound is ≈ 2060 ms (§4.3.4). This should be measured (test H7).
-16. **STOP threshold.** The docs say STOP after 3000 ms without telemetry. The dashboard counter rises in 500 ms steps and the test is "> 3000", so STOP appears at ≈ 3.5 s.
-17. **Test counts.** `TEST_REPORT.md` §3 says 111, its §10 summary says 106, `CAPSTONE_METHODOLOGY_FINAL.md` §39.3/§40.2 says 69 and `SOFTWARE_ARCHITECTURE.md` says 50. `pytest` collects 111.
-18. **Roles.** `CAPSTONE_METHODOLOGY_FINAL.md` §15.1 ("first client to ask gets controller") and §40.3 item 6 ("No authentication") predate the controller key; §4.8 follows the code.
+8. **Snapshot size.** The docs say a "20-key `TelemetrySnapshot`"; the code has 17 fields plus `type`. `SOFTWARE_ARCHITECTURE.md` says `telemetry.log` has 19 columns; `telemetry_log.py` writes 18 (`CAPSTONE_METHODOLOGY_FINAL.md` Section 28.1 is correct).
+9. **Start-up order.** `ARCHITECTURE.md` Section 7 and `SOFTWARE_ARCHITECTURE.md` Section A.7.1 show P3 spawning P2 after P1's `/health` succeeds. `p3_watchdog/main.py` starts both at once.
+10. **`adopt()` is never called.** `SOFTWARE_ARCHITECTURE.md` Section A.5.4 describes orphan adoption, but no code path uses it, and `KillMode=control-group` kills the children with P3 anyway.
+11. **Exit code 3.** `SOFTWARE_ARCHITECTURE.md` Section A.8 says a configuration fault is "not looped". `supervisor.py` still respawns after the cooldown; it only leaves the restart counter unchanged.
+12. **Invariant II (Section 3, Table 1)** says P1 and P2 share "no memory or IPC". P2 polls P1's localhost `GET /api/controller` every 1 s (Section 4.8.4), so the wording should be "no shared memory; one read-only localhost query".
+13. **Haversine.** The Section 4.9.2 heading follows the TOC, but `gps_reader.py` uses the equirectangular approximation (also Section 3 note 1). Consider renaming the subsection.
+14. **PWM 180 ~ 12 V** (Section 3.3.4, `CAPSTONE_METHODOLOGY_FINAL.md` Section 5.1) holds only at full charge (11.9 V at 16.8 V). At 14.8 V nominal it is 10.4 V (Section 4.3.3).
+15. **Stop-time bound.** `CAPSTONE_METHODOLOGY_FINAL.md` Section 23.1 gives <= 2010 ms. If the sonar (25 ms) and DHT11 (~ 25 ms) reads fall in the same loop pass, the design bound is ~ 2060 ms (Section 4.3.4). This should be measured (test H7).
+16. **STOP threshold.** The docs say STOP after 3000 ms without telemetry. The dashboard counter rises in 500 ms steps and the test is "> 3000", so STOP appears at ~ 3.5 s.
+17. **Test counts.** `TEST_REPORT.md` Section 3 says 111, its Section 10 summary says 106, `CAPSTONE_METHODOLOGY_FINAL.md` Section 39.3/Section 40.2 says 69 and `SOFTWARE_ARCHITECTURE.md` says 50. `pytest` collects 111.
+18. **Roles.** `CAPSTONE_METHODOLOGY_FINAL.md` Section 15.1 ("first client to ask gets controller") and Section 40.3 item 6 ("No authentication") predate the controller key; Section 4.8 follows the code.
 19. **High-level diagram** (`docs/high level software architure diagram.md`) says H.264 only, a "Pi camera", `pynmea2`, a sonar ISR and telemetry every 200 ms. The code negotiates VP8 or H.264, uses a USB camera, has its own NMEA parser, and sends telemetry every 500 ms.
 20. **Gas fault comment.** `taskSafety` calls the gas panic "latching", but it clears as soon as the reading drops below 1000.
 21. **Overflow reply.** An over-long line is answered with `NACK ? EMPTY`, which does not say that the line was too long.

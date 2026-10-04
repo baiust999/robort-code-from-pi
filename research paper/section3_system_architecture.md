@@ -12,13 +12,13 @@ Six non-functional requirements constrain the design: a bounded stop time whenev
 
 | No. | Invariant | Enforcement mechanism | Req. | Detail |
 |---|---|---|---|---|
-| I | Motor safety is independent of the network and the edge computer | Firmware dead-man timer: no valid command for 2000 ms disables the drivers and sets PWM to zero | NFR1 | §4.3.4 |
-| II | Control, media and supervision are decoupled | P1, P2, P3 are separate processes; P1 and P2 share no memory or IPC; P3 sees them only through process status and HTTP `/health` | NFR2 | §4.5.2 |
-| III | Every process is supervised | systemd → P3 → P1, P2; a launcher script supervises the Robot Screen | NFR2 | §4.5.1 |
-| IV | Control and media use independent transports | WebSocket to P1 (TCP 8080); WebRTC to P2 (TCP 8443 signalling, UDP media) | NFR2 | §4.1.4 |
-| V | Operator state is always simple | One pure function derives a four-valued mission state | NFR3 | §4.6.1 |
-| VI | Only one writer commands the microcontroller | File lock on P1, exclusive serial open, single controller role gated by a controller key | NFR3 | §4.4.3, §4.8 |
-| VII | Primary operation needs no internet | Dashboard, control, telemetry, media and the operating-area map are served by the edge computer | FR7 | §3.5, §4.9.4 |
+| I | Motor safety is independent of the network and the edge computer | Firmware dead-man timer: no valid command for 2000 ms disables the drivers and sets PWM to zero | NFR1 | Section 4.3.4 |
+| II | Control, media and supervision are decoupled | P1, P2, P3 are separate processes; P1 and P2 share no memory or IPC; P3 sees them only through process status and HTTP `/health` | NFR2 | Section 4.5.2 |
+| III | Every process is supervised | systemd -> P3 -> P1, P2; a launcher script supervises the Robot Screen | NFR2 | Section 4.5.1 |
+| IV | Control and media use independent transports | WebSocket to P1 (TCP 8080); WebRTC to P2 (TCP 8443 signalling, UDP media) | NFR2 | Section 4.1.4 |
+| V | Operator state is always simple | One pure function derives a four-valued mission state | NFR3 | Section 4.6.1 |
+| VI | Only one writer commands the microcontroller | File lock on P1, exclusive serial open, single controller role gated by a controller key | NFR3 | Section 4.4.3, Section 4.8 |
+| VII | Primary operation needs no internet | Dashboard, control, telemetry, media and the operating-area map are served by the edge computer | FR7 | Section 3.5, Section 4.9.4 |
 
 ## 3.2 Overall System Architecture: Four Tiers and Two Independent Transports
 
@@ -104,24 +104,24 @@ The platform uses commodity components. Every part is an off-the-shelf module or
 
 ### 3.3.1 Locomotion and Actuation
 
-A four-wheel-drive chassis carries four DC gear motors, wired as left and right pairs, each pair driven by one BTS7960 dual half-bridge driver (PWM on D5/D6 and D9/D10). Both drivers share one enable line on D4, so a single output can disable all propulsion. Steering is differential (skid) steering. The firmware accepts PWM 0–255 and ramps it by 15 units per 10 ms tick (Section 4.2.5); P1 caps commanded speed at 180 (Section 4.3.3). Two hobby servos on D11 (pan) and D3 (tilt) orient the camera over 0–180°, homing to 90° at boot (Section 4.2.2).
+A four-wheel-drive chassis carries four DC gear motors, wired as left and right pairs, each pair driven by one BTS7960 dual half-bridge driver (PWM on D5/D6 and D9/D10). Both drivers share one enable line on D4, so a single output can disable all propulsion. Steering is differential (skid) steering. The firmware accepts PWM 0-255 and ramps it by 15 units per 10 ms tick (Section 4.2.5); P1 caps commanded speed at 180 (Section 4.3.3). Two hobby servos on D11 (pan) and D3 (tilt) orient the camera over 0-180 deg, homing to 90 deg at boot (Section 4.2.2).
 
 ### 3.3.2 Sensing Suite
 
-Table 3 summarises the sensors. A DHT11 on A2 reports temperature and humidity. An MQ-136 H₂S-sensitive gas sensor on A3 is reported as a raw 10-bit ADC count (0–1023); it is uncalibrated, so the value indicates relative gas presence, not a concentration in ppm, despite the historical field name `gas_ppm`. The firmware also uses it for an autonomous gas stop (Section 4.3.7). An HC-SR04 on D7/D8 measures forward range, capped at 400 cm, and is advisory only (Section 4.3.8). A NEO-6M GPS receiver connects to the Pi's UART (`/dev/serial0`, 9600 baud) and is read by P1 (Section 4.9.1).
+Table 3 summarises the sensors. A DHT11 on A2 reports temperature and humidity. An MQ-136 H2S-sensitive gas sensor on A3 is reported as a raw 10-bit ADC count (0-1023); it is uncalibrated, so the value indicates relative gas presence, not a concentration in ppm, despite the historical field name `gas_ppm`. The firmware also uses it for an autonomous gas stop (Section 4.3.7). An HC-SR04 on D7/D8 measures forward range, capped at 400 cm, and is advisory only (Section 4.3.8). A NEO-6M GPS receiver connects to the Pi's UART (`/dev/serial0`, 9600 baud) and is read by P1 (Section 4.9.1).
 
 **Table 3.** Sensing suite.
 
 | Model | Interface | Quantity measured | Sampling period |
 |---|---|---|---|
-| DHT11 | Arduino A2, single-wire | Temperature (°C), humidity (%) | 2000 ms |
-| MQ-136 | Arduino A3, 10-bit ADC | Raw ADC 0–1023, uncalibrated | 2000 ms |
-| HC-SR04 | Arduino D7/D8 | Forward range ≤ 400 cm, advisory | 50 ms |
+| DHT11 | Arduino A2, single-wire | Temperature (degC), humidity (%) | 2000 ms |
+| MQ-136 | Arduino A3, 10-bit ADC | Raw ADC 0-1023, uncalibrated | 2000 ms |
+| HC-SR04 | Arduino D7/D8 | Forward range <= 400 cm, advisory | 50 ms |
 | NEO-6M | Pi `/dev/serial0`, 9600 baud, NMEA | Position, fix, satellites | 1 s (receiver default) |
 
 ### 3.3.3 Audio-Visual Interaction Hardware
 
-A Logitech C270 USB webcam on the pan/tilt head is captured at 640×480 and 10 fps, and a USB microphone picks up sound at the robot. Toward the victim, a speaker on the Pi's 3.5 mm jack plays the operator's voice, and a forward-facing 7-inch HDMI display (1024×600) shows the Robot Screen: a reassurance message when idle, otherwise the operator's video or image with text overlaid (Section 4.7.8). The camera, microphone and display are standard USB and HDMI devices supported by the operating system's stock drivers, so each can be replaced with an equivalent unit without software changes.
+A Logitech C270 USB webcam on the pan/tilt head is captured at 640x480 and 10 fps, and a USB microphone picks up sound at the robot. Toward the victim, a speaker on the Pi's 3.5 mm jack plays the operator's voice, and a forward-facing 7-inch HDMI display (1024x600) shows the Robot Screen: a reassurance message when idle, otherwise the operator's video or image with text overlaid (Section 4.7.8). The camera, microphone and display are standard USB and HDMI devices supported by the operating system's stock drivers, so each can be replaced with an equivalent unit without software changes.
 
 ### 3.3.4 Power Architecture
 
@@ -150,7 +150,7 @@ The three computing tiers share no code; they are coupled only through a protoco
 
 ### 3.4.1 Microcontroller Firmware
 
-The firmware, RESCUE-UNO 1.0.0, runs on the ATmega328P (16 MHz, 32 KB flash, 2 KB SRAM). It is written in C++ on the Arduino core and has no operating system. Figure 5 shows its structure: the main loop polls the command parser and runs a cooperative scheduler with six periodic tasks (Section 4.2.1). Each command passes four validation stages before reaching an actuator (Section 4.2.3). The robot-state module holds one of five modes, BOOT, READY, ACTIVE, ESTOP or PANIC; motion is allowed only in READY and ACTIVE (Section 4.2.4). PANIC is entered on dead-man expiry after 2000 ms or a raw gas reading ≥ 1000.
+The firmware, RESCUE-UNO 1.0.0, runs on the ATmega328P (16 MHz, 32 KB flash, 2 KB SRAM). It is written in C++ on the Arduino core and has no operating system. Figure 5 shows its structure: the main loop polls the command parser and runs a cooperative scheduler with six periodic tasks (Section 4.2.1). Each command passes four validation stages before reaching an actuator (Section 4.2.3). The robot-state module holds one of five modes, BOOT, READY, ACTIVE, ESTOP or PANIC; motion is allowed only in READY and ACTIVE (Section 4.2.4). PANIC is entered on dead-man expiry after 2000 ms or a raw gas reading >= 1000.
 
 **Figure 5.** Firmware structure: main loop, scheduled tasks with periods, modules and operating modes.
 
@@ -228,18 +228,18 @@ An earlier design connected the robot through an OpenWrt 802.11s mesh. According
 
 | Stream | Basis | Estimate |
 |---|---|---|
-| Telemetry | ~400 B JSON × 5/s | ≈ 16 kbit/s |
-| Video | 640×480, 10 fps, VP8 | ≈ 0.5–1.5 Mbit/s |
+| Telemetry | ~400 B JSON x 5/s | ~ 16 kbit/s |
+| Video | 640x480, 10 fps, VP8 | ~ 0.5-1.5 Mbit/s |
 | Robot audio | Mono Opus | 32 kbit/s |
-| Operator media (when used) | Voice; video ≤ 640×480 | Browser-dependent |
-| **Total** | | **≈ 1–2 Mbit/s** |
+| Operator media (when used) | Voice; video <= 640x480 | Browser-dependent |
+| **Total** | | **~ 1-2 Mbit/s** |
 
 ---
 
 ## Author notes (remove before submission)
 
-1. TOC §4.9.2 says "Haversine", but `gps_reader.py` uses an equirectangular approximation.
-2. `CAPSTONE_METHODOLOGY_FINAL.md` §40.3 still says "No authentication"; the code has a controller key. This section follows the code.
+1. TOC Section 4.9.2 says "Haversine", but `gps_reader.py` uses an equirectangular approximation.
+2. `CAPSTONE_METHODOLOGY_FINAL.md` Section 40.3 still says "No authentication"; the code has a controller key. This section follows the code.
 3. `robot-watchdog.service` waits for `dev-ttyUSB0.device`; the UNO is `/dev/ttyACM0`.
-4. The firmware ESTOP mode exists but no command enters it; say so in §4.2.4.
+4. The firmware ESTOP mode exists but no command enters it; say so in Section 4.2.4.
 5. Confirm on the robot: the C270 model, 40 A BMS, ~8 V rail, three buck converters and power bank.

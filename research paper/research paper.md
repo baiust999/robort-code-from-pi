@@ -18,7 +18,7 @@
 **2. Related Work**
 
 - 2.1 Teleoperated Search-and-Rescue Robots
-- 2.2 Human–Robot Interaction with Trapped Victims
+- 2.2 Human-Robot Interaction with Trapped Victims
 - 2.3 Real-Time Video and Audio Streaming for Teleoperation
 - 2.4 Fail-Safe and Fault-Tolerant Architectures for Mobile Robots
 - 2.5 Low-Cost Embedded Platforms for Field Robotics
@@ -56,7 +56,7 @@
 - 4.3 Layered Fail-Safe Command Pipeline
   - 4.3.1 Overview of Defense-in-Depth Command Validation
   - 4.3.2 Edge-Side Validation: Role Check, Clamping and Sequence Monotonicity
-  - 4.3.3 Speed Limiting and the PWM–Voltage Relationship
+  - 4.3.3 Speed Limiting and the PWM-Voltage Relationship
   - 4.3.4 Heartbeat Keep-Alive and Dead-Man Timeout: Stop-Time Guarantee
   - 4.3.5 Redundant Stop on Controller Disconnect
   - 4.3.6 Emergency-Stop Path and Priority Handling
