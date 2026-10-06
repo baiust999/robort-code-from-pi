@@ -46,9 +46,8 @@
   - 3.9.1 The P2 Media Process
   - 3.9.2 Signalling and Session Lifecycle
   - 3.9.3 Data Channel Protocol
-  - 3.9.4 Operator-to-Robot Relay
-  - 3.9.5 Robot Screen, Floor Control and Push-to-Talk
-  - 3.9.6 Low-Latency Audio on a Constrained CPU
+  - 3.9.4 Operator-to-Robot Relay and Floor Control
+  - 3.9.5 Low-Latency Audio on a Constrained CPU
 - 3.10 GPS Localisation and Offline Mapping
 
 **4. Experimental Setup**
