@@ -397,7 +397,7 @@ Table 7 lists every path that stops the motors. The gas stop fires when the raw 
 | Command flow stops | Firmware | PWM 0, drivers disabled | $t_{stop}$ above |
 | Gas value >= 1000 | Firmware | PWM 0, drivers disabled, motion rejected | Gas sampled every 2000 ms |
 
-## 3.6 Edge Control Server and Telemetry
+## 3.6 P1 Control Server and Telemetry
 
 The firmware stops the robot when commands cease, but it assumes that the commands it does receive come from one source and arrive in order. P1 provides that assumption and returns the robot's state to the operator. P1 owns the serial link, the GPS receiver and the control WebSocket.
 
@@ -478,7 +478,7 @@ flowchart TB
 
 **Figure 12.** Layered fault tolerance, from the operator side down to the motors.
 
-### 3.7.1 Process Isolation and Watchdog Supervision
+### 3.7.1 P3 Watchdog: Process Isolation and Supervision
 
 P3 is the only systemd service (restart on failure after 5 s); it spawns P1 and P2 as separate processes with no shared memory and supervises each one with the state machine in Figure 13. The only link between P1 and P2 is a once-per-second localhost query from P2 for the controller's address.
 

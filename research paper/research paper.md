@@ -34,11 +34,11 @@
   - 3.5.1 Task Scheduling and Command Validation
   - 3.5.2 Dead-Man Timer and Stop-Time Guarantee
   - 3.5.3 Redundant Stop Paths and Gas-Triggered Stop
-- 3.6 Edge Control Server and Telemetry
+- 3.6 P1 Control Server and Telemetry
   - 3.6.1 Safe Startup and Single-Writer Serial Link
   - 3.6.2 Telemetry Pipeline and Session Resume
 - 3.7 Fault Tolerance and Supervision
-  - 3.7.1 Process Isolation and Watchdog Supervision
+  - 3.7.1 P3 Watchdog: Process Isolation and Supervision
   - 3.7.2 Recovery Time Model and Graceful Degradation
   - 3.7.3 Mission State for Operator Awareness
 - 3.8 Access Control and Multi-Operator Arbitration
