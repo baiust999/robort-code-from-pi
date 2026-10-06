@@ -62,7 +62,7 @@ The two transports in Figure 1 run over one local network, which also makes the 
 
 | Port | Process | Protocol | Carries |
 |---|---|---|---|
-| TCP 8080 | P1 | HTTP and WebSocket | Dashboard files, control and telemetry, session settings, GPS track, offline map tiles, health |
+| TCP 8080 | P1 | HTTP and WebSocket | Dashboard files, control and telemetry, session settings, GPS track, offline map tiles, ICE configuration, health |
 | TCP 8443 | P2 | HTTP (no TLS) | WebRTC offer and answer, Robot Screen page, health |
 | UDP, negotiated by ICE | P2 | WebRTC | Audio, video and data channel |
 | Localhost only | P1, P2 | HTTP | Controller address query; Robot Screen connection |
@@ -228,7 +228,7 @@ flowchart LR
 | Pin | Mode | Signal | Notes |
 |---|---|---|---|
 | D0, D1 | UART over USB | Serial link to the Pi | 115200 baud, newline-terminated ASCII |
-| D3 | Output | Tilt servo pulse | Servo library on Timer2, 0-180 deg |
+| D3 | Output | Tilt servo pulse | ServoTimer2Plus library on Timer2, 0-180 deg |
 | D4 | Digital output | Enable for both BTS7960 drivers | Low at boot and on emergency stop |
 | D5 | PWM output | Left driver, forward | 0-255 |
 | D6 | PWM output | Left driver, reverse | 0-255 |
@@ -236,7 +236,7 @@ flowchart LR
 | D8 | Digital input | HC-SR04 echo | 25 ms timeout; distance = pulse width / 58 |
 | D9 | PWM output | Right driver, forward | 0-255; Timer1 left free for these pins |
 | D10 | PWM output | Right driver, reverse | 0-255 |
-| D11 | Output | Pan servo pulse | Servo library on Timer2, 0-180 deg |
+| D11 | Output | Pan servo pulse | ServoTimer2Plus library on Timer2, 0-180 deg |
 | D13 | Digital output | On-board status LED | Toggles every 1000 ms |
 | A2 | Digital I/O, pull-up | DHT11 single-wire data | Read every 2000 ms, checksum verified |
 | A3 | Analog input | MQ-136 output | 10-bit ADC; gas stop at >= 1000 |
@@ -324,9 +324,11 @@ flowchart TB
 
 **Figure 7.** Operator dashboard software architecture.
 
+Each layer can also run without its hardware. A development mode (the MOCK_HARDWARE setting) replaces the serial link with an in-process Arduino emulator that mirrors the firmware's framing, command validation, dead-man timer and telemetry cadence; replaces the GPS with a synthetic track; and replaces the camera and microphone with a synthetic video pattern and silence. The full control, telemetry, supervision and media stack therefore runs on a development machine with no robot attached, which is how the software is tested away from the hardware.
+
 ## 3.5 Real-Time Firmware and Fail-Safe Control
 
-The firmware holds the authority to stop the robot, so it must stop the motors without help from the Pi or the network. The firmware has four operating modes (Figure 8). Motion is accepted only in READY and ACTIVE with no fault set; telemetry reports READY as 1, ACTIVE as 2 and all other modes as 3.
+The firmware holds the authority to stop the robot, so it must stop the motors without help from the Pi or the network. The firmware defines five operating modes (Figure 8): BOOT, READY, ACTIVE, PANIC, and a reserved latched operator-stop mode, ESTOP. Motion is accepted only in READY and ACTIVE with no fault set; telemetry reports READY as 1, ACTIVE as 2 and all other modes (BOOT, PANIC and ESTOP) as 3.
 
 ```mermaid
 stateDiagram-v2
@@ -337,6 +339,8 @@ stateDiagram-v2
   READY --> PANIC: dead-man expiry or gas alarm
   ACTIVE --> PANIC: dead-man expiry or gas alarm
   PANIC --> READY: commands resume or gas clears
+  ESTOP --> READY: S
+  note right of ESTOP: Reserved latched operator-stop state; defined in the firmware state machine and reported as 3, but not entered in the current build, where the emergency stop is an ordinary S (Table 7).
 ```
 
 **Figure 8.** Firmware operating modes.
@@ -405,6 +409,8 @@ sequenceDiagram
 ### 3.5.3 Redundant Stop Paths and Gas-Triggered Stop
 
 Table 7 lists every path that stops the motors. The gas stop fires when the raw MQ-136 value reaches 1000; motion stays rejected until a later reading falls below it, and the dashboard warns earlier, at 450 (warning) and 600 (critical).
+
+These dashboard warning and critical levels are not fixed in the code. P1 reads them from an override file, /etc/robot/thresholds.json, at start-up, falling back to built-in defaults when the file is absent, and serves the active set to every dashboard over the session endpoint (Section 3.6) so all operators apply the same limits. The firmware gas stop at 1000 is independent of these display thresholds and cannot be changed from the dashboard.
 
 **Table 7.** Stop paths.
 
@@ -522,7 +528,9 @@ The time from a failure to a working process is:
 
 $$T_{rec} = T_{det} + T_{p} + T_{c} + T_{init}$$
 
-where $T_{det}$ is the detection time (at most 1 s for a crash, at most $3 \times 10 + 5 = 35$ s for a hang), $T_{p} = 1$ s is the poll before cooldown, $T_{c} = 10$ s is the cooldown, and $T_{init}$ is start-up time, which for P1 is 2.0 s + 3 x 0.2 s plus up to 5 s for the handshake. A P1 crash therefore recovers in 13.6 s to 19.6 s plus interpreter start-up; the dashboard adds up to one reconnect back-off step. Table 9 shows how each failure degrades the mission.
+where $T_{det}$ is the detection time (at most 1 s for a crash, at most $3 \times 10 + 5 = 35$ s for a hang), $T_{p} = 1$ s is the poll before cooldown, $T_{c} = 10$ s is the cooldown, and $T_{init}$ is start-up time, which for P1 is 2.0 s + 3 x 0.2 s plus up to 5 s for the handshake. A P1 crash therefore recovers in 14.6 s to 19.6 s plus interpreter start-up; the dashboard adds up to one reconnect back-off step. Table 9 shows how each failure degrades the mission.
+
+P1 reports why it exited through its process exit code, which the watchdog reads to decide how to react. A clean exit, or an exit because a healthy peer already holds the serial lock (code 0), draws no alarm: the watchdog simply waits out the cooldown rather than counting a crash. An unexpected lock error (code 1) or a failed Arduino handshake (code 2) is treated as a crash and respawned. An invalid configuration (code 3) is logged distinctly so that a persistent misconfiguration cannot drive a tight respawn loop. P2 uses the same configuration-invalid code.
 
 **Table 9.** Failure effects and recovery.
 
@@ -610,7 +618,7 @@ sequenceDiagram
 | Locked | 5 failures within 300 s; host refused for 300 s, even with the right key | Observer |
 | Disabled | No key configured on the robot | Observer for everyone |
 
-Failure counters are kept in memory per process. The dashboard discards a refused key so that reconnects do not add to the count. The key travels over plain HTTP and WebSocket.
+Failure counters are kept in memory per process. The dashboard discards a refused key so that reconnects do not add to the count. The key travels over plain HTTP and WebSocket. Both P1 and P2 accept requests from any origin (permissive CORS), because the dashboard may be served from the Pi, from a development server or from a content-delivery network, so its origin is not fixed; on the isolated local network this adds no exposure beyond the plain-HTTP key already noted.
 
 ## 3.9 Two-Way Victim Interaction
 
@@ -680,6 +688,8 @@ sequenceDiagram
 The dashboard offers its audio and video in both directions from the start, but sends nothing until the operator chooses to talk or show video; it then attaches the chosen source to the existing sender. Starting or stopping talk or video therefore never needs a second offer and answer.
 
 When a connection fails or closes, P2 removes the session and releases the floor if the session held it; when no session is left, the camera and microphone are closed. P2 keeps no state that survives a restart, so reconnection is driven by the client. After video has connected once, a later loss is shown to the operator with a retry button rather than hidden by silent reconnects, so the operator knows that the video was interrupted.
+
+For candidate gathering the browser may use a STUN server, which P1 publishes at an ICE-configuration endpoint (GET /api/ice-config), rate limited to five requests per minute per client. On the local network this returns a STUN entry and no TURN relay, since a direct host-to-host path is always available as described above. The deployment also carries an optional internet-overlay mode, disabled by default (the ENABLE_OVERLAY setting in the watchdog environment). When it is enabled, the robot is reached over the internet through a relay and the same endpoint additionally issues a TURN server; P1 carries the overlay's reachability as a turn_status field in each telemetry snapshot (Section 3.6.2). The primary deployment in this work is the local network of Section 3.2, where the overlay stays off and STUN alone suffices.
 
 ### 3.9.3 Data Channel Protocol
 
