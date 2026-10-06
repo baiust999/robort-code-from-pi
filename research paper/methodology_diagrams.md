@@ -8,6 +8,11 @@ Preview Mermaid Support), Obsidian, Typora, or at <https://mermaid.live>
 All values are taken from the project's firmware, Pi services and design
 documents (`docs/CAPSTONE_METHODOLOGY_FINAL.md`).
 
+P1, P2 and P3 are the three Python processes on the Raspberry Pi: P1 is the
+control server (dashboard to Arduino link, command checks, telemetry, GPS), P2 is
+the media server (camera, microphone, two-way talk to the robot screen) and P3 is
+the watchdog that starts P1 and P2 and restarts either one if it crashes or hangs.
+
 | Figure | Suggested place in the methodology |
 |---|---|
 | 1. Research workflow | Start of methodology (research approach) |

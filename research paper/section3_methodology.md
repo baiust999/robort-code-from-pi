@@ -4,7 +4,7 @@ This section describes the design from the overall architecture down to the indi
 
 ## 3.1 System Architecture
 
-The architecture applies the design rule by separating the system into tiers that can fail on their own. The system has four tiers: an Arduino UNO for real-time control, a Raspberry Pi 4 running three Python processes (P1 control, P2 media, P3 watchdog), a local Wi-Fi network, and a browser dashboard (Figure 1). Control and media use separate transports that end in separate processes, so a media failure leaves driving and stopping intact.
+The architecture applies the design rule by separating the system into tiers that can fail on their own. The system has four tiers: an Arduino UNO for real-time control, a Raspberry Pi 4, a local Wi-Fi network, and a browser dashboard (Figure 1). The Pi runs three separate Python processes: P1 (control server) links the dashboard to the Arduino, checks every drive command and collects telemetry and GPS; P2 (media server) streams the robot's camera and microphone to the operator and carries the operator's voice, video and text to the robot's screen; and P3 (watchdog) starts P1 and P2 and restarts either one if it crashes or stops responding. Control and media use separate transports that end in separate processes, so a media failure leaves driving and stopping intact.
 
 ```mermaid
 flowchart LR
