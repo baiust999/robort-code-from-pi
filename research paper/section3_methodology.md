@@ -1,6 +1,6 @@
 # 3. Methodology
 
-This section describes the design from the overall architecture down to the individual mechanisms. The whole design follows one rule: the robot must stop whenever any part of the system above the motors fails, and nothing added for the operator or the victim may weaken that guarantee. Sections 3.1 to 3.3 set out the architecture, the network and the hardware. Sections 3.4 to 3.6 then follow the stop guarantee upward through the tiers: the firmware enforces it (3.4), the control server feeds it safely (3.5), and supervision restores service after a failure without bypassing it (3.6). Section 3.7 decides which operator holds control, and Section 3.8 builds victim interaction on that decision while keeping it apart from the stop path. Section 3.9 adds localisation for the operator.
+This section describes the design from the overall architecture down to the individual mechanisms. The whole design follows one rule: the robot must stop whenever any part of the system above the motors fails, and nothing added for the operator or the victim may weaken that guarantee. Sections 3.1 to 3.4 set out the system architecture, the network, the hardware and the software that runs on it. Sections 3.5 to 3.7 then follow the stop guarantee upward through the tiers: the firmware enforces it (3.5), the control server feeds it safely (3.6), and supervision restores service after a failure without bypassing it (3.7). Section 3.8 decides which operator holds control, and Section 3.9 builds victim interaction on that decision while keeping it apart from the stop path. Section 3.10 adds localisation for the operator.
 
 ## 3.1 System Architecture
 
@@ -54,26 +54,6 @@ sequenceDiagram
 
 P2 and P3 take no part in this loop: media never carries a drive or stop command, and the watchdog only supervises the processes from outside, so a failure in either cannot delay a stop.
 
-On the Pi, systemd starts only the watchdog, which spawns the control and media servers as child processes (Figure 3). P1 holds every interface that can move the robot; P2 holds every media device; the Robot Screen kiosk runs in the desktop session.
-
-```mermaid
-flowchart TB
-  SD["systemd"] --> P3["P3 Watchdog"]
-  P3 -- "spawn, exit poll, health check" --> P1
-  P3 -- "spawn, exit poll, health check" --> P2
-  subgraph P1["P1 Control, port 8080"]
-    SB["Serial link + lock"] --- CV["Command check"] --- HUB["WebSocket hub"]
-    GPS["GPS reader"] --- RB["Ring buffer + CSV log"]
-  end
-  subgraph P2["P2 Media, port 8443"]
-    CAP["Shared capture"] --- SIG["Offer and answer"] --- SH["Screen hub"]
-  end
-  P2 -. "controller address, 1 s" .-> P1
-  SH --> KI["Robot Screen kiosk"]
-```
-
-**Figure 3.** Raspberry Pi software architecture and process supervision.
-
 ## 3.2 Network Configuration
 
 The two transports in Figure 1 run over one local network, which also makes the robot independent of the internet. The Pi and the operator laptop join one Wi-Fi router, which reserves a fixed address for the Pi; the operator opens the dashboard from that address. Table 1 lists the services on the Pi.
@@ -91,7 +71,7 @@ The control WebSocket uses keep-alive pings every 20 s with a 20 s timeout. Brow
 
 ## 3.3 Hardware Platform
 
-The hardware is chosen so that the lowest tier can stop the robot by itself: the Arduino drives the motor drivers directly and can disable them with one output. Table 2 lists the components, and Figure 4 shows how they connect and how power is distributed. The motor supply and the Pi supply are separate, so motor current surges cannot reset the Pi.
+The hardware is chosen so that the lowest tier can stop the robot by itself: the Arduino drives the motor drivers directly and can disable them with one output. Table 2 lists the components, and Figure 3 shows how they connect and how power is distributed. The motor supply and the Pi supply are separate, so motor current surges cannot reset the Pi.
 
 **Table 2.** Hardware components.
 
@@ -111,14 +91,15 @@ The hardware is chosen so that the lowest tier can stop the robot by itself: the
 | Speaker | Speaker | Operator voice to the victim |
 | Battery | 4S pack, 14.8 V nominal, 16.8 V full [VERIFY chemistry, capacity] | Motor and logic power |
 | Battery management | 4S 40 A BMS | Pack protection |
+| Buck converters | 2 x buck converter, 8 V and 5 V outputs | 8 V to the Arduino barrel jack; 5 V to the servos |
 | Pi supply | USB power bank | Separate supply for the Pi |
 
 ```mermaid
 flowchart LR
   BAT["4S battery + 40 A BMS"] ==> DRV["2 x BTS7960"] ==> MOT["4 x DC motors"]
-  BAT ==> B5["2 x buck 5 V"] ==> SV["Pan and tilt servos"]
-  B5 ==> SEN["HC-SR04, DHT11, MQ-136"]
+  BAT ==> B5["Buck 5 V"] ==> SV["Pan and tilt servos"]
   BAT ==> B8["Buck 8 V"] ==> UNO["Arduino UNO"]
+  UNO == "5 V, GND" ==> SEN["HC-SR04, DHT11, MQ-136"]
   PB["USB power bank"] ==> PI["Raspberry Pi 4"]
   UNO -- "PWM, enable" --> DRV
   UNO -- "servo pulses" --> SV
@@ -126,21 +107,20 @@ flowchart LR
   PI <-- "USB serial" --> UNO
   GPS["NEO-6M GPS"] -- "UART" --> PI
   CAM["USB webcam + mic"] -- "USB" --> PI
-  PI -- "HDMI, 3.6 mm" --> SCR["Display + speaker"]
+  PI -- "HDMI, 3.5 mm" --> SCR["Display + speaker"]
 ```
 
-**Figure 4.** Hardware interconnection and power distribution. Thick lines carry power; thin lines carry signals.
+**Figure 3.** Hardware interconnection and power distribution. Thick lines carry power; thin lines carry signals.
 
-Figure 5 is the full wiring diagram of the robot.
+Figure 4 is the full wiring diagram of the robot.
 
 ```mermaid
 flowchart LR
   subgraph PWR["Power"]
     BAT["4S battery<br/>14.8 V nom. / 16.8 V full"]
     BMS["4S 40 A BMS"]
-    BK1["Buck 5 V"]
-    BK2["Buck 5 V"]
-    BK3["Buck 8 V"]
+    BK5["Buck 5 V"]
+    BK8["Buck 8 V"]
     PB["USB power bank"]
   end
   subgraph UNO["Arduino UNO"]
@@ -156,6 +136,7 @@ flowchart LR
     A2["A2"]
     A3["A3"]
     JACK["Barrel jack"]
+    V5["5 V, GND"]
     UUSB["USB-B"]
   end
   subgraph DRV["Motor drivers"]
@@ -175,7 +156,7 @@ flowchart LR
     G15["GPIO15 RXD, pin 10"]
     P33["3.3 V pin 1, GND pin 6"]
     HDMI["micro-HDMI 0"]
-    AJ["3.6 mm jack"]
+    AJ["3.5 mm jack"]
     PIN["USB-C"]
   end
   GPS["NEO-6M GPS"]
@@ -186,15 +167,14 @@ flowchart LR
   BAT ==> BMS
   BMS ==> BL
   BMS ==> BR
-  BMS ==> BK1
-  BMS ==> BK2
-  BMS ==> BK3
-  BK1 ==> SP
-  BK1 ==> ST
-  BK2 ==> US
-  BK2 ==> DHT
-  BK2 ==> MQ
-  BK3 ==> JACK
+  BMS ==> BK5
+  BMS ==> BK8
+  BK5 ==> SP
+  BK5 ==> ST
+  BK8 ==> JACK
+  V5 ==> US
+  V5 ==> DHT
+  V5 ==> MQ
   PB ==> PIN
   P33 ==> GPS
 
@@ -221,9 +201,9 @@ flowchart LR
   AJ --> SPK
 ```
 
-**Figure 5.** Detailed hardware wiring diagram. Thick lines carry power; thin lines carry signals. All grounds are common; the Pi shares ground with the Arduino through the USB cable.
+**Figure 4.** Detailed hardware wiring diagram. Thick lines carry power; thin lines carry signals. All grounds are common; the Pi shares ground with the Arduino through the USB cable.
 
-The Arduino pins used by the firmware are shown in Figure 6 and detailed in Table 3. Each BTS7960 drives forward on one PWM input and reverse on the other, with only one active at a time; both drivers share one enable line, so one output disables all propulsion.
+The Arduino pins used by the firmware are shown in Figure 5 and detailed in Table 3. Each BTS7960 drives forward on one PWM input and reverse on the other, with only one active at a time; both drivers share one enable line, so one output disables all propulsion.
 
 ```mermaid
 flowchart LR
@@ -241,7 +221,7 @@ flowchart LR
   UNO -- "USB, D0/D1" --> PI["Raspberry Pi"]
 ```
 
-**Figure 6.** Arduino UNO pin diagram.
+**Figure 5.** Arduino UNO pin diagram.
 
 **Table 3.** Arduino UNO pin map.
 
@@ -261,6 +241,7 @@ flowchart LR
 | A2 | Digital I/O, pull-up | DHT11 single-wire data | Read every 2000 ms, checksum verified |
 | A3 | Analog input | MQ-136 output | 10-bit ADC; gas stop at >= 1000 |
 | Barrel jack | Power input | 8 V from buck converter | - |
+| 5 V, GND | Power output | Supply for HC-SR04, DHT11 and MQ-136 | Shared by the three sensors |
 
 The Pi connections are listed in Table 4. The GPS uses the Pi's primary UART with the serial login console disabled.
 
@@ -275,7 +256,7 @@ The Pi connections are listed in Table 4. The GPS uses the Pi's primary UART wit
 | Header pin 8 (GPIO 14, TXD) | GPS RX | UART, 9600 baud |
 | Header pin 10 (GPIO 15, RXD) | GPS TX | UART, 9600 baud |
 | Micro-HDMI 0 | Robot display | Robot Screen |
-| 3.6 mm jack | Speaker | Default audio output |
+| 3.5 mm jack | Speaker | Default audio output |
 | USB-C | USB power bank | Pi supply |
 | On-board Wi-Fi | Wi-Fi router | Dashboard, control and media traffic |
 
@@ -283,11 +264,69 @@ The control server caps the motor PWM duty at 180 of 255, which limits the avera
 
 $$V_{avg} = V_{bat} \cdot \frac{u_{max}}{255} = 16.8 \cdot \frac{180}{255} \approx 11.9\ \text{V}$$
 
-where $V_{bat}$ is the full-charge pack voltage and $u_{max}$ is the PWM cap. P1 enforces the cap before a command is sent (Section 3.4.1), so the firmware never receives a higher speed from the dashboard.
+where $V_{bat}$ is the full-charge pack voltage and $u_{max}$ is the PWM cap. P1 enforces the cap before a command is sent (Section 3.5.1), so the firmware never receives a higher speed from the dashboard.
 
-## 3.4 Real-Time Firmware and Fail-Safe Control
+## 3.4 Software Architecture
 
-The firmware holds the authority to stop the robot, so it must stop the motors without help from the Pi or the network. The firmware has four operating modes (Figure 7). Motion is accepted only in READY and ACTIVE with no fault set; telemetry reports READY as 1, ACTIVE as 2 and all other modes as 3.
+The software is organised around the same tiers as the hardware in Section 3.3. This section gives its structure; Sections 3.5 to 3.10 describe each part in detail.
+
+The software forms three layers, each written in the language that suits its hardware (Table 5). The layers share no code and talk only through three defined interfaces: the serial command protocol between firmware and P1, the control WebSocket between the dashboard and P1, and WebRTC between the dashboard and P2. Each layer can therefore be built, tested and replaced on its own.
+
+**Table 5.** Software stack.
+
+| Layer | Runs on | Language | Main frameworks | Main modules |
+|---|---|---|---|---|
+| Firmware | Arduino UNO | C++ | Arduino core, no RTOS | scheduler, command_parser, motors, servos, sensors, telemetry |
+| Backend | Raspberry Pi 4 | Python 3, asyncio | FastAPI and uvicorn (P1, P2), aiortc and PyAV (P2), aiohttp (P3) | serial_bridge, safety, websocket_hub, gps_reader, signaling, talkback, supervisor |
+| Frontend | Operator browser | TypeScript | React 19, Vite, Tailwind CSS, Leaflet with PMTiles | useControlSocket, useWebrtcVideo, useTalkback, DriveControl, EmergencyStop, MapPanel |
+
+On the Pi, systemd starts only the watchdog, which spawns the control and media servers as child processes (Figure 6). P1 holds every interface that can move the robot; P2 holds every media device; the Robot Screen kiosk runs in the desktop session.
+
+```mermaid
+flowchart TB
+  SD["systemd"] --> P3["P3 Watchdog"]
+  P3 -- "spawn, exit poll, health check" --> P1
+  P3 -- "spawn, exit poll, health check" --> P2
+  subgraph P1["P1 Control, port 8080"]
+    SB["Serial link + lock"] --- CV["Command check"] --- HUB["WebSocket hub"]
+    GPS["GPS reader"] --- RB["Ring buffer + CSV log"]
+  end
+  subgraph P2["P2 Media, port 8443"]
+    CAP["Shared capture"] --- SIG["Offer and answer"] --- SH["Screen hub"]
+  end
+  P2 -. "controller address, 1 s" .-> P1
+  SH --> KI["Robot Screen kiosk"]
+```
+
+**Figure 6.** Raspberry Pi software architecture and process supervision.
+
+The dashboard is a single-page React application served by P1 (Figure 7). Its interface components hold no network code; they read state from, and send actions through, a small set of hooks. Each hook owns one connection to one server, so a lost media connection leaves the drive controls and telemetry working.
+
+```mermaid
+flowchart TB
+  subgraph UI["Interface components"]
+    DC["Drive, servo, emergency stop"] --- SC["Sensor cards, mission state, alerts"]
+    VS["Video and talk panel"] --- MP["Map panel"]
+  end
+  subgraph HK["Hooks and API layer"]
+    CS["useControlSocket"]
+    WV["useWebrtcVideo + useTalkback"]
+    API["REST API client"]
+  end
+  DC --> CS
+  SC --> CS
+  VS --> WV
+  MP --> API
+  CS <-- "WebSocket" --> P1["P1 Control"]
+  API <-- "HTTP: session, GPS track, map tiles" --> P1
+  WV <-- "HTTP offer, WebRTC media + data channel" --> P2["P2 Media"]
+```
+
+**Figure 7.** Operator dashboard software architecture.
+
+## 3.5 Real-Time Firmware and Fail-Safe Control
+
+The firmware holds the authority to stop the robot, so it must stop the motors without help from the Pi or the network. The firmware has four operating modes (Figure 8). Motion is accepted only in READY and ACTIVE with no fault set; telemetry reports READY as 1, ACTIVE as 2 and all other modes as 3.
 
 ```mermaid
 stateDiagram-v2
@@ -300,13 +339,13 @@ stateDiagram-v2
   PANIC --> READY: commands resume or gas clears
 ```
 
-**Figure 7.** Firmware operating modes.
+**Figure 8.** Firmware operating modes.
 
-### 3.4.1 Task Scheduling and Command Validation
+### 3.5.1 Task Scheduling and Command Validation
 
-A cooperative scheduler runs the periodic tasks in Table 5 from the main loop, with timing based on unsigned millisecond differences so that counter rollover does not break it. The command parser is polled on every loop pass and checks each command in four stages before it acts (Figure 8).
+A cooperative scheduler runs the periodic tasks in Table 6 from the main loop, with timing based on unsigned millisecond differences so that counter rollover does not break it. The command parser is polled on every loop pass and checks each command in four stages before it acts (Figure 9).
 
-**Table 5.** Firmware tasks.
+**Table 6.** Firmware tasks.
 
 | Task | Period | Work |
 |---|---|---|
@@ -328,13 +367,13 @@ flowchart LR
   S1 & S2 & S3 & S4 -. fail .-> NK["NACK with reason"]
 ```
 
-**Figure 8.** Four-stage command validation. The nine opcodes are F, R, L, G (speed), P, T (angle), S, H and ?.
+**Figure 9.** Four-stage command validation. The nine opcodes are F, R, L, G (speed), P, T (angle), S, H and ?.
 
 The control server repeats a lighter check before sending: it clamps speed to 0-180 and angles to 0-180, and rejects motion and servo commands whose sequence number is not higher than the last one from that client.
 
-### 3.4.2 Dead-Man Timer and Stop-Time Guarantee
+### 3.5.2 Dead-Man Timer and Stop-Time Guarantee
 
-Every command that passes stages 1 to 3 re-arms the dead-man timer, including heartbeats. When the timer expires, the supervisor sets the PWM outputs to zero and pulls the shared enable line low at once, without ramping (Figure 9). The worst-case stop time after the last command is:
+Every command that passes stages 1 to 3 re-arms the dead-man timer, including heartbeats. When the timer expires, the supervisor sets the PWM outputs to zero and pulls the shared enable line low at once, without ramping (Figure 10). The worst-case stop time after the last command is:
 
 $$t_{stop} \le T_{DM} + T_{S} + J$$
 
@@ -361,13 +400,13 @@ sequenceDiagram
   A-->>P: event: dead-man cleared
 ```
 
-**Figure 9.** Dead-man trip and recovery.
+**Figure 10.** Dead-man trip and recovery.
 
-### 3.4.3 Redundant Stop Paths and Gas-Triggered Stop
+### 3.5.3 Redundant Stop Paths and Gas-Triggered Stop
 
-Table 6 lists every path that stops the motors. The gas stop fires when the raw MQ-136 value reaches 1000; motion stays rejected until a later reading falls below it, and the dashboard warns earlier, at 450 (warning) and 600 (critical).
+Table 7 lists every path that stops the motors. The gas stop fires when the raw MQ-136 value reaches 1000; motion stays rejected until a later reading falls below it, and the dashboard warns earlier, at 450 (warning) and 600 (critical).
 
-**Table 6.** Stop paths.
+**Table 7.** Stop paths.
 
 | Trigger | Origin | Action | Bound |
 |---|---|---|---|
@@ -380,13 +419,13 @@ Table 6 lists every path that stops the motors. The gas stop fires when the raw 
 | Command flow stops | Firmware | PWM 0, drivers disabled | $t_{stop}$ above |
 | Gas value >= 1000 | Firmware | PWM 0, drivers disabled, motion rejected | Gas sampled every 2000 ms |
 
-## 3.5 P1 Control Server and Telemetry
+## 3.6 P1 Control Server and Telemetry
 
 The firmware stops the robot when commands cease, but it assumes that the commands it does receive come from one source and arrive in order. P1 provides that assumption and returns the robot's state to the operator. P1 owns the serial link, the GPS receiver and the control WebSocket.
 
-### 3.5.1 Safe Startup and Single-Writer Serial Link
+### 3.6.1 Safe Startup and Single-Writer Serial Link
 
-P1 takes an exclusive, non-blocking lock on a file in a memory-backed directory before it opens any hardware; the kernel releases the lock when the process exits for any reason. The serial port is then opened in exclusive mode, and one asynchronous lock serialises all writes. Figure 10 shows the start-up handshake.
+P1 takes an exclusive, non-blocking lock on a file in a memory-backed directory before it opens any hardware; the kernel releases the lock when the process exits for any reason. The serial port is then opened in exclusive mode, and one asynchronous lock serialises all writes. Figure 11 shows the start-up handshake.
 
 ```mermaid
 sequenceDiagram
@@ -405,11 +444,11 @@ sequenceDiagram
   Note over P: start reader, GPS, broadcast, HTTP server
 ```
 
-**Figure 10.** P1 start-up handshake. A timeout ends P1 with a handshake-failure exit code.
+**Figure 11.** P1 start-up handshake. A timeout ends P1 with a handshake-failure exit code.
 
-### 3.5.2 Telemetry Pipeline and Session Resume
+### 3.6.2 Telemetry Pipeline and Session Resume
 
-The firmware sends a frame every 500 ms; P1 broadcasts a snapshot of the latest valid frame every 200 ms on an absolute schedule, merged with GPS and link status (Figure 11). A frame is dropped if any field fails the checks in Table 7; there is no retransmission.
+The firmware sends a frame every 500 ms; P1 broadcasts a snapshot of the latest valid frame every 200 ms on an absolute schedule, merged with GPS and link status (Figure 12). A frame is dropped if any field fails the checks in Table 8; there is no retransmission.
 
 ```mermaid
 flowchart LR
@@ -423,9 +462,9 @@ flowchart LR
   S --> LOG["CSV log, 1 Hz, alert bits"]
 ```
 
-**Figure 11.** Telemetry pipeline.
+**Figure 12.** Telemetry pipeline.
 
-**Table 7.** Telemetry frame fields and accepted ranges (frame at most 80 characters).
+**Table 8.** Telemetry frame fields and accepted ranges (frame at most 80 characters).
 
 | Field | Unit | Accepted range |
 |---|---|---|
@@ -444,9 +483,9 @@ $$D = N \cdot T_{b} = 300 \times 200\ \text{ms} = 60\ \text{s}, \qquad g = \max(
 
 where $N$ is the buffer size, $T_{b}$ the broadcast period, $t_{oldest}$ the oldest buffered timestamp and $t_{last}$ the client's last timestamp. The buffer is held in memory, so it does not survive a P1 restart.
 
-## 3.6 Fault Tolerance and Supervision
+## 3.7 Fault Tolerance and Supervision
 
-Sections 3.4 and 3.5 make each tier fail into a stop; this section describes how failures are detected and how the system returns to service. Fault tolerance is layered (Figure 12). Each layer acts on its own, and a failure that passes every layer above ends at the firmware, which stops the motors.
+Sections 3.5 and 3.6 make each tier fail into a stop; this section describes how failures are detected and how the system returns to service. Fault tolerance is layered (Figure 13). Each layer acts on its own, and a failure that passes every layer above ends at the firmware, which stops the motors.
 
 ```mermaid
 flowchart TB
@@ -459,11 +498,11 @@ flowchart TB
   L5 --> L4 --> L3 --> L2 --> L1 --> M
 ```
 
-**Figure 12.** Layered fault tolerance, from the operator side down to the motors.
+**Figure 13.** Layered fault tolerance, from the operator side down to the motors.
 
-### 3.6.1 P3 Watchdog: Process Isolation and Supervision
+### 3.7.1 P3 Watchdog: Process Isolation and Supervision
 
-P3 is the only systemd service (restart on failure after 5 s); it spawns P1 and P2 as separate processes with no shared memory and supervises each one with the state machine in Figure 13. The only link between P1 and P2 is a once-per-second localhost query from P2 for the controller's address.
+P3 is the only systemd service (restart on failure after 5 s); it spawns P1 and P2 as separate processes with no shared memory and supervises each one with the state machine in Figure 14. The only link between P1 and P2 is a once-per-second localhost query from P2 for the controller's address.
 
 ```mermaid
 stateDiagram-v2
@@ -475,17 +514,17 @@ stateDiagram-v2
   COOLDOWN --> STOPPED: shutdown
 ```
 
-**Figure 13.** Per-process supervision. Health checks run every 10 s with a 5 s timeout.
+**Figure 14.** Per-process supervision. Health checks run every 10 s with a 5 s timeout.
 
-### 3.6.2 Recovery Time Model and Graceful Degradation
+### 3.7.2 Recovery Time Model and Graceful Degradation
 
 The time from a failure to a working process is:
 
 $$T_{rec} = T_{det} + T_{p} + T_{c} + T_{init}$$
 
-where $T_{det}$ is the detection time (at most 1 s for a crash, at most $3 \times 10 + 5 = 35$ s for a hang), $T_{p} = 1$ s is the poll before cooldown, $T_{c} = 10$ s is the cooldown, and $T_{init}$ is start-up time, which for P1 is 2.0 s + 3 x 0.2 s plus up to 5 s for the handshake. A P1 crash therefore recovers in 13.6 s to 19.6 s plus interpreter start-up; the dashboard adds up to one reconnect back-off step. Table 8 shows how each failure degrades the mission.
+where $T_{det}$ is the detection time (at most 1 s for a crash, at most $3 \times 10 + 5 = 35$ s for a hang), $T_{p} = 1$ s is the poll before cooldown, $T_{c} = 10$ s is the cooldown, and $T_{init}$ is start-up time, which for P1 is 2.0 s + 3 x 0.2 s plus up to 5 s for the handshake. A P1 crash therefore recovers in 13.6 s to 19.6 s plus interpreter start-up; the dashboard adds up to one reconnect back-off step. Table 9 shows how each failure degrades the mission.
 
-**Table 8.** Failure effects and recovery.
+**Table 9.** Failure effects and recovery.
 
 | Failure | Detected by | Effect | Recovery |
 |---|---|---|---|
@@ -499,7 +538,7 @@ where $T_{det}$ is the detection time (at most 1 s for a crash, at most $3 \time
 | Robot Screen browser exits | Kiosk launcher | Victim screen blank | Relaunch after 3 s |
 | P3 crash | systemd | P1 and P2 stop with it; dead-man stops robot | Restart after 5 s, then P1 and P2 respawn |
 
-Figure 14 shows how one failure, a Wi-Fi drop, passes through the tiers and how the system returns to service without operator action beyond reconnecting.
+Figure 15 shows how one failure, a Wi-Fi drop, passes through the tiers and how the system returns to service without operator action beyond reconnecting.
 
 ```mermaid
 sequenceDiagram
@@ -523,13 +562,13 @@ sequenceDiagram
   P-->>D: snapshot: mission state READY
 ```
 
-**Figure 14.** Failure chain for a Wi-Fi drop: stop, reconnect, replay, resume.
+**Figure 15.** Failure chain for a Wi-Fi drop: stop, reconnect, replay, resume.
 
-### 3.6.3 Mission State for Operator Awareness
+### 3.7.3 Mission State for Operator Awareness
 
-The dashboard reduces link and firmware status to one of four mission states, evaluated in the priority order of Table 9.
+The dashboard reduces link and firmware status to one of four mission states, evaluated in the priority order of Table 10.
 
-**Table 9.** Mission state rules (first match wins).
+**Table 10.** Mission state rules (first match wins).
 
 | Priority | State | Condition |
 |---|---|---|
@@ -538,9 +577,9 @@ The dashboard reduces link and firmware status to one of four mission states, ev
 | 3 | DRIVING | Firmware reports driving |
 | 4 | READY | Otherwise |
 
-## 3.7 Access Control and Multi-Operator Arbitration
+## 3.8 Access Control and Multi-Operator Arbitration
 
-Because any dashboard may reconnect after a failure (Section 3.6), the system must also decide which of several connected dashboards may drive. The decision is made once, in P1, and Section 3.8 reuses it for victim interaction. A dashboard becomes controller only by presenting the robot's controller key; all others are observers, whose commands, including stop, are rejected. The most recent dashboard with the right key takes the controller slot; the previous holder is demoted and the robot is stopped (Figure 15). P1 and P2 check the key in the same way (Table 10), and P2 grants talk only to a keyed session from the host P1 reports as controller.
+Because any dashboard may reconnect after a failure (Section 3.7), the system must also decide which of several connected dashboards may drive. The decision is made once, in P1, and Section 3.9 reuses it for victim interaction. A dashboard becomes controller only by presenting the robot's controller key; all others are observers, whose commands, including stop, are rejected. The most recent dashboard with the right key takes the controller slot; the previous holder is demoted and the robot is stopped (Figure 16). P1 and P2 check the key in the same way (Table 11), and P2 grants talk only to a keyed session from the host P1 reports as controller.
 
 ```mermaid
 sequenceDiagram
@@ -559,9 +598,9 @@ sequenceDiagram
   P-->>M: address of B
 ```
 
-**Figure 15.** Controller takeover.
+**Figure 16.** Controller takeover.
 
-**Table 10.** Key check results.
+**Table 11.** Key check results.
 
 | Result | Condition | Role |
 |---|---|---|
@@ -573,20 +612,20 @@ sequenceDiagram
 
 Failure counters are kept in memory per process. The dashboard discards a refused key so that reconnects do not add to the count. The key travels over plain HTTP and WebSocket.
 
-## 3.8 Two-Way Victim Interaction
+## 3.9 Two-Way Victim Interaction
 
-With one controller established (Section 3.7), the same operator can see, hear and talk to the victim. This path must never delay a stop. The robot carries a display and speaker facing the victim, driven by a kiosk browser (the Robot Screen) on the Pi, and all communication between the operator and the victim runs through P2. Here "P2" names the media process (Section 3.1), not a peer-to-peer protocol.
+With one controller established (Section 3.8), the same operator can see, hear and talk to the victim. This path must never delay a stop. The robot carries a display and speaker facing the victim, driven by a kiosk browser (the Robot Screen) on the Pi, and all communication between the operator and the victim runs through P2. Here "P2" names the media process (Section 3.4), not a peer-to-peer protocol.
 
-Media is kept out of P1 because video encoding is the heaviest load on the Pi, and a stall or crash in a codec library must not delay a stop; P2 can also be restarted while P1 keeps driving (Table 8). The only link between them is P2's once-per-second query for the controller's address (Section 3.6.1); P2 never sends anything to P1 or to the Arduino.
+Media is kept out of P1 because video encoding is the heaviest load on the Pi, and a stall or crash in a codec library must not delay a stop; P2 can also be restarted while P1 keeps driving (Table 9). The only link between them is P2's once-per-second query for the controller's address (Section 3.7.1); P2 never sends anything to P1 or to the Arduino.
 
-### 3.8.1 The P2 Media Process
+### 3.9.1 The P2 Media Process
 
-P2 is a single Python process built on aiortc, a WebRTC implementation for asyncio, with PyAV (FFmpeg) for capture, decoding and encoding; every peer connection runs on one event loop (Figure 3).
+P2 is a single Python process built on aiortc, a WebRTC implementation for asyncio, with PyAV (FFmpeg) for capture, decoding and encoding; every peer connection runs on one event loop (Figure 6).
 
 - **Shared capture.** The webcam (V4L2) and the microphone (ALSA) can each be opened only once, so P2 opens each device on first use and fans its frames out to every session. Video is unbuffered, since a viewer needs only the newest frame; audio is buffered per session, since every audio frame matters. If the camera cannot be opened, the session receives a synthetic test pattern; if the microphone is missing or drops off USB, the session receives silence and P2 retries the device every 2 s.
 - **Per-session tracks.** Each dashboard session gets its own outbound video and audio track, and a private copy of every camera frame for its own encoder.
 
-Each dashboard opens one peer connection to P2 that carries both directions at once: P2 sends the robot's camera and microphone to the operator, and the operator sends voice, video and text back over the same connection (Figure 16). Any number of dashboards may connect; all receive the robot's media, but only the controller can send to the Robot Screen. Table 11 lists the video parameters.
+Each dashboard opens one peer connection to P2 that carries both directions at once: P2 sends the robot's camera and microphone to the operator, and the operator sends voice, video and text back over the same connection (Figure 17). Any number of dashboards may connect; all receive the robot's media, but only the controller can send to the Robot Screen. Table 12 lists the video parameters.
 
 ```mermaid
 flowchart LR
@@ -599,9 +638,9 @@ flowchart LR
   ST -- "localhost" --> K["Robot Screen"]
 ```
 
-**Figure 16.** Two-way media path (WebRTC). Video is encoded per session as VP8 or H.264, as negotiated with the browser; each session gets its own copy of every camera frame.
+**Figure 17.** Two-way media path (WebRTC). Video is encoded per session as VP8 or H.264, as negotiated with the browser; each session gets its own copy of every camera frame.
 
-**Table 11.** Video parameters.
+**Table 12.** Video parameters.
 
 | Parameter | Robot to operator | Operator to robot |
 |---|---|---|
@@ -611,9 +650,9 @@ flowchart LR
 | Encoders | One per dashboard session | One, for the Robot Screen connection |
 | Source loss | Synthetic test pattern | Last frame repeated after 1 s; black frame when no operator video |
 
-### 3.8.2 Signalling and Session Lifecycle
+### 3.9.2 Signalling and Session Lifecycle
 
-The dashboard sends its SDP offer in one HTTP POST, together with its controller key if it has one, and the answer comes back in the HTTP response (Figure 17). There is no separate signalling server and no trickle ICE: P2 finishes gathering its candidates before it replies, so the answer is complete when it arrives. Because both peers are on the same local network, a direct host-to-host path is always available and no TURN relay is needed. The response also reports the key check result (Section 3.7), so the dashboard knows at once whether the session can talk or only watch.
+The dashboard sends its SDP offer in one HTTP POST, together with its controller key if it has one, and the answer comes back in the HTTP response (Figure 18). There is no separate signalling server and no trickle ICE: P2 finishes gathering its candidates before it replies, so the answer is complete when it arrives. Because both peers are on the same local network, a direct host-to-host path is always available and no TURN relay is needed. The response also reports the key check result (Section 3.8), so the dashboard knows at once whether the session can talk or only watch.
 
 ```mermaid
 sequenceDiagram
@@ -636,17 +675,17 @@ sequenceDiagram
   end
 ```
 
-**Figure 17.** WebRTC signalling and session set-up between a dashboard and P2.
+**Figure 18.** WebRTC signalling and session set-up between a dashboard and P2.
 
 The dashboard offers its audio and video in both directions from the start, but sends nothing until the operator chooses to talk or show video; it then attaches the chosen source to the existing sender. Starting or stopping talk or video therefore never needs a second offer and answer.
 
 When a connection fails or closes, P2 removes the session and releases the floor if the session held it; when no session is left, the camera and microphone are closed. P2 keeps no state that survives a restart, so reconnection is driven by the client. After video has connected once, a later loss is shown to the operator with a retry button rather than hidden by silent reconnects, so the operator knows that the video was interrupted.
 
-### 3.8.3 Data Channel Protocol
+### 3.9.3 Data Channel Protocol
 
-Each dashboard connection carries one reliable, ordered data channel named "screen" over the same DTLS connection as the media. It carries short JSON messages for control of the Robot Screen (Table 12); media and drive commands never travel on it. P2 validates every message: malformed messages are dropped, and messages from a session that is not the controller are refused with a view-only reply.
+Each dashboard connection carries one reliable, ordered data channel named "screen" over the same DTLS connection as the media. It carries short JSON messages for control of the Robot Screen (Table 13); media and drive commands never travel on it. P2 validates every message: malformed messages are dropped, and messages from a session that is not the controller are refused with a view-only reply.
 
-**Table 12.** Data channel messages.
+**Table 13.** Data channel messages.
 
 | Message | Direction | Purpose |
 |---|---|---|
@@ -662,13 +701,13 @@ Each dashboard connection carries one reliable, ordered data channel named "scre
 
 The acknowledgement closes the loop for text: the dashboard marks a message as delivered only when the Robot Screen confirms it, not when it was sent. P2 sends talk_status to every dashboard whenever the floor, the controller or the screen connection changes, so all operators see the same state.
 
-### 3.8.4 Operator-to-Robot Relay and Floor Control
+### 3.9.4 Operator-to-Robot Relay and Floor Control
 
 The operator's media does not go from the dashboard to the Robot Screen directly. The kiosk browser connects only to P2, over localhost, and P2 relays the operator's media to it. Floor control and the controller check are therefore enforced in one place, and no remote host can reach the victim's screen or speaker, since the screen endpoint refuses any address other than localhost. The kiosk also keeps one long-lived connection that does not change when operators connect, disconnect or take over.
 
-The cost is one decode and one re-encode on the Pi. The Robot Screen connection has two fixed outbound tracks that always read from the current floor holder: the video track sends the holder's newest frame, repeating the last one after 1 s without a new frame and sending black when there is no operator video; the audio track re-encodes the holder's voice as 48 kHz mono, 60 ms Opus packets (Section 3.8.5), and sends silence otherwise. Because these tracks never change, talking, switching video sources and handing over the floor need no renegotiation.
+The cost is one decode and one re-encode on the Pi. The Robot Screen connection has two fixed outbound tracks that always read from the current floor holder: the video track sends the holder's newest frame, repeating the last one after 1 s without a new frame and sending black when there is no operator video; the audio track re-encodes the holder's voice as 48 kHz mono, 60 ms Opus packets (Section 3.9.5), and sends silence otherwise. Because these tracks never change, talking, switching video sources and handing over the floor need no renegotiation.
 
-Only one session may hold the Robot Screen at a time (Figure 18). Talking follows driving: P2 accepts talk, video and text only from a session that presented the controller key and comes from the address P1 reports as its controller (Section 3.7, Figure 15). A takeover therefore moves the talk path to the new driver within about one second. On release, P2 drops any queued operator media, clears the text and tells the screen that no operator is present.
+Only one session may hold the Robot Screen at a time (Figure 19). Talking follows driving: P2 accepts talk, video and text only from a session that presented the controller key and comes from the address P1 reports as its controller (Section 3.8, Figure 16). A takeover therefore moves the talk path to the new driver within about one second. On release, P2 drops any queued operator media, clears the text and tells the screen that no operator is present.
 
 ```mermaid
 stateDiagram-v2
@@ -678,13 +717,13 @@ stateDiagram-v2
   HELD --> HELD: other sessions refused
 ```
 
-**Figure 18.** Robot Screen floor control. A release clears the screen text and media.
+**Figure 19.** Robot Screen floor control. A release clears the screen text and media.
 
-### 3.8.5 Low-Latency Audio on a Constrained CPU
+### 3.9.5 Low-Latency Audio on a Constrained CPU
 
-P2 encodes its own 60 ms Opus packets in both directions instead of the usual 20 ms, which cuts the packet rate from 50 to 16.7 packets/s and the per-packet work on the event loop to a third. It captures the microphone through a shared ALSA device with a fixed period of 960 frames (20 ms), which gives 50 reads/s against about 511 reads/s for the device's smallest period of 94 frames (Table 13).
+P2 encodes its own 60 ms Opus packets in both directions instead of the usual 20 ms, which cuts the packet rate from 50 to 16.7 packets/s and the per-packet work on the event loop to a third. It captures the microphone through a shared ALSA device with a fixed period of 960 frames (20 ms), which gives 50 reads/s against about 511 reads/s for the device's smallest period of 94 frames (Table 14).
 
-**Table 13.** Audio parameters.
+**Table 14.** Audio parameters.
 
 | Parameter | Robot to operator | Operator to robot |
 |---|---|---|
@@ -696,9 +735,9 @@ P2 encodes its own 60 ms Opus packets in both directions instead of the usual 20
 | Lateness | Paced by the device | Clock reset when more than 100 ms late, no catch-up burst |
 | Source loss | Silence, reopen every 2 s | Silence until the cushion refills |
 
-## 3.9 GPS Localisation and Offline Mapping
+## 3.10 GPS Localisation and Offline Mapping
 
-The operator also needs to know where the robot is, both to guide it and to report the victim's position to the rescue team, without depending on the internet. P1 reads NMEA sentences from the receiver on a separate thread, merges the latest fix into each telemetry snapshot (Section 3.5.2) and adds a track point only after the robot moves at least 10 m, so drift around a stopped robot adds no points (Figure 19). Distance uses the equirectangular approximation:
+The operator also needs to know where the robot is, both to guide it and to report the victim's position to the rescue team, without depending on the internet. P1 reads NMEA sentences from the receiver on a separate thread, merges the latest fix into each telemetry snapshot (Section 3.6.2) and adds a track point only after the robot moves at least 10 m, so drift around a stopped robot adds no points (Figure 20). Distance uses the equirectangular approximation:
 
 $$d = R \sqrt{(\Delta\varphi)^2 + (\Delta\lambda \cos\bar{\varphi})^2}$$
 
@@ -716,4 +755,4 @@ flowchart LR
   OM["Offline vector map served by P1"] --> MAP
 ```
 
-**Figure 19.** GPS and map data flow. Online map tiles, when reachable, show outside the offline map area.
+**Figure 20.** GPS and map data flow. Online map tiles, when reachable, show outside the offline map area.

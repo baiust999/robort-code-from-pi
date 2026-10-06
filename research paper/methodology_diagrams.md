@@ -13,7 +13,7 @@ documents (`docs/CAPSTONE_METHODOLOGY_FINAL.md`).
 | 1. Research workflow | Start of methodology (research approach) |
 | 2. Overall system architecture | System design / overview |
 | 3. Hardware interconnection and power | Hardware design |
-| 4. Pi software architecture | Software design |
+| 4. Pi software architecture (+ 4a dashboard) | Software design |
 | 5. Command and telemetry sequence | Communication protocol |
 | 6. Two-stage command validation | Safety design |
 | 7. Firmware state machine | Embedded firmware design |
@@ -24,6 +24,7 @@ documents (`docs/CAPSTONE_METHODOLOGY_FINAL.md`).
 | 12. Hardware diagram (+ detailed 12a, simplified 12b) | Hardware design |
 | 13. Arduino UNO pin diagram | Hardware design / embedded controller |
 | Tables 1-3. Pin map, Pi connections, components | Hardware design |
+| Table 4. Software stack | Software design |
 | 14-18. Photos and screenshots | Implementation / results |
 
 ---
@@ -91,7 +92,7 @@ flowchart LR
         BAT["4S Li-ion battery<br/>14.8 V nominal, 16.8 V full"]
         BMS["4S 40 A BMS"]
         B5["Buck converter<br/>5 V rail"]
-        B8["Buck converter<br/>~ 8 V"]
+        B8["Buck converter<br/>8 V"]
         PB["USB power bank<br/>separate Pi supply"]
         BAT --> BMS
         BMS --> B5
@@ -105,7 +106,7 @@ flowchart LR
 
     B8 ==>|"barrel jack"| ARD["Arduino UNO"]
     B5 ==> SV["Pan / tilt servos"]
-    B5 ==> SEN["DHT11 | MQ-136 | HC-SR04"]
+    ARD ==>|"5 V"| SEN["DHT11 | MQ-136 | HC-SR04"]
     PB ==>|"5 V USB-C"| PI["Raspberry Pi 4"]
 
     ARD -->|"D5 RPWM, D6 LPWM"| DL
@@ -164,6 +165,49 @@ flowchart TB
 ```
 
 *Figure 4. Three isolated Python processes on the Pi. P1 and P2 share no memory, so driving keeps working if the media server fails.*
+
+---
+
+## Figure 4a - Operator dashboard software architecture
+
+```mermaid
+flowchart TB
+    subgraph UI["Interface components (React 19, TypeScript)"]
+        direction LR
+        DC["DriveControl, ServoControl<br/>EmergencyStop"]
+        SC["SensorCardGrid, MissionStateIndicator<br/>AlertLog, ConnectionStatusBar"]
+        VS["VideoSurface, TalkPanel"]
+        MP["MapPanel, GpsStatusCard<br/>OfflineMapLayer"]
+    end
+
+    subgraph HK["Hooks and API layer"]
+        direction LR
+        CS["useControlSocket<br/>commands, heartbeat, telemetry"]
+        WV["useWebrtcVideo + useTalkback<br/>one peer connection"]
+        API["REST client (lib/api.ts)<br/>session, GPS track, health"]
+    end
+
+    DC --> CS
+    SC --> CS
+    VS --> WV
+    MP --> API
+
+    CS <-->|"WebSocket /control/ws"| P1["P1 Control<br/>TCP 8080"]
+    API <-->|"HTTP: session, GPS track, map tiles"| P1
+    WV <-->|"HTTP offer + WebRTC media and data channel"| P2["P2 Media<br/>TCP 8443 + UDP"]
+```
+
+*Figure 4a. The dashboard is a single-page React app served by P1. Components hold no network code; each hook owns one connection to one server, so losing the media connection leaves driving and telemetry working.*
+
+## Table 4 - Software stack
+
+| Layer | Runs on | Language | Main frameworks | Main modules |
+|---|---|---|---|---|
+| Firmware | Arduino UNO | C++ | Arduino core, no RTOS | scheduler, command_parser, motors, servos, sensors, telemetry |
+| Backend | Raspberry Pi 4 | Python 3, asyncio | FastAPI and uvicorn (P1, P2), aiortc and PyAV (P2), aiohttp (P3) | serial_bridge, safety, websocket_hub, gps_reader, signaling, talkback, supervisor |
+| Frontend | Operator browser | TypeScript | React 19, Vite, Tailwind CSS, Leaflet with PMTiles | useControlSocket, useWebrtcVideo, useTalkback, DriveControl, EmergencyStop, MapPanel |
+
+The three layers share no code and talk only through the serial command protocol (firmware to P1), the control WebSocket (dashboard to P1) and WebRTC (dashboard to P2).
 
 ---
 
@@ -400,14 +444,12 @@ flowchart LR
         direction TB
         BAT["4S Li-ion battery<br/>14.8 V nominal / 16.8 V full"]
         BMS["4S 40 A BMS"]
-        BK1["Buck converter #1<br/>5 V - servo rail"]
-        BK2["Buck converter #2<br/>5 V - sensor rail"]
-        BK3["Buck converter #3<br/>~ 8 V - Arduino"]
+        BK5["Buck converter #1<br/>5 V - servo rail"]
+        BK8["Buck converter #2<br/>8 V - Arduino"]
         PB["USB power bank<br/>5 V USB-C"]
         BAT ==> BMS
-        BMS ==> BK1
-        BMS ==> BK2
-        BMS ==> BK3
+        BMS ==> BK5
+        BMS ==> BK8
     end
 
     subgraph DRV["Motor drivers"]
@@ -427,6 +469,7 @@ flowchart LR
     subgraph UNO["Arduino UNO"]
         direction TB
         UJ["Barrel jack Vin"]
+        UV["5 V | GND"]
         UP["D5 | D6 | D9 | D10 | D4"]
         US["D11 | D3"]
         UT["D7 | D8 | A2 | A3"]
@@ -470,9 +513,9 @@ flowchart LR
     BTR ==>|"M+ / M-"| MFR
     BTR ==>|"M+ / M-"| MRR
 
-    BK3 ==>|"~ 8 V"| UJ
-    BK1 ==>|"5 V"| SRV
-    BK2 ==>|"5 V"| SEN
+    BK8 ==>|"8 V"| UJ
+    BK5 ==>|"5 V"| SRV
+    UV ==>|"5 V"| SEN
     PB ==>|"5 V"| PC
 
     UP -->|"D5->RPWM, D6->LPWM, D4->EN"| BTL
@@ -504,7 +547,7 @@ flowchart TB
     subgraph POWER["Power"]
         BAT["4S Li-ion 14.8 V + 40 A BMS"]
         BK5["Buck 5 V"]
-        BK8["Buck ~ 8 V"]
+        BK8["Buck 8 V"]
         PB["USB power bank"]
     end
 
@@ -538,7 +581,9 @@ flowchart TB
     BAT ==> BK8
     BK8 ==> ARD
     BK5 ==> SRV
-    BK5 ==> SENSE
+    ARD ==>|"5 V"| DHT
+    ARD ==>|"5 V"| MQ
+    ARD ==>|"5 V"| US
     PB ==> PI
 
     PI <-->|"USB serial"| ARD
@@ -649,7 +694,7 @@ flowchart LR
 | Speaker | 3.5 mm powered speaker | 1 | Operator voice to the victim |
 | Battery | 4S Li-ion, 14.8 V nominal | 1 | Main power |
 | BMS | 4S 40 A | 1 | Battery protection |
-| Buck converters | 5 V and ~ 8 V outputs | 2 | Logic, servo and sensor rails |
+| Buck converters | 5 V and 8 V outputs | 2 | 8 V to the Arduino, 5 V to the servos |
 | Power bank | USB-C | 1 | Raspberry Pi supply |
 
 ---

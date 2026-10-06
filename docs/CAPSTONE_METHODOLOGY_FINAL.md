@@ -38,8 +38,8 @@ robot, it is marked as such; measured results belong in
 17. REST Endpoints & Health Checks
 18. Protocol Interoperability & Error Handling
 
-**PART 5: EMBEDDED SOFTWARE ARCHITECTURE**
-19. Raspberry Pi Process Architecture (P1, P2, P3)
+**PART 5: SOFTWARE ARCHITECTURE**
+19. Software Architecture Overview & Pi Processes (P1, P2, P3)
 20. P1: Control Server (FastAPI/UART/WebSocket)
 21. P2: Media Server (aiortc/WebRTC) & Robot Screen
 22. P3: Watchdog & Process Supervision
@@ -208,9 +208,10 @@ SUBSYSTEM 4: MOBILE UNIT
 ├─ Camera: USB webcam (Logitech C270), captured at 640×480, 10 fps
 ├─ Audio: USB mic (victim → operator) + speaker (operator → victim)
 ├─ Robot display: 7" HDMI screen (1024×600) facing the victim
-├─ Power: 4S Li-ion pack (14.8 V nominal) with 40 A BMS; buck
-│  converters for the 5 V servo/sensor rails and the Arduino supply;
-│  the Pi runs from its own USB power bank (see hardware diagram)
+├─ Power: 4S Li-ion pack (14.8 V nominal) with 40 A BMS; two buck
+│  converters: 8 V to the Arduino, 5 V to the servos; sensors run
+│  from the Arduino's 5 V / GND pins; the Pi runs from its own USB
+│  power bank (see hardware diagram)
 └─ Network: the Pi's on-board Wi-Fi
 
 SUBSYSTEM 5: FAULT-TOLERANCE
@@ -255,7 +256,7 @@ SUBSYSTEM 5: FAULT-TOLERANCE
 | **Speaker** | On the Pi's 3.5 mm jack (default PipeWire sink) | Operator voice to victim |
 | **Robot Display** | 7" HDMI LCD, 1024×600, facing forward | Operator video / image / text to victim |
 | **Battery** | 4S Li-ion (14.8 V nominal, 16.8 V full) with 4S 40 A BMS | Motor power |
-| **Buck converters** | 5 V rails (servos, sensors); ~8 V to the Arduino barrel jack | Logic power |
+| **Buck converters** | 2: 8 V to the Arduino barrel jack; 5 V to the servos (sensors are powered from the Arduino's 5 V / GND pins) | Logic and servo power |
 | **Pi power** | Separate USB power bank | Keeps the Pi up when motors draw current |
 
 The firmware accepts motor PWM up to 255, but P1 and the dashboard cap it
@@ -988,11 +989,29 @@ Layer 1: Arduino
 
 ---
 
-# PART 5: EMBEDDED SOFTWARE ARCHITECTURE
+# PART 5: SOFTWARE ARCHITECTURE
 
-# SECTION 19: RASPBERRY PI PROCESS ARCHITECTURE (P1, P2, P3)
+# SECTION 19: SOFTWARE ARCHITECTURE OVERVIEW & PI PROCESSES (P1, P2, P3)
 
-## 19.1 Process Isolation & Decoupling
+## 19.1 Three-Layer Software Stack
+
+| Layer | Runs on | Language | Main frameworks | Main modules |
+|---|---|---|---|---|
+| Firmware | Arduino UNO | C++ | Arduino core, no RTOS | scheduler, command_parser, motors, servos, sensors, telemetry |
+| Backend | Raspberry Pi 4 | Python 3, asyncio | FastAPI and uvicorn (P1, P2), aiortc and PyAV (P2), aiohttp (P3) | serial_bridge, safety, websocket_hub, gps_reader, signaling, talkback, supervisor |
+| Frontend | Operator browser | TypeScript | React 19, Vite, Tailwind CSS, Leaflet with PMTiles | useControlSocket, useWebrtcVideo, useTalkback, DriveControl, EmergencyStop, MapPanel |
+
+The layers share no code and talk only through three interfaces:
+
+```
+Firmware  ←── UART serial protocol (Section 14) ──→  P1
+Dashboard ←── WebSocket /control/ws (Section 15) ──→  P1
+Dashboard ←── HTTP offer + WebRTC (Section 16) ────→  P2
+```
+
+Each layer can therefore be built, tested and replaced on its own.
+
+## 19.2 Process Isolation & Decoupling
 
 ```
 systemd
@@ -1018,6 +1037,25 @@ not affect the other.
 
 If P3 itself exits abnormally, systemd stops the whole service (P3, P1, P2)
 and starts it again after 5 s, so P1 and P2 are respawned too.
+
+## 19.3 Operator Dashboard Architecture
+
+The dashboard is a single-page React app (`dashboard/src`), built with Vite and
+served by P1 from TCP 8080. Interface components hold no network code; they read
+state from, and send actions through, a small set of hooks. Each hook owns one
+connection to one server, so a lost media connection leaves driving and telemetry
+working.
+
+```
+Interface components (components/)
+├─ DriveControl, ServoControl, EmergencyStop ─────┐
+├─ SensorCardGrid, MissionStateIndicator,         ├─→ useControlSocket ──→ P1  WebSocket /control/ws
+│  AlertLog, ConnectionStatusBar ─────────────────┘   (commands, heartbeat, telemetry)
+├─ VideoSurface, TalkPanel ───────────────────────→ useWebrtcVideo + useTalkback ──→ P2
+│                                                     (one peer connection: video, audio, data channel)
+└─ MapPanel, GpsStatusCard, OfflineMapLayer ──────→ lib/api.ts ──→ P1  HTTP
+                                                      (session, GPS track, map tiles, health)
+```
 
 ---
 
@@ -1864,7 +1902,7 @@ ROBOT UNIT:
   ☐ Pi secured, ventilation not blocked
   ☐ Arduino secured, USB cable to the Pi strain-relieved
   ☐ 4S battery charged, polarity checked, BMS connected
-  ☐ Buck converters set (5 V rails, Arduino supply); Pi power bank charged
+  ☐ Buck converters set (8 V Arduino supply, 5 V servo supply); Pi power bank charged
 
 WI-FI NETWORK:
   ☐ Wi-Fi router powered, placed toward the search area
