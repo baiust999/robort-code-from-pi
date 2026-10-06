@@ -41,9 +41,12 @@
   - 3.6.2 Recovery Time Model and Graceful Degradation
   - 3.6.3 Mission State for Operator Awareness
 - 3.7 Two-Way Victim Interaction
-  - 3.7.1 WebRTC Media Architecture
-  - 3.7.2 Robot Screen, Floor Control and Push-to-Talk
-  - 3.7.3 Low-Latency Audio on a Constrained CPU
+  - 3.7.1 The P2 Media Process
+  - 3.7.2 Signalling and Session Lifecycle
+  - 3.7.3 Data Channel Protocol
+  - 3.7.4 Operator-to-Robot Relay
+  - 3.7.5 Robot Screen, Floor Control and Push-to-Talk
+  - 3.7.6 Low-Latency Audio on a Constrained CPU
 - 3.8 Access Control and Multi-Operator Arbitration
 - 3.9 GPS Localisation and Offline Mapping
 - 3.10 Network Configuration

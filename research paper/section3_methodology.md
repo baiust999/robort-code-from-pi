@@ -538,11 +538,20 @@ The dashboard reduces link and firmware status to one of four mission states, ev
 
 ## 3.7 Two-Way Victim Interaction
 
-The robot carries a display and speaker facing the victim, driven by a kiosk browser (the Robot Screen) on the Pi.
+The robot carries a display and speaker facing the victim, driven by a kiosk browser (the Robot Screen) on the Pi. All two-way communication between the operator and the victim runs through P2, the media process. Here "P2" names the second of the three Pi processes (Section 3.2), not a peer-to-peer protocol, although every WebRTC link that ends at P2 is itself a direct peer connection with no media server in between.
 
-### 3.7.1 WebRTC Media Architecture
+Media is kept out of P1 for three reasons. First, video encoding is the heaviest load on the Pi, and a stall or crash in a native codec library must not delay a stop command. Second, the camera and microphone are separate devices from the serial port, so the two processes share no hardware. Third, P2 can be restarted by the watchdog while P1 keeps driving (Table 8). The only link between them is P2's once-per-second query for the controller's address (Section 3.6.1); P2 never sends anything to P1 or to the Arduino.
 
-Each dashboard opens one peer connection to P2 with two-way audio and video and one data channel; the offer and answer are exchanged in a single HTTP request. P2 decodes the operator's media and re-encodes it for the Robot Screen, which connects to P2 only from localhost (Figure 15).
+### 3.7.1 The P2 Media Process
+
+P2 is a single Python process built on aiortc, a WebRTC implementation for Python's asyncio, with PyAV (FFmpeg) for capture, decoding and encoding. It serves HTTP on TCP port 8443 through FastAPI and uvicorn, and runs every peer connection on one event loop. It has four parts (Figure 3):
+
+- **Shared capture.** The webcam (V4L2) and the microphone (ALSA) can each be opened only once, so P2 opens each device once, on first use, and fans its frames out to every session through a relay. Video is unbuffered, since a viewer needs only the newest frame; audio is buffered per session, since every audio frame matters. The device is closed again when the last session ends. If the camera cannot be opened, the session receives a synthetic test pattern instead of failing; if the microphone is missing or drops off USB, the session receives silence and P2 retries the device every 2 s.
+- **Per-session tracks.** Each dashboard session gets its own outbound video and audio track. The video track converts every shared camera frame into a private YUV 4:2:0 copy on the event loop before the session's encoder sees it. Without this step, two encoder threads converted the same shared frame at once and P2 crashed with a segmentation fault.
+- **Signalling.** Two HTTP endpoints accept an SDP offer and return the SDP answer: one for dashboards and one, accepted only from localhost, for the Robot Screen (Section 3.7.2).
+- **Screen hub.** The hub receives the operator's media and data-channel messages, applies floor control (Section 3.7.5) and feeds the Robot Screen's connection (Section 3.7.4).
+
+Each dashboard opens one peer connection to P2 that carries both directions at once: P2 sends the robot's camera and microphone to the operator, and the operator can send voice, video and text back over the same connection (Figure 15). Any number of dashboards may connect; all receive the robot's media, but only the controller can send to the Robot Screen. Table 10 lists the video parameters.
 
 ```mermaid
 flowchart LR
@@ -557,9 +566,88 @@ flowchart LR
 
 **Figure 15.** Two-way media path (WebRTC). Video is encoded per session as VP8 or H.264, as negotiated with the browser; each session gets its own copy of every camera frame.
 
-### 3.7.2 Robot Screen, Floor Control and Push-to-Talk
+**Table 10.** Video parameters.
 
-Only one session may use the Robot Screen at a time (Figure 16). Talking follows driving: P2 accepts talk, video and text only from a session that presented the controller key and comes from the address P1 reports as its controller, which P2 reads once per second (Section 3.8, Figure 17). A takeover therefore moves the talk path to the new driver within about one second, and the old floor holder loses the screen. Push-to-talk switches an already attached microphone track on and off, so talking starts without renegotiation; text messages are limited to 280 characters, and the screen confirms each one back to the operator.
+| Parameter | Robot to operator | Operator to robot |
+|---|---|---|
+| Source | USB webcam, V4L2 | Laptop camera, still image or shared screen |
+| Resolution and rate | 640x480, 10 fps | Camera 640x480 at 10 fps; image 1024x576 at 2 fps; screen at 5 fps |
+| Codec | VP8 or H.264, negotiated per session | Decoded by P2, re-encoded for the Robot Screen |
+| Encoders | One per dashboard session | One, for the Robot Screen connection |
+| Bitrate | Adapted by the WebRTC congestion control | Adapted by the WebRTC congestion control |
+| Source loss | Synthetic test pattern | Last frame repeated after 1 s; black frame when no operator video |
+
+### 3.7.2 Signalling and Session Lifecycle
+
+WebRTC needs a signalling step in which the two peers exchange session descriptions (SDP) before media can flow. P2 uses the simplest form: the dashboard sends its offer in one HTTP POST, together with its controller key if it has one, and the answer comes back in the HTTP response (Figure 16). There is no separate signalling server, no WebSocket for signalling and no trickle ICE. P2 finishes gathering its own network candidates before it replies, so the answer is complete when it arrives; the browser then runs connectivity checks against P2's address, and P2 learns the browser's address from those checks. Because both peers are on the same local network, a direct host-to-host path is always available and no TURN relay is needed. The response also reports the key check result (Section 3.8), so the dashboard knows at once whether the session can talk or only watch.
+
+```mermaid
+sequenceDiagram
+  participant D as Dashboard
+  participant M as P2
+  participant P as P1
+  D->>D: add video and audio (send and receive), open data channel "screen"
+  D->>D: create offer
+  D->>M: POST /webrtc/offer: SDP offer + controller key
+  Note over M: key check, new session, own camera and mic tracks
+  M->>M: set offer, create answer, gather candidates
+  M-->>D: SDP answer + role + key result
+  D->>M: ICE connectivity checks (UDP, local network)
+  Note over D,M: DTLS handshake, then SRTP media and SCTP data channel
+  M-->>D: robot video and audio
+  M-->>D: talk_status on data channel
+  loop every 1 s
+    M->>P: controller address? (localhost)
+    P-->>M: address
+  end
+```
+
+**Figure 16.** WebRTC signalling and session set-up between a dashboard and P2.
+
+The dashboard offers its audio and video in both directions from the start, but sends nothing until the operator chooses to talk or show video; it then attaches the chosen source to the existing sender. Starting or stopping talk or video therefore never needs a second offer and answer.
+
+Each session has a short lifecycle:
+
+1. **Creation.** P2 gives the session an identifier, checks the key and, if the key is valid, records the session and its host as allowed to control.
+2. **Active.** The session receives the robot's media; its inbound tracks are drained continuously by the screen hub, and its frames are forwarded only while it holds the floor.
+3. **Close.** When the connection fails or closes, P2 closes the peer connection, removes the session, releases the floor if this session held it, and stops its tracks; when no session is left, the camera and microphone are closed.
+
+Reconnection is driven by the client, since P2 keeps no state that survives a restart. While P2 is still starting (for example just after the Pi boots, as P2 starts several seconds after P1), the dashboard retries every 3 s without operator action. Once video has connected, a later loss is shown to the operator as an error with a retry button rather than being hidden by silent reconnects, so the operator knows that the video was interrupted. A new key, or a retry, creates a new session from scratch. The Robot Screen kiosk reconnects on its own after any failure, and a new kiosk connection replaces the old one.
+
+### 3.7.3 Data Channel Protocol
+
+Each dashboard connection carries one reliable, ordered data channel named "screen", which uses SCTP over the same DTLS connection as the media. It carries short JSON messages for control of the Robot Screen (Table 11). Media never travels on the data channel, and drive commands never travel on it either: those use P1's WebSocket (Section 3.5). Every message from a dashboard is validated by P2 before use. Malformed or unknown messages are logged and dropped, text is trimmed and cut to 280 characters rather than rejected, and messages from a session that is not the current controller are refused with a view-only reply.
+
+**Table 11.** Data channel messages.
+
+| Message | Direction | Purpose |
+|---|---|---|
+| media_state | Dashboard to P2 to Robot Screen | Operator is talking or not; which video source is shown |
+| screen_text | Dashboard to P2 to Robot Screen | Text message for the victim (at most 280 characters, with a timestamp) |
+| screen_clear | Dashboard to P2 to Robot Screen | Remove the text from the screen |
+| floor_release | Dashboard to P2 | Give up the Robot Screen |
+| display_mode | Dashboard to P2 | Switch the robot display between the kiosk and the Pi desktop |
+| talk_status | P2 to dashboard | Screen online, floor state (free, you, other), display mode, can control |
+| screen_state | P2 to Robot Screen | Whether an operator is present, talking or showing video |
+| screen_ack | Robot Screen to P2 to dashboard | The text with this timestamp is now shown |
+| floor_denied, view_only | P2 to dashboard | Request refused: another operator holds the screen, or no controller key |
+
+The acknowledgement closes the loop for text: the dashboard marks a message as delivered only when the Robot Screen confirms it, not when it was sent. P2 sends talk_status to every dashboard whenever the floor, the controller or the screen connection changes, so all operators see the same state.
+
+### 3.7.4 Operator-to-Robot Relay
+
+The operator's media does not go from the dashboard to the Robot Screen directly. The kiosk browser connects only to P2, over localhost, and P2 relays the operator's media to it. This design has three advantages. Floor control and the controller check are enforced in one place, so a remote browser cannot reach the victim's screen or speaker without passing them. The kiosk keeps a single long-lived connection that does not change when operators connect, disconnect or take over. And the robot's own address is the only one the kiosk ever contacts, so no remote host can connect to it (the screen endpoint refuses any address other than localhost).
+
+The cost is one decode and one re-encode on the Pi. P2 decodes each inbound operator track as it arrives. The Robot Screen connection has two fixed outbound tracks that always read from the current floor holder:
+
+- **Video.** The track sends the holder's newest frame. If no new frame arrives within 1 s, as with a still image or an idle shared screen, it repeats the last one, so the encoder keeps running; with no operator video it sends a black frame. Every frame is restamped on one monotonic clock, since operator frames carry the sender's clock and repeated frames carry none.
+- **Audio.** The track resamples the holder's voice to 48 kHz mono and re-encodes it as 60 ms Opus packets (Section 3.7.6). When the operator is silent it sends silence.
+
+Because these tracks never change, the operator can start or stop talking, switch video sources, or hand the floor to another operator without the Robot Screen connection being renegotiated. On floor release, P2 drops any queued operator media, clears the text and tells the screen that no operator is present.
+
+### 3.7.5 Robot Screen, Floor Control and Push-to-Talk
+
+Only one session may use the Robot Screen at a time (Figure 17). Talking follows driving: P2 accepts talk, video and text only from a session that presented the controller key and comes from the address P1 reports as its controller, which P2 reads once per second (Section 3.8, Figure 18). A takeover therefore moves the talk path to the new driver within about one second, and the old floor holder loses the screen. Push-to-talk switches an already attached microphone track on and off, so talking starts without renegotiation; text messages are limited to 280 characters, and the screen confirms each one back to the operator.
 
 ```mermaid
 stateDiagram-v2
@@ -569,17 +657,17 @@ stateDiagram-v2
   HELD --> HELD: other sessions refused
 ```
 
-**Figure 16.** Robot Screen floor control. A release clears the screen text and media.
+**Figure 17.** Robot Screen floor control. A release clears the screen text and media.
 
-### 3.7.3 Low-Latency Audio on a Constrained CPU
+### 3.7.6 Low-Latency Audio on a Constrained CPU
 
-P2 encodes its own 60 ms Opus packets in both directions, which cuts the per-packet work on the event loop to a third, and captures the microphone through a shared ALSA device with a fixed 20 ms period (Table 10). The packet rate and the capture read rate are:
+P2 encodes its own 60 ms Opus packets in both directions, which cuts the per-packet work on the event loop to a third, and captures the microphone through a shared ALSA device with a fixed 20 ms period (Table 12). The packet rate and the capture read rate are:
 
 $$R_{pkt} = \frac{1000}{T_{pkt}}, \qquad R_{read} = \frac{f_{s}}{N_{period}}$$
 
 where $T_{pkt}$ is the packet length in ms (20 ms gives 50 packets/s, 60 ms gives 16.7 packets/s), $f_{s} = 48000$ Hz is the sample rate and $N_{period}$ is the capture period in frames (960 frames gives 50 reads/s, against about 511 reads/s for the device's smallest period of 94 frames).
 
-**Table 10.** Audio parameters.
+**Table 12.** Audio parameters.
 
 | Parameter | Robot to operator | Operator to robot |
 |---|---|---|
@@ -593,7 +681,7 @@ where $T_{pkt}$ is the packet length in ms (20 ms gives 50 packets/s, 60 ms give
 
 ## 3.8 Access Control and Multi-Operator Arbitration
 
-A dashboard becomes controller only by presenting the robot's controller key; all others are observers, whose commands, including stop, are rejected. The most recent dashboard with the right key takes the controller slot; the previous holder is demoted and the robot is stopped (Figure 17). P1 and P2 check the key in the same way (Table 11), and P2 grants talk only to a keyed session from the host P1 reports as controller.
+A dashboard becomes controller only by presenting the robot's controller key; all others are observers, whose commands, including stop, are rejected. The most recent dashboard with the right key takes the controller slot; the previous holder is demoted and the robot is stopped (Figure 18). P1 and P2 check the key in the same way (Table 13), and P2 grants talk only to a keyed session from the host P1 reports as controller.
 
 ```mermaid
 sequenceDiagram
@@ -612,9 +700,9 @@ sequenceDiagram
   P-->>M: address of B
 ```
 
-**Figure 17.** Controller takeover.
+**Figure 18.** Controller takeover.
 
-**Table 11.** Key check results.
+**Table 13.** Key check results.
 
 | Result | Condition | Role |
 |---|---|---|
@@ -628,7 +716,7 @@ Failure counters are kept in memory per process. The dashboard discards a refuse
 
 ## 3.9 GPS Localisation and Offline Mapping
 
-P1 reads NMEA sentences from the receiver on a separate thread and adds a track point only after the robot moves at least 10 m, so drift around a stopped robot adds no points (Figure 18). Distance uses the equirectangular approximation:
+P1 reads NMEA sentences from the receiver on a separate thread and adds a track point only after the robot moves at least 10 m, so drift around a stopped robot adds no points (Figure 19). Distance uses the equirectangular approximation:
 
 $$d = R \sqrt{(\Delta\varphi)^2 + (\Delta\lambda \cos\bar{\varphi})^2}$$
 
@@ -646,13 +734,13 @@ flowchart LR
   OM["Offline vector map served by P1"] --> MAP
 ```
 
-**Figure 18.** GPS and map data flow. Online map tiles, when reachable, show outside the offline map area.
+**Figure 19.** GPS and map data flow. Online map tiles, when reachable, show outside the offline map area.
 
 ## 3.10 Network Configuration
 
-The Pi and the operator laptop join one Wi-Fi router, which reserves a fixed address for the Pi; the operator opens the dashboard from that address. Table 12 lists the services on the Pi.
+The Pi and the operator laptop join one Wi-Fi router, which reserves a fixed address for the Pi; the operator opens the dashboard from that address. Table 14 lists the services on the Pi.
 
-**Table 12.** Network services on the Pi.
+**Table 14.** Network services on the Pi.
 
 | Port | Process | Protocol | Carries |
 |---|---|---|---|
