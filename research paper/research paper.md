@@ -26,29 +26,28 @@
 
 **3. Methodology**
 
-- 3.1 Design Requirements and Principles
-- 3.2 System Architecture
-- 3.3 Network Configuration
-- 3.4 Hardware Platform
-- 3.5 Real-Time Firmware and Fail-Safe Control
-  - 3.5.1 Task Scheduling and Command Validation
-  - 3.5.2 Dead-Man Timer and Stop-Time Guarantee
-  - 3.5.3 Redundant Stop Paths and Gas-Triggered Stop
-- 3.6 P1 Control Server and Telemetry
-  - 3.6.1 Safe Startup and Single-Writer Serial Link
-  - 3.6.2 Telemetry Pipeline and Session Resume
-- 3.7 Fault Tolerance and Supervision
-  - 3.7.1 P3 Watchdog: Process Isolation and Supervision
-  - 3.7.2 Recovery Time Model and Graceful Degradation
-  - 3.7.3 Mission State for Operator Awareness
-- 3.8 Access Control and Multi-Operator Arbitration
-- 3.9 Two-Way Victim Interaction
-  - 3.9.1 The P2 Media Process
-  - 3.9.2 Signalling and Session Lifecycle
-  - 3.9.3 Data Channel Protocol
-  - 3.9.4 Operator-to-Robot Relay and Floor Control
-  - 3.9.5 Low-Latency Audio on a Constrained CPU
-- 3.10 GPS Localisation and Offline Mapping
+- 3.1 System Architecture
+- 3.2 Network Configuration
+- 3.3 Hardware Platform
+- 3.4 Real-Time Firmware and Fail-Safe Control
+  - 3.4.1 Task Scheduling and Command Validation
+  - 3.4.2 Dead-Man Timer and Stop-Time Guarantee
+  - 3.4.3 Redundant Stop Paths and Gas-Triggered Stop
+- 3.5 P1 Control Server and Telemetry
+  - 3.5.1 Safe Startup and Single-Writer Serial Link
+  - 3.5.2 Telemetry Pipeline and Session Resume
+- 3.6 Fault Tolerance and Supervision
+  - 3.6.1 P3 Watchdog: Process Isolation and Supervision
+  - 3.6.2 Recovery Time Model and Graceful Degradation
+  - 3.6.3 Mission State for Operator Awareness
+- 3.7 Access Control and Multi-Operator Arbitration
+- 3.8 Two-Way Victim Interaction
+  - 3.8.1 The P2 Media Process
+  - 3.8.2 Signalling and Session Lifecycle
+  - 3.8.3 Data Channel Protocol
+  - 3.8.4 Operator-to-Robot Relay and Floor Control
+  - 3.8.5 Low-Latency Audio on a Constrained CPU
+- 3.9 GPS Localisation and Offline Mapping
 
 **4. Experimental Setup**
 
