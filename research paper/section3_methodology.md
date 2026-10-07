@@ -243,7 +243,26 @@ flowchart LR
 | Barrel jack | Power input | 8 V from buck converter | - |
 | 5 V, GND | Power output | Supply for HC-SR04, DHT11 and MQ-136 | Shared by the three sensors |
 
-The Pi connections are listed in Table 4. The GPS uses the Pi's primary UART with the serial login console disabled.
+The Pi ports and GPIO header pins used by the project are shown in Figure 5a and listed in Table 4.
+
+```mermaid
+flowchart LR
+  PI["Raspberry Pi 4"]
+  PI -- "USB-A, 115200 baud" --> UNO["Arduino UNO"]
+  CAM["USB webcam + mic"] -- "USB-A" --> PI
+  PI -- "pin 1, 3.3 V" --> GPS["NEO-6M GPS"]
+  PI -- "pin 6, GND" --> GPS
+  PI -- "pin 8, GPIO14 TXD" --> GPS
+  GPS -- "pin 10, GPIO15 RXD" --> PI
+  PI -- "micro-HDMI 0" --> LCD["Robot display"]
+  PI -- "3.5 mm jack" --> SPK["Speaker"]
+  PWR["USB power bank"] -- "USB-C" --> PI
+  PI -- "on-board Wi-Fi" --> RT["Wi-Fi router"]
+```
+
+**Figure 5a.** Raspberry Pi 4 port and GPIO diagram.
+
+The GPS uses the Pi's primary UART with the serial login console disabled.
 
 **Table 4.** Raspberry Pi 4 connections.
 
