@@ -11,6 +11,11 @@ This document records how the system was tested and what the results were.
 **PASS** / **FAIL**, add the date and tester initials, and note anything
 unusual. If a test fails, describe it in [Section 9](#9-issues-found).
 
+**Harness:** `tools/eval/` runs sections 4-8 and keeps the raw trials as CSV,
+so each row below is backed by n measurements rather than one. See
+`tools/eval/README.md` for the order to run them in; `tools/eval/summarize.py`
+turns the CSVs into the aggregate tables the paper's Section 5 needs.
+
 ---
 
 ## 1. Scope

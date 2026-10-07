@@ -1,0 +1,241 @@
+iso_ts,probe,metric,trial,label,value_ms,resolution_ms,ok,detail
+2026-10-07T21:26:38.013+00:00,hello,hello_rtt,1,on-pi,116.9,200,1,role=controller auth=ok
+2026-10-07T21:26:38.252+00:00,hello,hello_rtt,2,on-pi,29.7,200,1,role=controller auth=ok
+2026-10-07T21:26:38.480+00:00,hello,hello_rtt,3,on-pi,21.7,200,1,role=controller auth=ok
+2026-10-07T21:26:38.752+00:00,hello,hello_rtt,4,on-pi,67.7,200,1,role=controller auth=ok
+2026-10-07T21:26:38.982+00:00,hello,hello_rtt,5,on-pi,24.7,200,1,role=controller auth=ok
+2026-10-07T21:26:39.257+00:00,hello,hello_rtt,6,on-pi,66.8,200,1,role=controller auth=ok
+2026-10-07T21:26:39.486+00:00,hello,hello_rtt,7,on-pi,21.9,200,1,role=controller auth=ok
+2026-10-07T21:26:39.749+00:00,hello,hello_rtt,8,on-pi,58.8,200,1,role=controller auth=ok
+2026-10-07T21:26:39.979+00:00,hello,hello_rtt,9,on-pi,25.1,200,1,role=controller auth=ok
+2026-10-07T21:26:40.250+00:00,hello,hello_rtt,10,on-pi,67.5,200,1,role=controller auth=ok
+2026-10-07T21:26:40.485+00:00,hello,hello_rtt,11,on-pi,28.7,200,1,role=controller auth=ok
+2026-10-07T21:26:40.757+00:00,hello,hello_rtt,12,on-pi,66.0,200,1,role=controller auth=ok
+2026-10-07T21:26:40.981+00:00,hello,hello_rtt,13,on-pi,20.1,200,1,role=controller auth=ok
+2026-10-07T21:26:41.254+00:00,hello,hello_rtt,14,on-pi,70.0,200,1,role=controller auth=ok
+2026-10-07T21:26:41.494+00:00,hello,hello_rtt,15,on-pi,30.0,200,1,role=controller auth=ok
+2026-10-07T21:26:41.753+00:00,hello,hello_rtt,16,on-pi,54.6,200,1,role=controller auth=ok
+2026-10-07T21:26:41.980+00:00,hello,hello_rtt,17,on-pi,24.1,200,1,role=controller auth=ok
+2026-10-07T21:26:42.268+00:00,hello,hello_rtt,18,on-pi,79.6,200,1,role=None auth=None
+2026-10-07T21:26:42.506+00:00,hello,hello_rtt,19,on-pi,28.8,200,1,role=controller auth=ok
+2026-10-07T21:26:42.756+00:00,hello,hello_rtt,20,on-pi,46.1,200,1,role=controller auth=ok
+2026-10-07T21:26:42.984+00:00,hello,hello_rtt,21,on-pi,24.2,200,1,role=controller auth=ok
+2026-10-07T21:26:43.256+00:00,hello,hello_rtt,22,on-pi,68.2,200,1,role=controller auth=ok
+2026-10-07T21:26:43.499+00:00,hello,hello_rtt,23,on-pi,35.9,200,1,role=controller auth=ok
+2026-10-07T21:26:43.764+00:00,hello,hello_rtt,24,on-pi,58.9,200,1,role=controller auth=ok
+2026-10-07T21:26:43.987+00:00,hello,hello_rtt,25,on-pi,19.6,200,1,role=controller auth=ok
+2026-10-07T21:26:44.264+00:00,hello,hello_rtt,26,on-pi,68.6,200,1,role=None auth=None
+2026-10-07T21:26:44.491+00:00,hello,hello_rtt,27,on-pi,22.1,200,1,role=controller auth=ok
+2026-10-07T21:26:44.760+00:00,hello,hello_rtt,28,on-pi,63.8,200,1,role=controller auth=ok
+2026-10-07T21:26:44.988+00:00,hello,hello_rtt,29,on-pi,23.7,200,1,role=controller auth=ok
+2026-10-07T21:26:45.263+00:00,hello,hello_rtt,30,on-pi,71.1,200,1,role=controller auth=ok
+2026-10-07T21:33:38.981+00:00,pan,pan_echo,1,on-pi-phaselocked,150.3,200,1,angle=40
+2026-10-07T21:33:39.982+00:00,pan,pan_echo,2,on-pi-phaselocked,500.2,200,1,angle=60
+2026-10-07T21:33:40.984+00:00,pan,pan_echo,3,on-pi-phaselocked,500.3,200,1,angle=110
+2026-10-07T21:33:41.987+00:00,pan,pan_echo,4,on-pi-phaselocked,499.3,200,1,angle=130
+2026-10-07T21:33:42.988+00:00,pan,pan_echo,5,on-pi-phaselocked,500.6,200,1,angle=150
+2026-10-07T21:33:43.991+00:00,pan,pan_echo,6,on-pi-phaselocked,501.2,200,1,angle=170
+2026-10-07T21:33:44.994+00:00,pan,pan_echo,7,on-pi-phaselocked,501.0,200,1,angle=30
+2026-10-07T21:33:45.996+00:00,pan,pan_echo,8,on-pi-phaselocked,498.1,200,1,angle=70
+2026-10-07T21:33:46.998+00:00,pan,pan_echo,9,on-pi-phaselocked,499.8,200,1,angle=120
+2026-10-07T21:33:47.997+00:00,pan,pan_echo,10,on-pi-phaselocked,498.7,200,1,angle=20
+2026-10-07T21:33:49.002+00:00,pan,pan_echo,11,on-pi-phaselocked,502.2,200,1,angle=40
+2026-10-07T21:33:50.113+00:00,pan,pan_echo,12,on-pi-phaselocked,609.8,200,1,angle=60
+2026-10-07T21:33:51.009+00:00,pan,pan_echo,13,on-pi-phaselocked,394.9,200,1,angle=110
+2026-10-07T21:33:52.009+00:00,pan,pan_echo,14,on-pi-phaselocked,498.0,200,1,angle=130
+2026-10-07T21:33:53.119+00:00,pan,pan_echo,15,on-pi-phaselocked,608.1,200,1,angle=150
+2026-10-07T21:33:54.015+00:00,pan,pan_echo,16,on-pi-phaselocked,394.0,200,1,angle=170
+2026-10-07T21:33:55.120+00:00,pan,pan_echo,17,on-pi-phaselocked,602.6,200,1,angle=30
+2026-10-07T21:33:56.017+00:00,pan,pan_echo,18,on-pi-phaselocked,394.9,200,1,angle=70
+2026-10-07T21:33:57.127+00:00,pan,pan_echo,19,on-pi-phaselocked,605.7,200,1,angle=120
+2026-10-07T21:33:58.127+00:00,pan,pan_echo,20,on-pi-phaselocked,498.9,200,1,angle=20
+2026-10-07T21:33:59.131+00:00,pan,pan_echo,21,on-pi-phaselocked,502.0,200,1,angle=40
+2026-10-07T21:34:00.134+00:00,pan,pan_echo,22,on-pi-phaselocked,501.8,200,1,angle=60
+2026-10-07T21:34:01.136+00:00,pan,pan_echo,23,on-pi-phaselocked,501.4,200,1,angle=110
+2026-10-07T21:34:02.141+00:00,pan,pan_echo,24,on-pi-phaselocked,501.9,200,1,angle=130
+2026-10-07T21:34:03.140+00:00,pan,pan_echo,25,on-pi-phaselocked,496.7,200,1,angle=150
+2026-10-07T21:34:04.148+00:00,pan,pan_echo,26,on-pi-phaselocked,506.7,200,1,angle=170
+2026-10-07T21:34:05.147+00:00,pan,pan_echo,27,on-pi-phaselocked,495.0,200,1,angle=30
+2026-10-07T21:34:06.148+00:00,pan,pan_echo,28,on-pi-phaselocked,497.2,200,1,angle=70
+2026-10-07T21:34:07.152+00:00,pan,pan_echo,29,on-pi-phaselocked,503.4,200,1,angle=120
+2026-10-07T21:34:08.152+00:00,pan,pan_echo,30,on-pi-phaselocked,497.7,200,1,angle=20
+2026-10-07T21:41:31.444+00:00,motor,motor_start,1,on-pi-phaselocked,504.9,200,1,speed=150
+2026-10-07T21:41:32.446+00:00,motor,motor_stop,1,on-pi-phaselocked,399.4,200,1,speed=150
+2026-10-07T21:41:33.449+00:00,motor,motor_start,2,on-pi-phaselocked,287.8,200,1,speed=150
+2026-10-07T21:41:34.558+00:00,motor,motor_stop,2,on-pi-phaselocked,507.2,200,1,speed=150
+2026-10-07T21:41:35.449+00:00,motor,motor_start,3,on-pi-phaselocked,266.2,200,1,speed=150
+2026-10-07T21:41:36.453+00:00,motor,motor_stop,3,on-pi-phaselocked,402.7,200,1,speed=150
+2026-10-07T21:41:37.452+00:00,motor,motor_start,4,on-pi-phaselocked,283.7,200,1,speed=150
+2026-10-07T21:41:38.455+00:00,motor,motor_stop,4,on-pi-phaselocked,401.7,200,1,speed=150
+2026-10-07T21:41:39.566+00:00,motor,motor_start,5,on-pi-phaselocked,391.7,200,1,speed=150
+2026-10-07T21:41:40.564+00:00,motor,motor_stop,5,on-pi-phaselocked,395.3,200,1,speed=150
+2026-10-07T21:41:41.567+00:00,motor,motor_start,6,on-pi-phaselocked,377.3,200,1,speed=150
+2026-10-07T21:41:42.568+00:00,motor,motor_stop,6,on-pi-phaselocked,398.2,200,1,speed=150
+2026-10-07T21:41:43.577+00:00,motor,motor_start,7,on-pi-phaselocked,380.4,200,1,speed=150
+2026-10-07T21:41:44.572+00:00,motor,motor_stop,7,on-pi-phaselocked,392.6,200,1,speed=150
+2026-10-07T21:41:45.574+00:00,motor,motor_start,8,on-pi-phaselocked,377.0,200,1,speed=150
+2026-10-07T21:41:46.577+00:00,motor,motor_stop,8,on-pi-phaselocked,402.1,200,1,speed=150
+2026-10-07T21:41:47.581+00:00,motor,motor_start,9,on-pi-phaselocked,377.4,200,1,speed=150
+2026-10-07T21:41:48.583+00:00,motor,motor_stop,9,on-pi-phaselocked,400.6,200,1,speed=150
+2026-10-07T21:41:49.584+00:00,motor,motor_start,10,on-pi-phaselocked,483.1,200,1,speed=150
+2026-10-07T21:41:50.584+00:00,motor,motor_stop,10,on-pi-phaselocked,399.2,200,1,speed=150
+2026-10-07T21:41:51.586+00:00,motor,motor_start,11,on-pi-phaselocked,486.6,200,1,speed=150
+2026-10-07T21:41:52.587+00:00,motor,motor_stop,11,on-pi-phaselocked,397.9,200,1,speed=150
+2026-10-07T21:41:53.590+00:00,motor,motor_start,12,on-pi-phaselocked,490.5,200,1,speed=150
+2026-10-07T21:41:54.593+00:00,motor,motor_stop,12,on-pi-phaselocked,401.1,200,1,speed=150
+2026-10-07T21:41:55.592+00:00,motor,motor_start,13,on-pi-phaselocked,492.8,200,1,speed=150
+2026-10-07T21:41:56.596+00:00,motor,motor_stop,13,on-pi-phaselocked,401.2,200,1,speed=150
+2026-10-07T21:41:57.596+00:00,motor,motor_start,14,on-pi-phaselocked,494.1,200,1,speed=150
+2026-10-07T21:41:58.598+00:00,motor,motor_stop,14,on-pi-phaselocked,401.0,200,1,speed=150
+2026-10-07T21:41:59.498+00:00,motor,motor_start,15,on-pi-phaselocked,396.2,200,1,speed=150
+2026-10-07T21:42:00.499+00:00,motor,motor_stop,15,on-pi-phaselocked,399.2,200,1,speed=150
+2026-10-07T21:42:01.502+00:00,motor,motor_start,16,on-pi-phaselocked,394.3,200,1,speed=150
+2026-10-07T21:42:02.500+00:00,motor,motor_stop,16,on-pi-phaselocked,395.2,200,1,speed=150
+2026-10-07T21:42:03.503+00:00,motor,motor_start,17,on-pi-phaselocked,497.3,200,1,speed=150
+2026-10-07T21:42:04.509+00:00,motor,motor_stop,17,on-pi-phaselocked,405.1,200,1,speed=150
+2026-10-07T21:42:05.506+00:00,motor,motor_start,18,on-pi-phaselocked,391.9,200,1,speed=150
+2026-10-07T21:42:06.510+00:00,motor,motor_stop,18,on-pi-phaselocked,402.9,200,1,speed=150
+2026-10-07T21:42:07.511+00:00,motor,motor_start,19,on-pi-phaselocked,391.3,200,1,speed=150
+2026-10-07T21:42:08.514+00:00,motor,motor_stop,19,on-pi-phaselocked,401.2,200,1,speed=150
+2026-10-07T21:42:09.518+00:00,motor,motor_start,20,on-pi-phaselocked,392.2,200,1,speed=150
+2026-10-07T21:42:10.517+00:00,motor,motor_stop,20,on-pi-phaselocked,396.8,200,1,speed=150
+2026-10-07T21:42:11.526+00:00,motor,motor_start,21,on-pi-phaselocked,400.2,200,1,speed=150
+2026-10-07T21:42:12.523+00:00,motor,motor_stop,21,on-pi-phaselocked,394.2,200,1,speed=150
+2026-10-07T21:42:13.526+00:00,motor,motor_start,22,on-pi-phaselocked,393.5,200,1,speed=150
+2026-10-07T21:42:14.529+00:00,motor,motor_stop,22,on-pi-phaselocked,400.1,200,1,speed=150
+2026-10-07T21:42:15.529+00:00,motor,motor_start,23,on-pi-phaselocked,494.4,200,1,speed=150
+2026-10-07T21:42:16.537+00:00,motor,motor_stop,23,on-pi-phaselocked,406.1,200,1,speed=150
+2026-10-07T21:42:17.533+00:00,motor,motor_start,24,on-pi-phaselocked,392.1,200,1,speed=150
+2026-10-07T21:42:18.535+00:00,motor,motor_stop,24,on-pi-phaselocked,400.8,200,1,speed=150
+2026-10-07T21:42:19.539+00:00,motor,motor_start,25,on-pi-phaselocked,396.7,200,1,speed=150
+2026-10-07T21:42:20.542+00:00,motor,motor_stop,25,on-pi-phaselocked,401.8,200,1,speed=150
+2026-10-07T21:42:21.551+00:00,motor,motor_start,26,on-pi-phaselocked,395.7,200,1,speed=150
+2026-10-07T21:42:22.546+00:00,motor,motor_stop,26,on-pi-phaselocked,393.2,200,1,speed=150
+2026-10-07T21:42:23.549+00:00,motor,motor_start,27,on-pi-phaselocked,393.1,200,1,speed=150
+2026-10-07T21:42:24.549+00:00,motor,motor_stop,27,on-pi-phaselocked,398.6,200,1,speed=150
+2026-10-07T21:42:25.553+00:00,motor,motor_start,28,on-pi-phaselocked,393.5,200,1,speed=150
+2026-10-07T21:42:26.557+00:00,motor,motor_stop,28,on-pi-phaselocked,402.1,200,1,speed=150
+2026-10-07T21:42:27.559+00:00,motor,motor_start,29,on-pi-phaselocked,397.4,200,1,speed=150
+2026-10-07T21:42:28.560+00:00,motor,motor_stop,29,on-pi-phaselocked,399.4,200,1,speed=150
+2026-10-07T21:42:29.564+00:00,motor,motor_start,30,on-pi-phaselocked,399.4,200,1,speed=150
+2026-10-07T21:42:30.568+00:00,motor,motor_stop,30,on-pi-phaselocked,402.1,200,1,speed=150
+2026-10-07T21:43:21.780+00:00,pan,pan_echo,1,on-pi,285.9,200,1,angle=40
+2026-10-07T21:43:22.783+00:00,pan,pan_echo,2,on-pi,441.4,200,1,angle=60
+2026-10-07T21:43:23.784+00:00,pan,pan_echo,3,on-pi,445.2,200,1,angle=110
+2026-10-07T21:43:24.791+00:00,pan,pan_echo,4,on-pi,418.4,200,1,angle=130
+2026-10-07T21:43:25.786+00:00,pan,pan_echo,5,on-pi,350.6,200,1,angle=150
+2026-10-07T21:43:26.789+00:00,pan,pan_echo,6,on-pi,381.5,200,1,angle=170
+2026-10-07T21:43:27.787+00:00,pan,pan_echo,7,on-pi,352.3,200,1,angle=30
+2026-10-07T21:43:28.794+00:00,pan,pan_echo,8,on-pi,474.2,200,1,angle=70
+2026-10-07T21:43:29.794+00:00,pan,pan_echo,9,on-pi,415.6,200,1,angle=120
+2026-10-07T21:43:30.796+00:00,pan,pan_echo,10,on-pi,342.4,200,1,angle=20
+2026-10-07T21:43:31.800+00:00,pan,pan_echo,11,on-pi,374.6,200,1,angle=40
+2026-10-07T21:43:32.799+00:00,pan,pan_echo,12,on-pi,293.5,200,1,angle=60
+2026-10-07T21:43:33.699+00:00,pan,pan_echo,13,on-pi,300.7,200,1,angle=110
+2026-10-07T21:43:34.707+00:00,pan,pan_echo,14,on-pi,380.7,200,1,angle=130
+2026-10-07T21:43:35.699+00:00,pan,pan_echo,15,on-pi,294.8,200,1,angle=150
+2026-10-07T21:43:36.701+00:00,pan,pan_echo,16,on-pi,387.4,200,1,angle=170
+2026-10-07T21:43:37.700+00:00,pan,pan_echo,17,on-pi,446.4,200,1,angle=30
+2026-10-07T21:43:38.704+00:00,pan,pan_echo,18,on-pi,336.2,200,1,angle=70
+2026-10-07T21:43:39.704+00:00,pan,pan_echo,19,on-pi,479.8,200,1,angle=120
+2026-10-07T21:43:40.707+00:00,pan,pan_echo,20,on-pi,415.6,200,1,angle=20
+2026-10-07T21:43:41.710+00:00,pan,pan_echo,21,on-pi,449.5,200,1,angle=40
+2026-10-07T21:43:42.710+00:00,pan,pan_echo,22,on-pi,339.7,200,1,angle=60
+2026-10-07T21:43:43.715+00:00,pan,pan_echo,23,on-pi,495.0,200,1,angle=110
+2026-10-07T21:43:44.713+00:00,pan,pan_echo,24,on-pi,410.8,200,1,angle=130
+2026-10-07T21:43:45.718+00:00,pan,pan_echo,25,on-pi,365.5,200,1,angle=150
+2026-10-07T21:43:46.720+00:00,pan,pan_echo,26,on-pi,369.1,200,1,angle=170
+2026-10-07T21:43:47.719+00:00,pan,pan_echo,27,on-pi,352.7,200,1,angle=30
+2026-10-07T21:43:48.723+00:00,pan,pan_echo,28,on-pi,323.7,200,1,angle=70
+2026-10-07T21:43:49.729+00:00,pan,pan_echo,29,on-pi,426.7,200,1,angle=120
+2026-10-07T21:43:50.738+00:00,pan,pan_echo,30,on-pi,481.6,200,1,angle=20
+2026-10-07T21:44:02.755+00:00,motor,motor_start,1,on-pi,365.2,200,1,speed=150
+2026-10-07T21:44:03.761+00:00,motor,motor_stop,1,on-pi,244.6,200,1,speed=150
+2026-10-07T21:44:04.761+00:00,motor,motor_start,2,on-pi,360.7,200,1,speed=150
+2026-10-07T21:44:05.762+00:00,motor,motor_stop,2,on-pi,281.2,200,1,speed=150
+2026-10-07T21:44:06.766+00:00,motor,motor_start,3,on-pi,280.3,200,1,speed=150
+2026-10-07T21:44:07.762+00:00,motor,motor_stop,3,on-pi,256.5,200,1,speed=150
+2026-10-07T21:44:08.767+00:00,motor,motor_start,4,on-pi,257.2,200,1,speed=150
+2026-10-07T21:44:09.768+00:00,motor,motor_stop,4,on-pi,273.9,200,1,speed=150
+2026-10-07T21:44:10.769+00:00,motor,motor_start,5,on-pi,358.6,200,1,speed=150
+2026-10-07T21:44:11.772+00:00,motor,motor_stop,5,on-pi,275.9,200,1,speed=150
+2026-10-07T21:44:12.772+00:00,motor,motor_start,6,on-pi,255.0,200,1,speed=150
+2026-10-07T21:44:13.779+00:00,motor,motor_stop,6,on-pi,349.1,200,1,speed=150
+2026-10-07T21:44:14.779+00:00,motor,motor_start,7,on-pi,315.5,200,1,speed=150
+2026-10-07T21:44:15.783+00:00,motor,motor_stop,7,on-pi,264.3,200,1,speed=150
+2026-10-07T21:44:16.782+00:00,motor,motor_start,8,on-pi,210.7,200,1,speed=150
+2026-10-07T21:44:17.792+00:00,motor,motor_stop,8,on-pi,307.0,200,1,speed=150
+2026-10-07T21:44:18.792+00:00,motor,motor_start,9,on-pi,359.3,200,1,speed=150
+2026-10-07T21:44:19.792+00:00,motor,motor_stop,9,on-pi,381.9,200,1,speed=150
+2026-10-07T21:44:20.790+00:00,motor,motor_start,10,on-pi,274.2,200,1,speed=150
+2026-10-07T21:44:21.792+00:00,motor,motor_stop,10,on-pi,397.7,200,1,speed=150
+2026-10-07T21:44:22.801+00:00,motor,motor_start,11,on-pi,227.1,200,1,speed=150
+2026-10-07T21:44:23.795+00:00,motor,motor_stop,11,on-pi,361.3,200,1,speed=150
+2026-10-07T21:44:24.807+00:00,motor,motor_start,12,on-pi,340.2,200,1,speed=150
+2026-10-07T21:44:25.800+00:00,motor,motor_stop,12,on-pi,224.3,200,1,speed=150
+2026-10-07T21:44:26.803+00:00,motor,motor_start,13,on-pi,175.9,200,1,speed=150
+2026-10-07T21:44:27.803+00:00,motor,motor_stop,13,on-pi,389.3,200,1,speed=150
+2026-10-07T21:44:28.804+00:00,motor,motor_start,14,on-pi,215.8,200,1,speed=150
+2026-10-07T21:44:29.807+00:00,motor,motor_stop,14,on-pi,352.6,200,1,speed=150
+2026-10-07T21:44:30.807+00:00,motor,motor_start,15,on-pi,491.5,200,1,speed=150
+2026-10-07T21:44:31.810+00:00,motor,motor_stop,15,on-pi,207.9,200,1,speed=150
+2026-10-07T21:44:33.432+00:00,motor,motor_start,16,on-pi,761.1,200,1,speed=150
+2026-10-07T21:44:34.421+00:00,motor,motor_stop,16,on-pi,286.6,200,1,speed=150
+2026-10-07T21:44:35.426+00:00,motor,motor_start,17,on-pi,329.9,200,1,speed=150
+2026-10-07T21:44:36.421+00:00,motor,motor_stop,17,on-pi,362.3,200,1,speed=150
+2026-10-07T21:44:37.428+00:00,motor,motor_start,18,on-pi,357.2,200,1,speed=150
+2026-10-07T21:44:38.326+00:00,motor,motor_stop,18,on-pi,232.6,200,1,speed=150
+2026-10-07T21:44:39.342+00:00,motor,motor_start,19,on-pi,204.7,200,1,speed=150
+2026-10-07T21:44:40.328+00:00,motor,motor_stop,19,on-pi,376.9,200,1,speed=150
+2026-10-07T21:44:41.331+00:00,motor,motor_start,20,on-pi,324.5,200,1,speed=150
+2026-10-07T21:44:42.328+00:00,motor,motor_stop,20,on-pi,229.8,200,1,speed=150
+2026-10-07T21:44:43.437+00:00,motor,motor_start,21,on-pi,463.9,200,1,speed=150
+2026-10-07T21:44:44.439+00:00,motor,motor_stop,21,on-pi,320.6,200,1,speed=150
+2026-10-07T21:44:45.440+00:00,motor,motor_start,22,on-pi,297.1,200,1,speed=150
+2026-10-07T21:44:46.845+00:00,motor,motor_stop,22,on-pi,606.7,200,1,speed=150
+2026-10-07T21:44:47.842+00:00,motor,motor_start,23,on-pi,196.2,200,1,speed=150
+2026-10-07T21:44:48.843+00:00,motor,motor_stop,23,on-pi,318.8,200,1,speed=150
+2026-10-07T21:44:49.852+00:00,motor,motor_start,24,on-pi,240.4,200,1,speed=150
+2026-10-07T21:44:50.845+00:00,motor,motor_stop,24,on-pi,273.2,200,1,speed=150
+2026-10-07T21:44:51.850+00:00,motor,motor_start,25,on-pi,219.4,200,1,speed=150
+2026-10-07T21:44:52.863+00:00,motor,motor_stop,25,on-pi,213.0,200,1,speed=150
+2026-10-07T21:44:53.852+00:00,motor,motor_start,26,on-pi,156.8,200,1,speed=150
+2026-10-07T21:44:54.857+00:00,motor,motor_stop,26,on-pi,383.1,200,1,speed=150
+2026-10-07T21:44:55.855+00:00,motor,motor_start,27,on-pi,242.5,200,1,speed=150
+2026-10-07T21:44:56.861+00:00,motor,motor_stop,27,on-pi,265.1,200,1,speed=150
+2026-10-07T21:44:58.367+00:00,motor,motor_start,28,on-pi,640.6,200,1,speed=150
+2026-10-07T21:44:59.360+00:00,motor,motor_stop,28,on-pi,293.0,200,1,speed=150
+2026-10-07T21:45:00.363+00:00,motor,motor_start,29,on-pi,466.9,200,1,speed=150
+2026-10-07T21:45:01.365+00:00,motor,motor_stop,29,on-pi,366.1,200,1,speed=150
+2026-10-07T21:45:02.369+00:00,motor,motor_start,30,on-pi,458.3,200,1,speed=150
+2026-10-07T21:45:03.372+00:00,motor,motor_stop,30,on-pi,335.2,200,1,speed=150
+2026-10-07T21:45:15.401+00:00,deadman,deadman_trip,1,on-pi,2357.3,200,1,"expected ~2000 ms, speed=150"
+2026-10-07T21:45:19.413+00:00,deadman,deadman_trip,2,on-pi,2418.1,200,1,"expected ~2000 ms, speed=150"
+2026-10-07T21:45:23.417+00:00,deadman,deadman_trip,3,on-pi,2205.9,200,1,"expected ~2000 ms, speed=150"
+2026-10-07T21:45:27.424+00:00,deadman,deadman_trip,4,on-pi,2356.4,200,1,"expected ~2000 ms, speed=150"
+2026-10-07T21:45:31.428+00:00,deadman,deadman_trip,5,on-pi,2271.6,200,1,"expected ~2000 ms, speed=150"
+2026-10-07T21:45:35.435+00:00,deadman,deadman_trip,6,on-pi,2233.6,200,1,"expected ~2000 ms, speed=150"
+2026-10-07T21:45:39.445+00:00,deadman,deadman_trip,7,on-pi,2493.6,200,1,"expected ~2000 ms, speed=150"
+2026-10-07T21:45:43.450+00:00,deadman,deadman_trip,8,on-pi,2406.0,200,1,"expected ~2000 ms, speed=150"
+2026-10-07T21:45:47.464+00:00,deadman,deadman_trip,9,on-pi,2484.9,200,1,"expected ~2000 ms, speed=150"
+2026-10-07T21:45:51.473+00:00,deadman,deadman_trip,10,on-pi,2228.8,200,1,"expected ~2000 ms, speed=150"
+2026-10-07T21:45:55.477+00:00,deadman,deadman_trip,11,on-pi,2334.8,200,1,"expected ~2000 ms, speed=150"
+2026-10-07T21:45:59.482+00:00,deadman,deadman_trip,12,on-pi,2200.9,200,1,"expected ~2000 ms, speed=150"
+2026-10-07T21:46:03.494+00:00,deadman,deadman_trip,13,on-pi,2259.5,200,1,"expected ~2000 ms, speed=150"
+2026-10-07T21:46:07.504+00:00,deadman,deadman_trip,14,on-pi,2381.5,200,1,"expected ~2000 ms, speed=150"
+2026-10-07T21:46:11.505+00:00,deadman,deadman_trip,15,on-pi,2463.9,200,1,"expected ~2000 ms, speed=150"
+2026-10-07T21:46:15.514+00:00,deadman,deadman_trip,16,on-pi,2423.4,200,1,"expected ~2000 ms, speed=150"
+2026-10-07T21:46:19.527+00:00,deadman,deadman_trip,17,on-pi,2348.3,200,1,"expected ~2000 ms, speed=150"
+2026-10-07T21:46:23.530+00:00,deadman,deadman_trip,18,on-pi,2390.7,200,1,"expected ~2000 ms, speed=150"
+2026-10-07T21:46:27.536+00:00,deadman,deadman_trip,19,on-pi,2376.5,200,1,"expected ~2000 ms, speed=150"
+2026-10-07T21:46:31.656+00:00,deadman,deadman_trip,20,on-pi,2598.4,200,1,"expected ~2000 ms, speed=150"
+2026-10-07T21:46:35.672+00:00,deadman,deadman_trip,21,on-pi,2592.2,200,1,"expected ~2000 ms, speed=150"
+2026-10-07T21:46:39.680+00:00,deadman,deadman_trip,22,on-pi,2543.1,200,1,"expected ~2000 ms, speed=150"
+2026-10-07T21:46:43.683+00:00,deadman,deadman_trip,23,on-pi,2539.8,200,1,"expected ~2000 ms, speed=150"
+2026-10-07T21:46:47.691+00:00,deadman,deadman_trip,24,on-pi,2574.1,200,1,"expected ~2000 ms, speed=150"
+2026-10-07T21:46:51.599+00:00,deadman,deadman_trip,25,on-pi,2498.7,200,1,"expected ~2000 ms, speed=150"
+2026-10-07T21:46:55.603+00:00,deadman,deadman_trip,26,on-pi,2488.8,200,1,"expected ~2000 ms, speed=150"
+2026-10-07T21:46:59.614+00:00,deadman,deadman_trip,27,on-pi,2501.8,200,1,"expected ~2000 ms, speed=150"
+2026-10-07T21:47:03.624+00:00,deadman,deadman_trip,28,on-pi,2395.7,200,1,"expected ~2000 ms, speed=150"
+2026-10-07T21:47:07.629+00:00,deadman,deadman_trip,29,on-pi,2413.4,200,1,"expected ~2000 ms, speed=150"
+2026-10-07T21:47:11.638+00:00,deadman,deadman_trip,30,on-pi,2492.3,200,1,"expected ~2000 ms, speed=150"

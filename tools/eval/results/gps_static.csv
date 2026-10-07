@@ -1,0 +1,2 @@
+iso_ts,label,n_samples,duration_min,window_from,window_to,ref_mode,ref_lat,ref_lon,mean_m,sd_m,rms_m,cep50_m,cep95_m,max_m,mean_sats
+2026-10-07T21:47:28.468+00:00,archive-2026-09-29,6888,129.1,2026-09-29T15:19:24+00:00,2026-09-29T17:28:32+00:00,centroid,23.4536358,91.202952,14.14,10.45,17.58,8.9,30.46,120.4,4.8

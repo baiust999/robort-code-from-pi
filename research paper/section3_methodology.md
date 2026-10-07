@@ -56,18 +56,34 @@ P2 and P3 take no part in this loop: media never carries a drive or stop command
 
 ## 3.2 Network Configuration
 
-The two transports in Figure 1 run over one local network, which also makes the robot independent of the internet. The Pi and the operator laptop join one Wi-Fi router, which reserves a fixed address for the Pi; the operator opens the dashboard from that address. Table 1 lists the services on the Pi.
+The two transports in Figure 1 run over one local network, which also makes the robot independent of the internet: no part of the deployment evaluated here reaches outside the Wi-Fi cell. The Pi and the operator laptop join one Wi-Fi router on a single Layer 2 segment, with no routing and no address translation between them [VERIFY 802.11 standard, band and channel]. The Pi uses its on-board radio (Figure 5a) and the router reserves a fixed address for it [VERIFY subnet; the default configuration assumes 192.168.10.0/24 with the router at .1]; the operator opens the dashboard from that address. The router stays with the operator at the staging point, so the robot works within one radio cell, and extending that reach with a repeater or a second radio is outside the scope of this work (Section 6.3). Table 1 lists the services on the Pi and Table 1a the load and the timing the network has to carry.
 
 **Table 1.** Network services on the Pi.
 
 | Port | Process | Protocol | Carries |
 |---|---|---|---|
-| TCP 8080 | P1 | HTTP and WebSocket | Dashboard files, control and telemetry, session settings, GPS track, offline map tiles, ICE configuration, health |
+| TCP 8080 | P1 | HTTP and WebSocket | Dashboard files, control and telemetry, session settings, GPS track, offline map tiles, ICE configuration (Section 3.9.2), health |
 | TCP 8443 | P2 | HTTP (no TLS) | WebRTC offer and answer, Robot Screen page, health |
 | UDP, negotiated by ICE | P2 | WebRTC | Audio, video and data channel |
 | Localhost only | P1, P2 | HTTP | Controller address query; Robot Screen connection |
 
-The control WebSocket uses keep-alive pings every 20 s with a 20 s timeout. Browsers allow microphone and camera capture only in a secure context, so the operator's browser must treat the Pi's address as secure for push-to-talk and camera; images and text work without it.
+Control and media use different transports for different reasons. Commands and telemetry run over TCP, because ordered delivery together with the sequence check of Section 3.5.1 keeps a stale command from overtaking a newer one, and the cost of a retransmission is bounded: a command that does not arrive within the dead-man window stops the robot instead of leaving it to run on a stale one (Section 3.5.2). Media runs over UDP, where a lost packet costs picture or voice quality but never delays a command. The dead-man window therefore sets the only hard requirement the network must meet, and the budgets in Table 1a follow from it.
+
+**Table 1a.** Network load and timing requirements.
+
+| Quantity | Value | Set by |
+|---|---|---|
+| Video, robot to operator | 640x480 at 10 fps, 500 kbps target | Section 3.9.1, Table 12 |
+| Audio, each direction | Opus 32 kbps, 60 ms packets | Table 14 |
+| Telemetry snapshots | 5 per second, one JSON object each | Section 3.6.2 |
+| Commands and heartbeats | At most 2 per second | Sections 3.5.1 and 3.6 |
+| Steady-state load per operator | Under 1 Mbit/s | Sum of the rows above |
+| Hard delivery deadline | 2000 ms, that is three missed heartbeats at 500 ms | Dead-man, Section 3.5.2 |
+| Operator-side link timeout | 3000 ms without telemetry gives mission state STOP | Table 10 |
+| Socket keep-alive | Ping every 20 s, 20 s timeout | P1 WebSocket server |
+| Reconnect back-off | 1 s, doubling, capped at 30 s | Section 3.7.2 |
+
+The load stays well inside the capacity of an ordinary indoor Wi-Fi link, so the network is sized by latency and loss rather than by throughput; the dashboard bundle and the offline map tiles are one-off transfers at the start of a session. The keep-alive in Table 1a reclaims a silently dead socket only after up to 40 s, so liveness for safety is not enforced at this layer but by the dead-man at 2000 ms and by the dashboard's 3000 ms telemetry timeout; the keep-alive only frees the socket. Browsers allow microphone and camera capture only in a secure context, so the operator's browser must treat the Pi's address as secure for push-to-talk and camera; images and text work without it.
 
 ## 3.3 Hardware Platform
 
@@ -289,7 +305,7 @@ where $V_{bat}$ is the full-charge pack voltage and $u_{max}$ is the PWM cap. P1
 
 The software is organised around the same tiers as the hardware in Section 3.3. This section gives its structure; Sections 3.5 to 3.10 describe each part in detail.
 
-The software forms three layers, each written in the language that suits its hardware (Table 5). The layers share no code and talk only through three defined interfaces: the serial command protocol between firmware and P1, the control WebSocket between the dashboard and P1, and WebRTC between the dashboard and P2. Each layer can therefore be built, tested and replaced on its own.
+The software forms three layers, each written in the language that suits its hardware, over a shared module that the three Pi processes have in common (Table 5). The three layers share no code and talk only through three defined interfaces: the serial command protocol between firmware and P1, the control WebSocket between the dashboard and P1, and WebRTC between the dashboard and P2. Each layer can therefore be built, tested and replaced on its own.
 
 **Table 5.** Software stack.
 
@@ -297,6 +313,7 @@ The software forms three layers, each written in the language that suits its har
 |---|---|---|---|---|
 | Firmware | Arduino UNO | C++ | Arduino core, no RTOS | scheduler, command_parser, motors, servos, sensors, telemetry |
 | Backend | Raspberry Pi 4 | Python 3, asyncio | FastAPI and uvicorn (P1, P2), aiortc and PyAV (P2), aiohttp (P3) | serial_bridge, safety, websocket_hub, gps_reader, signaling, talkback, supervisor |
+| Common | Raspberry Pi 4, inside P1, P2 and P3 | Python 3 | standard library only | protocol, config, access, logging_setup, mock_hardware |
 | Frontend | Operator browser | TypeScript | React 19, Vite, Tailwind CSS, Leaflet with PMTiles | useControlSocket, useWebrtcVideo, useTalkback, DriveControl, EmergencyStop, MapPanel |
 
 On the Pi, systemd starts only the watchdog, which spawns the control and media servers as child processes (Figure 6). P1 holds every interface that can move the robot; P2 holds every media device; the Robot Screen kiosk runs in the desktop session.
@@ -673,6 +690,7 @@ flowchart LR
 |---|---|---|
 | Source | USB webcam, V4L2 | Laptop camera, still image or shared screen |
 | Resolution and rate | 640x480, 10 fps | Camera 640x480 at 10 fps; image 1024x576 at 2 fps; screen at 5 fps |
+| Bitrate target | 500 kbps | Chosen by the browser |
 | Codec | VP8 or H.264, negotiated per session | Decoded by P2, re-encoded for the Robot Screen |
 | Encoders | One per dashboard session | One, for the Robot Screen connection |
 | Source loss | Synthetic test pattern | Last frame repeated after 1 s; black frame when no operator video |
@@ -708,7 +726,7 @@ The dashboard offers its audio and video in both directions from the start, but 
 
 When a connection fails or closes, P2 removes the session and releases the floor if the session held it; when no session is left, the camera and microphone are closed. P2 keeps no state that survives a restart, so reconnection is driven by the client. After video has connected once, a later loss is shown to the operator with a retry button rather than hidden by silent reconnects, so the operator knows that the video was interrupted.
 
-For candidate gathering the browser may use a STUN server, which P1 publishes at an ICE-configuration endpoint (GET /api/ice-config), rate limited to five requests per minute per client. On the local network this returns a STUN entry and no TURN relay, since a direct host-to-host path is always available as described above. The deployment also carries an optional internet-overlay mode, disabled by default (the ENABLE_OVERLAY setting in the watchdog environment). When it is enabled, the robot is reached over the internet through a relay and the same endpoint additionally issues a TURN server; P1 carries the overlay's reachability as a turn_status field in each telemetry snapshot (Section 3.6.2). The primary deployment in this work is the local network of Section 3.2, where the overlay stays off and STUN alone suffices.
+Candidate gathering needs no help on this network. The dashboard creates its peer connection with no ICE servers configured, so both sides offer host candidates only, and the single segment of Section 3.2 makes a direct path available without STUN or a TURN relay. P1 does serve an ICE-configuration endpoint (GET /api/ice-config, rate limited to five requests per minute per client) for a deployment that would need STUN, but the dashboard does not read it in the local-network mode evaluated here. An internet-overlay mode, in which the robot would be reached through a relay and the same endpoint would also issue a TURN server, is provided for in the configuration (the ENABLE_OVERLAY setting in the watchdog environment) but is not implemented or evaluated in this work; the turn_status field carried in each telemetry snapshot therefore reports unavailable throughout.
 
 ### 3.9.3 Data Channel Protocol
 
