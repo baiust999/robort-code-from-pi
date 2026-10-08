@@ -135,7 +135,9 @@ class P1Config:
             lock_path=_env_path("P1_LOCK", paths.run_dir / "p1.lock"),
             paths=paths,
             thresholds=load_thresholds(paths.config_dir),
-            stun_url=os.environ.get("STUN_URL", "stun:192.168.10.1:3478"),
+            # Empty by default: on one subnet both peers offer host
+            # candidates only, so no STUN server is needed (Section 3.9.2).
+            stun_url=os.environ.get("STUN_URL", ""),
             static_dir=static_dir,
             map_dir=map_dir if map_dir.is_dir() else None,
             telemetry_log_enabled=_env_bool("TELEMETRY_LOG", True),

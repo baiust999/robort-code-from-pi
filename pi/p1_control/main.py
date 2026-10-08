@@ -302,11 +302,14 @@ class ControlServer:
             raise HTTPException(status_code=429, detail="rate limit exceeded")
         history.append(now)
 
-        # Local network mode: STUN only. A TURN relay is issued by the internet
-        # overlay when that mode is enabled (Section 8.10.2.1).
+        # Local network mode needs no STUN at all: both peers sit on one
+        # subnet and offer host candidates only, so iceServers stays empty
+        # unless STUN_URL names a server. A TURN relay is issued by the
+        # internet overlay when that mode is enabled (Section 8.10.2.1).
+        stun = self.config.stun_url
         return {
-            "stun": self.config.stun_url,
-            "iceServers": [{"urls": self.config.stun_url}],
+            "stun": stun,
+            "iceServers": [{"urls": stun}] if stun else [],
             "policy": "all",
             "turn": None,
         }

@@ -23,15 +23,21 @@ Work through this list before the robot is sent in.
 - [ ] Chrome is installed.
 - [ ] To use your microphone and camera, the Chrome flag is set once:
       open `chrome://flags/#unsafely-treat-insecure-origin-as-secure`, add
-      `http://<pi-ip>:8080`, enable it and restart Chrome. Without
-      it, video from the robot, images and text messages still work.
+      `http://raspberrypi.local:8080`, enable it and restart Chrome. This
+      name stays the same on every Wi-Fi network, so the flag only has to
+      be set once, even when the robot moves. Without it, video from the
+      robot, images and text messages still work.
 
 ---
 
 ## 2. Opening the dashboard
 
 1. Wait about 30 seconds after powering the robot so all services start.
-2. In Chrome, open **`http://<pi-ip>:8080`** (the robot's address on the Wi-Fi network).
+2. In Chrome, open **`http://raspberrypi.local:8080`**. This name works on any
+   Wi-Fi network, so it does not change when the robot moves to a different one.
+   If the page does not open, your laptop cannot look up `.local` names (some
+   Android devices cannot): run `hostname -I` on the Pi to read its address and
+   open `http://<pi-ip>:8080` instead.
 3. Check the status bar at the top:
 
 | Indicator | Good | Problem |

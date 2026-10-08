@@ -121,9 +121,10 @@ Remaining manual steps (Section 8.14.4, Stage 5):
            wpctl set-default <id>
        - Operator laptops need a secure context for mic/camera: open Chrome
          with chrome://flags/#unsafely-treat-insecure-origin-as-secure set to
-         http://<pi-ip>:8080 (images and text messages work without it).
-         Give the Pi a fixed address in your Wi-Fi router's settings so this
-         does not change.
+         http://raspberrypi.local:8080 (images and text messages work without
+         it). Use that hostname, not the IP address: the flag matches the exact
+         origin, and avahi-daemon resolves the name on any Wi-Fi network, so it
+         keeps working after DHCP hands out a different address.
 
 Then start the stack:
   sudo systemctl start robot-watchdog.service

@@ -11,7 +11,7 @@ a victim through a screen and speaker mounted on the robot.
 
 ```
 Operator laptop (browser dashboard)
-        │  Wi-Fi (same local network, http://<pi-ip>:8080)
+        │  Wi-Fi (same local network, http://raspberrypi.local:8080)
 Raspberry Pi 4
    ├─ P3 watchdog (systemd)  ── spawns and monitors P1 and P2
    ├─ P1 control server  :8080  WebSocket control, telemetry, GPS, serves the dashboard
@@ -114,7 +114,10 @@ npm run dev
    ```bash
    sudo systemctl start robot-watchdog.service
    ```
-   Open `http://<pi-ip>:8080` from a laptop on the same Wi-Fi network.
+   Open `http://raspberrypi.local:8080` from a laptop on the same Wi-Fi
+   network. That name resolves over mDNS (`avahi-daemon`) on whatever network
+   the Pi joins, so it survives the DHCP address changing; if a device cannot
+   look up `.local` names, use `http://<pi-ip>:8080` from `hostname -I`.
 
 ### Configuration
 
@@ -135,8 +138,11 @@ The full list of options is in `pi/common/config.py`.
 Browsers only allow microphone and camera access on secure origins. To use
 push-to-talk and camera over plain HTTP, open
 `chrome://flags/#unsafely-treat-insecure-origin-as-secure` on the operator
-laptop and add `http://<pi-ip>:8080`. Video, images and text messages
-work without this.
+laptop and add `http://raspberrypi.local:8080`. Use the hostname rather than
+the IP address: the flag matches on the exact origin, so an address issued by
+DHCP would silently stop matching after the robot joins another network, and
+push-to-talk and the operator camera would fail while the rest of the
+dashboard kept working. Video, images and text messages work without this.
 
 ## Logs
 
