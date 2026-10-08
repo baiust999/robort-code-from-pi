@@ -75,13 +75,15 @@ Control and media use different transports for different reasons. Commands and t
 |---|---|---|
 | Video, robot to operator | 640x480 at 10 fps, 500 kbps target | Section 3.9.1, Table 12 |
 | Audio, each direction | Opus 32 kbps, 60 ms packets | Table 14 |
-| Telemetry snapshots | 5 per second, one JSON object each | Section 3.6.2 |
+| Telemetry snapshots | 5 per second from P1, one JSON object each; the firmware frames behind them arrive every 500 ms | Section 3.6.2 |
 | Commands and heartbeats | Heartbeat every 500 ms from the controller; one drive command per press and per release; servo commands are not rate limited | Sections 3.5.1 and 3.6 |
 | Steady-state load per operator | Under 1 Mbit/s | Sum of the rows above |
 | Hard delivery deadline | 2000 ms since the last arming command | Dead-man, Section 3.5.2 |
 | Operator-side link timeout | 3000 ms without telemetry gives mission state STOP, counted in 500 ms steps | Table 10 |
 | Socket keep-alive | Ping every 20 s, 20 s timeout | P1 WebSocket server |
 | Reconnect back-off | 1 s, doubling, capped at 30 s | Section 3.7.2 |
+
+Four intervals bear on the dead-man window, and none of them is a count of the others. The dashboard sends a heartbeat every 500 ms for as long as it holds the controller role, whether or not the robot is being driven; a drive command is sent once when a key or button goes down and a stop once when it is released, with keyboard auto-repeat suppressed, so a sustained drive is carried by the heartbeat rather than by repeated commands. The firmware re-arms its dead-man timer on any arming command it accepts, heartbeats included, and stops the motors once 2000 ms pass with none: an absolute window measured from the last accepted command, not a threshold of missed heartbeats. Independently of that window the firmware emits a telemetry frame every 500 ms and a compact heartbeat line every 1000 ms, but both are outbound reports and neither re-arms the timer. A 2000 ms window spans four heartbeat periods, so an occasional lost heartbeat does not stop the robot.
 
 The load stays well inside the capacity of an ordinary indoor Wi-Fi link: at the staging point the link negotiated 58.5 Mbit/s receive and 72.2 Mbit/s transmit at a signal level of about -47 dBm, more than fifty times the steady-state demand, so the network is sized by latency and loss rather than by throughput, and Section 5.3 reports how both degrade with distance; the dashboard bundle and the offline map tiles are one-off transfers at the start of a session. The keep-alive in Table 1a reclaims a silently dead socket only after up to 40 s, so liveness for safety is not enforced at this layer but by the dead-man at 2000 ms and by the dashboard's 3000 ms telemetry timeout; the keep-alive only frees the socket. Browsers allow microphone and camera capture only in a secure context, and neither port carries TLS (Table 1), so the operator's browser has to be told to treat the Pi's origin as trusted, through the insecure-origin exception recorded in the operator manual. Push-to-talk and the operator camera depend on that manual step, which is a deployment workaround rather than a configured transport security measure (Section 6.3); images and text work without it.
 
@@ -112,39 +114,42 @@ The hardware is chosen so that the lowest tier can stop the robot by itself: the
 
 ```mermaid
 flowchart LR
-  BAT["4S battery<br/>+ 40 A BMS"]
-  PB["USB power bank"]
-  GPS["NEO-6M GPS"]
-  CAM["USB webcam + mic"]
-  B8["Buck 8 V"]
-  B5["Buck 5 V"]
+  subgraph PWR["Power distribution"]
+    BAT["4S battery<br/>+ 40 A BMS"]
+    B8["Buck 8 V"]
+    B5["Buck 5 V"]
+    PB["USB power bank"]
+    BAT ==> B8
+    BAT ==> B5
+  end
+
   PI["Raspberry Pi 4"]
   UNO["Arduino UNO"]
+  GPS["NEO-6M GPS"]
+  CAM["USB webcam + mic"]
   SCR["Display + speaker"]
   DRV["2 x BTS7960"]
   SV["Pan and tilt servos"]
   SEN["HC-SR04, DHT11, MQ-136"]
   MOT["4 x DC motors"]
 
-  BAT ==> B8
-  BAT ==> B5
-  BAT == "motor supply" ==> DRV
+  PB == "5 V, USB-C" ==> PI
   B8 == "8 V, barrel jack" ==> UNO
+  BAT == "motor supply" ==> DRV
   B5 == "5 V" ==> SV
   UNO == "5 V, GND" ==> SEN
-  PB == "5 V, USB-C" ==> PI
   DRV ==> MOT
 
-  GPS -- "UART 9600 baud" --> PI
-  CAM -- "USB" --> PI
-  PI -- "HDMI, 3.5 mm" --> SCR
   PI <-- "USB serial 115200 baud" --> UNO
-  UNO -- "PWM, enable" --> DRV
-  UNO -- "servo pulses" --> SV
-  UNO <-- "trigger, readings" --> SEN
+  PI -- "UART 9600 baud, position in" --> GPS
+  PI -- "USB, video and audio in" --> CAM
+  PI -- "HDMI, 3.5 mm out" --> SCR
+  UNO -- "PWM, enable out" --> DRV
+  UNO -- "servo pulses out" --> SV
+  UNO <-- "trigger out, readings in" --> SEN
 ```
 
-**Figure 3.** Hardware interconnection and power distribution. Thick lines carry power; thin lines carry signals.
+**Figure 3.** Hardware interconnection and power distribution. Thick lines carry power; thin lines carry signals, labelled with the interface and its direction. The Pi and the Arduino are the two hubs, and the separate motor and Pi supplies are grouped on the left.
 
 Figure 4 is the full wiring diagram of the robot.
 
@@ -199,43 +204,43 @@ flowchart LR
   SPK["Speaker"]
 
   BAT ==> BMS
-  BMS ==> BL
-  BMS ==> BR
-  BMS ==> BK5
   BMS ==> BK8
+  BMS ==> BK5
+  BMS == "motor supply" ==> BL
+  BMS == "motor supply" ==> BR
+  BK8 ==> JACK
   BK5 ==> SP
   BK5 ==> ST
-  BK8 ==> JACK
   V5 ==> US
   V5 ==> DHT
   V5 ==> MQ
   PB ==> PIN
   P33 ==> GPS
-
-  D5 -- "PWM fwd" --> BL
-  D6 -- "PWM rev" --> BL
-  D9 -- "PWM fwd" --> BR
-  D10 -- "PWM rev" --> BR
-  D4 -- "enable" --> BL
-  D4 -- "enable" --> BR
   BL ==> ML
   BR ==> MR
-  D11 -- "pulse" --> SP
-  D3 -- "pulse" --> ST
-  D7 -- "trigger" --> US
-  US -- "echo" --> D8
-  DHT -- "data" --> A2
-  MQ -- "analog" --> A3
+
+  D5 -- "PWM fwd out" --> BL
+  D6 -- "PWM rev out" --> BL
+  D9 -- "PWM fwd out" --> BR
+  D10 -- "PWM rev out" --> BR
+  D4 -- "enable out" --> BL
+  D4 -- "enable out" --> BR
+  D11 -- "pulse out" --> SP
+  D3 -- "pulse out" --> ST
+  D7 -- "trigger out" --> US
+  D8 -- "echo in" --> US
+  A2 <-- "single-wire data" --> DHT
+  A3 -- "analog in" --> MQ
 
   UUSB <-- "USB serial, 115200 baud" --> PUSB
-  CAM -- "USB video + audio" --> PUSB
-  GPS -- "TX, 9600 baud" --> G15
-  G14 -- "RX" --> GPS
-  HDMI --> LCD
-  AJ --> SPK
+  PUSB -- "USB video and audio in" --> CAM
+  G14 -- "TXD to GPS RX, 9600 baud" --> GPS
+  G15 -- "RXD from GPS TX, 9600 baud" --> GPS
+  HDMI -- "video out" --> LCD
+  AJ -- "audio out" --> SPK
 ```
 
-**Figure 4.** Detailed hardware wiring diagram. Thick lines carry power; thin lines carry signals. All grounds are common; the Pi shares ground with the Arduino through the USB cable.
+**Figure 4.** Detailed hardware wiring diagram. Thick lines carry power; thin lines carry signals, labelled with the signal and its direction. Each line runs from the pin or port to the device it serves, so arrowheads mark the connection rather than the signal direction. All grounds are common; the Pi shares ground with the Arduino through the USB cable.
 
 The Arduino pins used by the firmware are shown in Figure 5 and detailed in Table 3. Each BTS7960 drives forward on one PWM input and reverse on the other, with only one active at a time; both drivers share one enable line, so one output disables all propulsion.
 
@@ -290,19 +295,25 @@ The Pi ports and GPIO header pins used by the project are shown in Figure 5a and
 ```mermaid
 flowchart LR
   PI["Raspberry Pi 4"]
-  PI -- "USB-A, 115200 baud" --> UNO["Arduino UNO"]
-  CAM["USB webcam + mic"] -- "USB-A" --> PI
-  PI -- "pin 1, 3.3 V" --> GPS["NEO-6M GPS"]
-  PI -- "pin 6, GND" --> GPS
-  PI -- "pin 8, GPIO14 TXD" --> GPS
-  GPS -- "pin 10, GPIO15 RXD" --> PI
-  PI -- "micro-HDMI 0" --> LCD["Robot display"]
-  PI -- "3.5 mm jack" --> SPK["Speaker"]
-  PWR["USB power bank"] -- "USB-C" --> PI
-  PI -- "on-board Wi-Fi" --> RT["Wi-Fi router"]
+  UNO["Arduino UNO"]
+  CAM["USB webcam + mic"]
+  GPS["NEO-6M GPS"]
+  LCD["Robot display"]
+  SPK["Speaker"]
+  RT["Wi-Fi router"]
+  PWR["USB power bank"]
+
+  PI <-- "USB-A, USB serial 115200 baud" --> UNO
+  PI -- "USB-A, video and audio capture in" --> CAM
+  PI == "pin 1 3.3 V, pin 6 GND" ==> GPS
+  PI <-- "pin 8 GPIO14 TXD, pin 10 GPIO15 RXD, 9600 baud" --> GPS
+  PI -- "micro-HDMI 0 out" --> LCD
+  PI -- "3.5 mm jack out" --> SPK
+  PI <-- "on-board Wi-Fi, control and media traffic" --> RT
+  PI -- "USB-C, Pi supply in" --> PWR
 ```
 
-**Figure 5a.** Raspberry Pi 4 port and GPIO diagram.
+**Figure 5a.** Raspberry Pi 4 port and GPIO diagram. Each line shows which port or header pin serves which device, labelled with the interface and its direction; Table 4 gives the full connection list. The thick line carries power.
 
 The GPS uses the Pi's primary UART with the serial login console disabled.
 
@@ -320,12 +331,6 @@ The GPS uses the Pi's primary UART with the serial login console disabled.
 | 3.5 mm jack | Speaker | Default audio output |
 | USB-C | USB power bank | Pi supply |
 | On-board Wi-Fi | Wi-Fi router | Dashboard, control and media traffic |
-
-The control server caps the motor PWM duty at 180 of 255, which limits the average motor voltage:
-
-$$V_{avg} = V_{bat} \cdot \frac{u_{max}}{255} = 16.8 \cdot \frac{180}{255} \approx 11.9\ \text{V}$$
-
-where $V_{bat}$ is the full-charge pack voltage and $u_{max}$ is the PWM cap. P1 enforces the cap before a command is sent (Section 3.5.1), so the firmware never receives a higher speed from the dashboard.
 
 ## 3.4 Software Architecture
 

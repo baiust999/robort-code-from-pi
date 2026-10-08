@@ -90,7 +90,7 @@ ending: Newline), or test through the dashboard where noted.
 | H12 | Temperature/humidity | Compare with a reference thermometer. | Within ±2 °C. | | | |
 | H13 | Gas sensor | Expose the sensor to a safe test gas (for example, a lighter's unlit gas). | Reading rises; card turns amber/red. | | | |
 | H14 | GPS fix | Outdoors, time from power-on to fix. | Fix obtained; position matches a phone. | ___ min | | |
-| H15 | Telemetry rate | Count telemetry frames over 10 s. | About 5 frames/s (200 ms cycle). | ___ /s | | |
+| H15 | Telemetry rate | Count telemetry frames over 10 s on the serial monitor. | About 2 frames/s (the firmware's 500 ms cycle). P1 re-broadcasts to the dashboard at 5/s. | ___ /s | | |
 
 ---
 

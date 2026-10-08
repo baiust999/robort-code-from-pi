@@ -113,7 +113,9 @@ FW_STATE_STOPPED = 3
 
 # --- Cadences ---------------------------------------------------------------
 
-TELEMETRY_PERIOD_MS = 200  # Arduino TX and P1 broadcast, Section 8.7.5/8.10.1
+TELEMETRY_PERIOD_MS = 200  # P1 broadcast to the dashboard, Section 8.10.1.
+# The firmware sends its own frames every 500 ms (arduino/config.h,
+# TELEMETRY_PERIOD_MS), so consecutive broadcasts can repeat a frame.
 HEARTBEAT_PERIOD_MS = 500  # dashboard idle heartbeat, Table 8.15.4
 TELEMETRY_LOG_PERIOD_MS = 1000  # disk sampling rate, Section 8.13.2
 HEALTH_POLL_PERIOD_S = 10  # P3 -> P1/P2 /health, Section 8.8.3
