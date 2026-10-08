@@ -95,7 +95,11 @@ else
 fi
 
 echo "== stage 7: logrotate =="
-cp "$REPO_ROOT/deploy/logrotate/robot" /etc/logrotate.d/robot
+# Mode and owner are load-bearing: logrotate silently ignores a config file in
+# /etc/logrotate.d that is not owned by root or is group/world writable, so a
+# plain cp that carried over a 0755 checkout mode would disable rotation
+# without any error. Verify afterwards with: logrotate --debug /etc/logrotate.d/robot
+install -m 644 -o root -g root "$REPO_ROOT/deploy/logrotate/robot" /etc/logrotate.d/robot
 
 echo "== stage 8: hardware interfaces (manual verification required) =="
 cat <<'EOF'

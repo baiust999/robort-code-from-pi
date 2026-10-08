@@ -6,10 +6,15 @@ the snapshot fields plus a packed alert bitfield so a reviewer can locate
 threshold crossings without re-deriving them.
 
 Rotation is handled by logrotate (deploy/logrotate/robot), not in-process.
+That config rotates with ``copytruncate``: the content is copied away and this
+file is truncated to zero underneath us while the handle stays open. The writer
+therefore re-emits the header whenever it finds the file empty, so a rotated log
+describes its own columns instead of starting mid-stream.
 """
 
 from __future__ import annotations
 
+import os
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -61,11 +66,28 @@ class TelemetryLog:
         if not self._enabled:
             return
         self._path.parent.mkdir(parents=True, exist_ok=True)
-        is_new = not self._path.exists() or self._path.stat().st_size == 0
         self._handle = self._path.open("a", encoding="utf-8")
-        if is_new:
-            self._handle.write(",".join(CSV_COLUMNS) + "\n")
-            self._handle.flush()
+        self._write_header_if_empty()
+
+    def _write_header_if_empty(self) -> None:
+        """Emit the column header if the file currently holds nothing.
+
+        Covers both a freshly created log and one that logrotate has just
+        truncated with copytruncate while this handle stayed open. The size
+        comes from fstat on the open descriptor rather than a path stat: it
+        sees the truncation immediately and carries no TOCTOU window.
+        """
+        if self._handle is None:
+            return
+        try:
+            if os.fstat(self._handle.fileno()).st_size:
+                return
+        except OSError:
+            # A log we cannot stat is still worth writing rows to; losing the
+            # header is better than dropping telemetry.
+            return
+        self._handle.write(",".join(CSV_COLUMNS) + "\n")
+        self._handle.flush()
 
     def maybe_write(self, snapshot: dict[str, Any]) -> None:
         """Write at most once per period."""
@@ -80,6 +102,7 @@ class TelemetryLog:
     def write(self, snapshot: dict[str, Any]) -> None:
         if self._handle is None:
             return
+        self._write_header_if_empty()
         flags = protocol.compute_alert_flags(snapshot, self._thresholds)
         row = {
             **snapshot,

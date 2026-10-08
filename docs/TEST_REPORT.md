@@ -44,8 +44,8 @@ turns the CSVs into the aggregate tables the paper's Section 5 needs.
 ## 3. Automated unit tests
 
 **Command:** `cd pi && pytest`
-**Run on:** Raspberry Pi 4, 2026-10-01
-**Result:** **111 passed, 0 failed** (3.3 s)
+**Run on:** Raspberry Pi 4, 2026-10-08
+**Result:** **116 passed, 0 failed** (3.8 s)
 
 | Test file | Tests | What it verifies | Result |
 |---|---|---|---|
@@ -60,7 +60,8 @@ turns the CSVs into the aggregate tables the paper's Section 5 needs.
 | `test_resilient_audio.py` | 4 | The robot mic track sends silence while the mic is missing and switches to it once it opens; a mic lost mid-session is reopened; each outage is reported once; output is one continuous stream of 60 ms Opus packets, paced in real time. | PASS |
 | `test_offline_map.py` | 2 | P1 serves the offline map folder at `/maps`, registered before the dashboard's `/` so it isn't swallowed; with no map folder no route is added and nothing changes. | PASS |
 | `test_gps_track.py` | 4 | Ground distance is computed correctly; GPS drift of up to ~8 m around a stationary robot adds no track points; driving adds a point about every 10 m; a reading without a fix adds nothing. | PASS |
-| **Total** | **111** | | **111 / 111 PASS** |
+| `test_telemetry_log.py` | 5 | The telemetry CSV starts with its column header; the header is not duplicated when the log is reopened; a logrotate copytruncate (which empties the file under the open handle) causes the header to be re-emitted, so a rotated log describes its own columns; rows stay aligned with that header; a disabled log writes nothing. | PASS |
+| **Total** | **116** | | **116 / 116 PASS** |
 
 **Limitation:** these tests use simulated hardware. They prove the software
 logic, not the real motors, sensors or radio link, which are covered in the
@@ -203,7 +204,7 @@ List every failure or unexpected behaviour found during testing.
 
 | Area | Tests | Passed | Failed | Not run |
 |---|---|---|---|---|
-| Unit tests | 106 | 106 | 0 | 0 |
+| Unit tests | 116 | 116 | 0 | 0 |
 | Hardware | 15 | | | |
 | Integration | 21 | | | |
 | Network | 8 | | | |

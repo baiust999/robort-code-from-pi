@@ -1,10 +1,34 @@
 # logrotate config for robot logs, Section 8.13.8.1.
-# Install to /etc/logrotate.d/robot on the Pi.
+# Install to /etc/logrotate.d/robot on the Pi (deploy/install.sh stage 7).
+#
+# Two log directories are covered because there are two supported layouts, and
+# pi/common/config.py:Paths.from_env picks between them by ROBOT_ROOT:
+#
+#   ROBOT_ROOT=/                     -> /var/log/robot        (packaged install
+#                                       under /opt/robot, what install.sh sets up)
+#   ROBOT_ROOT=/home/pi/robot/var    -> /home/pi/robot/var/log (service run
+#                                       straight from a git checkout)
+#
+# Both stanzas carry `missingok`, so whichever layout is not in use is skipped.
+# If the checkout lives somewhere other than /home/pi/robot, change the paths
+# in the second group of stanzas to match, including the `su` owner.
+#
+# File names must match what the code actually opens: p1_events.log,
+# p2_events.log, p3_events.log and telemetry.log. Earlier revisions of this
+# file named watchdog.log, fault.log and session.log, which nothing writes, so
+# the real logs were never rotated and grew without limit.
+#
+# `maxsize`, not `size`: a `size` directive makes logrotate ignore `daily` and
+# `weekly` altogether, so a log below the threshold would never rotate on
+# schedule. `maxsize` keeps the interval and adds an early rotation when the
+# file grows past the limit first.
+
+# --- Packaged install: /var/log/robot, root-owned ---------------------------
 
 # High-frequency log: telemetry.log
 /var/log/robot/telemetry.log {
     daily
-    size 50M
+    maxsize 50M
     rotate 7
     compress
     delaycompress
@@ -13,13 +37,12 @@
     copytruncate
 }
 
-# Medium-frequency logs: watchdog, p1_events, p2_events, fault
-/var/log/robot/watchdog.log
+# Medium-frequency logs: the three per-process event logs
 /var/log/robot/p1_events.log
 /var/log/robot/p2_events.log
-/var/log/robot/fault.log {
+/var/log/robot/p3_events.log {
     weekly
-    size 10M
+    maxsize 10M
     rotate 8
     compress
     delaycompress
@@ -28,11 +51,34 @@
     copytruncate
 }
 
-# Session log: smaller, retain longer
-/var/log/robot/session.log {
-    monthly
-    size 5M
-    rotate 12
+# --- Run from a git checkout: /home/pi/robot/var/log, owned by pi ----------
+#
+# `su pi pi` is required: the directory belongs to an unprivileged user, and
+# without it the rotated copies would be created as root while the service
+# writing them is not.
+
+/home/pi/robot/var/log/telemetry.log {
+    su pi pi
+    daily
+    maxsize 50M
+    rotate 7
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+}
+
+/home/pi/robot/var/log/p1_events.log
+/home/pi/robot/var/log/p2_events.log
+/home/pi/robot/var/log/p3_events.log
+# p3_console.log is not written by the current code; it is left here so a
+# stray redirect of P3's stdout cannot grow unbounded either.
+/home/pi/robot/var/log/p3_console.log {
+    su pi pi
+    weekly
+    maxsize 10M
+    rotate 8
     compress
     delaycompress
     missingok
@@ -42,5 +88,5 @@
 
 # Archive cleanup for GPS tracks and exports is not handled by logrotate;
 # run via cron instead (see install.sh):
-#   find /var/log/robot/gps_track/ -name '*.geojson' -mtime +90 -delete
-#   find /var/log/robot/exports/  -name '*.csv'     -mtime +90 -delete
+#   find <log_dir>/gps_track/ -name '*.geojson' -mtime +90 -delete
+#   find <log_dir>/exports/   -name '*.csv'     -mtime +90 -delete
