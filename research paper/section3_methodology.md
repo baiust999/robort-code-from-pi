@@ -56,7 +56,7 @@ P2 and P3 take no part in this loop: media never carries a drive or stop command
 
 ## 3.2 Network Configuration
 
-The two transports in Figure 1 run over one local network, which also makes the robot independent of the internet: no part of the deployment evaluated here reaches outside the Wi-Fi cell. The Pi and the operator laptop join one Wi-Fi router on a single Layer 2 segment, with no routing and no address translation between them [VERIFY 802.11 standard, band and channel]. The Pi uses its on-board radio (Figure 5a) and the router reserves a fixed address for it [VERIFY subnet; the default configuration assumes 192.168.10.0/24 with the router at .1]; the operator opens the dashboard from that address. The router stays with the operator at the staging point, so the robot works within one radio cell, and extending that reach with a repeater or a second radio is outside the scope of this work (Section 6.3). Table 1 lists the services on the Pi and Table 1a the load and the timing the network has to carry.
+The two transports in Figure 1 run over one local network, which also makes the robot independent of the internet: no part of the deployment evaluated here reaches outside the Wi-Fi cell. The Pi and the operator laptop join the existing Wi-Fi network, an 802.11n cell on the 2.4 GHz band on channel 10 (2457 MHz) with a 20 MHz operating width. Both hold addresses in the same /24 subnet, so traffic between them is neither routed nor address-translated, which is what lets the media path of Section 3.9.2 rely on host candidates alone. The Pi uses its on-board radio (Figure 5a) and takes its address from the router by DHCP: in the deployment measured here it held 192.168.0.105 in 192.168.0.0/24 with the router at 192.168.0.1, on a lease rather than a reservation, so the operator reads the current address off the Pi (ip addr show wlan0) before opening the dashboard. The project supplies no network configuration of its own, neither an access point nor a DHCP reservation nor a static address, so the subnet is whatever the router hands out. The router stays with the operator at the staging point, so the robot works within one radio cell, and extending that reach with a repeater or a second radio is outside the scope of this work (Section 6.3). Table 1 lists the services on the Pi and Table 1a the load and the timing the network has to carry.
 
 **Table 1.** Network services on the Pi.
 
@@ -76,14 +76,14 @@ Control and media use different transports for different reasons. Commands and t
 | Video, robot to operator | 640x480 at 10 fps, 500 kbps target | Section 3.9.1, Table 12 |
 | Audio, each direction | Opus 32 kbps, 60 ms packets | Table 14 |
 | Telemetry snapshots | 5 per second, one JSON object each | Section 3.6.2 |
-| Commands and heartbeats | At most 2 per second | Sections 3.5.1 and 3.6 |
+| Commands and heartbeats | Heartbeat every 500 ms from the controller; one drive command per press and per release; servo commands are not rate limited | Sections 3.5.1 and 3.6 |
 | Steady-state load per operator | Under 1 Mbit/s | Sum of the rows above |
-| Hard delivery deadline | 2000 ms, that is three missed heartbeats at 500 ms | Dead-man, Section 3.5.2 |
-| Operator-side link timeout | 3000 ms without telemetry gives mission state STOP | Table 10 |
+| Hard delivery deadline | 2000 ms since the last arming command | Dead-man, Section 3.5.2 |
+| Operator-side link timeout | 3000 ms without telemetry gives mission state STOP, counted in 500 ms steps | Table 10 |
 | Socket keep-alive | Ping every 20 s, 20 s timeout | P1 WebSocket server |
 | Reconnect back-off | 1 s, doubling, capped at 30 s | Section 3.7.2 |
 
-The load stays well inside the capacity of an ordinary indoor Wi-Fi link, so the network is sized by latency and loss rather than by throughput; the dashboard bundle and the offline map tiles are one-off transfers at the start of a session. The keep-alive in Table 1a reclaims a silently dead socket only after up to 40 s, so liveness for safety is not enforced at this layer but by the dead-man at 2000 ms and by the dashboard's 3000 ms telemetry timeout; the keep-alive only frees the socket. Browsers allow microphone and camera capture only in a secure context, so the operator's browser must treat the Pi's address as secure for push-to-talk and camera; images and text work without it.
+The load stays well inside the capacity of an ordinary indoor Wi-Fi link: at the staging point the link negotiated 58.5 Mbit/s receive and 72.2 Mbit/s transmit at a signal level of about -47 dBm, more than fifty times the steady-state demand, so the network is sized by latency and loss rather than by throughput, and Section 5.3 reports how both degrade with distance; the dashboard bundle and the offline map tiles are one-off transfers at the start of a session. The keep-alive in Table 1a reclaims a silently dead socket only after up to 40 s, so liveness for safety is not enforced at this layer but by the dead-man at 2000 ms and by the dashboard's 3000 ms telemetry timeout; the keep-alive only frees the socket. Browsers allow microphone and camera capture only in a secure context, and neither port carries TLS (Table 1), so the operator's browser has to be told to treat the Pi's origin as trusted, through the insecure-origin exception recorded in the operator manual. Push-to-talk and the operator camera depend on that manual step, which is a deployment workaround rather than a configured transport security measure (Section 6.3); images and text work without it.
 
 ## 3.3 Hardware Platform
 
@@ -112,18 +112,36 @@ The hardware is chosen so that the lowest tier can stop the robot by itself: the
 
 ```mermaid
 flowchart LR
-  BAT["4S battery + 40 A BMS"] ==> DRV["2 x BTS7960"] ==> MOT["4 x DC motors"]
-  BAT ==> B5["Buck 5 V"] ==> SV["Pan and tilt servos"]
-  BAT ==> B8["Buck 8 V"] ==> UNO["Arduino UNO"]
-  UNO == "5 V, GND" ==> SEN["HC-SR04, DHT11, MQ-136"]
-  PB["USB power bank"] ==> PI["Raspberry Pi 4"]
+  BAT["4S battery<br/>+ 40 A BMS"]
+  PB["USB power bank"]
+  GPS["NEO-6M GPS"]
+  CAM["USB webcam + mic"]
+  B8["Buck 8 V"]
+  B5["Buck 5 V"]
+  PI["Raspberry Pi 4"]
+  UNO["Arduino UNO"]
+  SCR["Display + speaker"]
+  DRV["2 x BTS7960"]
+  SV["Pan and tilt servos"]
+  SEN["HC-SR04, DHT11, MQ-136"]
+  MOT["4 x DC motors"]
+
+  BAT ==> B8
+  BAT ==> B5
+  BAT == "motor supply" ==> DRV
+  B8 == "8 V, barrel jack" ==> UNO
+  B5 == "5 V" ==> SV
+  UNO == "5 V, GND" ==> SEN
+  PB == "5 V, USB-C" ==> PI
+  DRV ==> MOT
+
+  GPS -- "UART 9600 baud" --> PI
+  CAM -- "USB" --> PI
+  PI -- "HDMI, 3.5 mm" --> SCR
+  PI <-- "USB serial 115200 baud" --> UNO
   UNO -- "PWM, enable" --> DRV
   UNO -- "servo pulses" --> SV
-  SEN -- "echo, data, analog" --> UNO
-  PI <-- "USB serial" --> UNO
-  GPS["NEO-6M GPS"] -- "UART" --> PI
-  CAM["USB webcam + mic"] -- "USB" --> PI
-  PI -- "HDMI, 3.5 mm" --> SCR["Display + speaker"]
+  UNO <-- "trigger, readings" --> SEN
 ```
 
 **Figure 3.** Hardware interconnection and power distribution. Thick lines carry power; thin lines carry signals.
@@ -224,20 +242,28 @@ The Arduino pins used by the firmware are shown in Figure 5 and detailed in Tabl
 ```mermaid
 flowchart LR
   UNO["Arduino UNO"]
-  UNO -- "D5, D6" --> LD["Left BTS7960"]
-  UNO -- "D9, D10" --> RD["Right BTS7960"]
-  UNO -- "D4 enable" --> LD
-  UNO -- "D4 enable" --> RD
-  UNO -- "D11" --> PAN["Pan servo"]
-  UNO -- "D3" --> TILT["Tilt servo"]
-  UNO -- "D7 trigger" --> US["HC-SR04"]
-  US -- "D8 echo" --> UNO
-  DHT["DHT11"] -- "A2" --> UNO
-  MQ["MQ-136"] -- "A3" --> UNO
-  UNO -- "USB, D0/D1" --> PI["Raspberry Pi"]
+  LD["Left BTS7960"]
+  RD["Right BTS7960"]
+  PAN["Pan servo"]
+  TILT["Tilt servo"]
+  US["HC-SR04"]
+  DHT["DHT11"]
+  MQ["MQ-136"]
+  PI["Raspberry Pi"]
+
+  UNO -- "D5, D6 PWM out" --> LD
+  UNO -- "D9, D10 PWM out" --> RD
+  UNO -- "D4 enable out" --> LD
+  UNO -- "D4 enable out" --> RD
+  UNO -- "D11 pulse out" --> PAN
+  UNO -- "D3 pulse out" --> TILT
+  UNO <-- "D7 trigger out, D8 echo in" --> US
+  UNO <-- "A2 single-wire data" --> DHT
+  UNO -- "A3 analog in" --> MQ
+  UNO <-- "D0, D1 USB serial" --> PI
 ```
 
-**Figure 5.** Arduino UNO pin diagram.
+**Figure 5.** Arduino UNO pin diagram. Each line shows which pin serves which device, labelled with the pin and its direction; Table 3 gives the full pin map.
 
 **Table 3.** Arduino UNO pin map.
 
