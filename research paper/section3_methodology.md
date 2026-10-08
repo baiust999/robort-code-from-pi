@@ -56,7 +56,7 @@ P2 and P3 take no part in this loop: media never carries a drive or stop command
 
 ## 3.2 Network Configuration
 
-The two transports in Figure 1 run over one local network, which also makes the robot independent of the internet: no part of the deployment evaluated here reaches outside the Wi-Fi cell. The Pi and the operator laptop join the existing Wi-Fi network, an 802.11n cell on the 2.4 GHz band on channel 10 (2457 MHz) with a 20 MHz operating width. Both hold addresses in the same /24 subnet, so traffic between them is neither routed nor address-translated, which is what lets the media path of Section 3.9.2 rely on host candidates alone. The Pi uses its on-board radio (Figure 5a) and takes its address from the router by DHCP: in the deployment measured here it held 192.168.0.105 in 192.168.0.0/24 with the router at 192.168.0.1, on a lease rather than a reservation, so the operator reads the current address off the Pi (ip addr show wlan0) before opening the dashboard. The project supplies no network configuration of its own, neither an access point nor a DHCP reservation nor a static address, so the subnet is whatever the router hands out. The router stays with the operator at the staging point, so the robot works within one radio cell, and extending that reach with a repeater or a second radio is outside the scope of this work (Section 6.3). Table 1 lists the services on the Pi and Table 1a the load and the timing the network has to carry.
+The two transports in Figure 1 run over one local network, which also makes the robot independent of the internet: no part of the deployment evaluated here reaches outside the Wi-Fi cell. The Pi and the operator laptop join the existing Wi-Fi network, an 802.11n cell on the 2.4 GHz band on channel 10 (2457 MHz) with a 20 MHz operating width. Both hold addresses in the same /24 subnet, so traffic between them is neither routed nor address-translated, which is what lets the media path of Section 3.9.2 rely on host candidates alone. The Pi uses its on-board radio (Figure 5) and takes its address from the router by DHCP: in the deployment measured here it held 192.168.0.105 in 192.168.0.0/24 with the router at 192.168.0.1, on a lease rather than a reservation, so the operator reads the current address off the Pi (ip addr show wlan0) before opening the dashboard. The project supplies no network configuration of its own, neither an access point nor a DHCP reservation nor a static address, so the subnet is whatever the router hands out. The router stays with the operator at the staging point, so the robot works within one radio cell, and extending that reach with a repeater or a second radio is outside the scope of this work (Section 6.3). Table 1 lists the services on the Pi and Table 1a the load and the timing the network has to carry.
 
 **Table 1.** Network services on the Pi.
 
@@ -151,98 +151,7 @@ flowchart LR
 
 **Figure 3.** Hardware interconnection and power distribution. Thick lines carry power; thin lines carry signals, labelled with the interface and its direction. The Pi and the Arduino are the two hubs, and the separate motor and Pi supplies are grouped on the left.
 
-Figure 4 is the full wiring diagram of the robot.
-
-```mermaid
-flowchart LR
-  subgraph PWR["Power"]
-    BAT["4S battery<br/>14.8 V nom. / 16.8 V full"]
-    BMS["4S 40 A BMS"]
-    BK5["Buck 5 V"]
-    BK8["Buck 8 V"]
-    PB["USB power bank"]
-  end
-  subgraph UNO["Arduino UNO"]
-    D3["D3"]
-    D4["D4"]
-    D5["D5"]
-    D6["D6"]
-    D7["D7"]
-    D8["D8"]
-    D9["D9"]
-    D10["D10"]
-    D11["D11"]
-    A2["A2"]
-    A3["A3"]
-    JACK["Barrel jack"]
-    V5["5 V, GND"]
-    UUSB["USB-B"]
-  end
-  subgraph DRV["Motor drivers"]
-    BL["BTS7960 left<br/>RPWM LPWM EN"]
-    BR["BTS7960 right<br/>RPWM LPWM EN"]
-  end
-  ML["Left motors x2"]
-  MR["Right motors x2"]
-  SP["Pan servo"]
-  ST["Tilt servo"]
-  US["HC-SR04"]
-  DHT["DHT11"]
-  MQ["MQ-136"]
-  subgraph PI["Raspberry Pi 4"]
-    PUSB["USB-A"]
-    G14["GPIO14 TXD, pin 8"]
-    G15["GPIO15 RXD, pin 10"]
-    P33["3.3 V pin 1, GND pin 6"]
-    HDMI["micro-HDMI 0"]
-    AJ["3.5 mm jack"]
-    PIN["USB-C"]
-  end
-  GPS["NEO-6M GPS"]
-  CAM["USB webcam<br/>with microphone"]
-  LCD["7-inch display<br/>1024x600"]
-  SPK["Speaker"]
-
-  BAT ==> BMS
-  BMS ==> BK8
-  BMS ==> BK5
-  BMS == "motor supply" ==> BL
-  BMS == "motor supply" ==> BR
-  BK8 ==> JACK
-  BK5 ==> SP
-  BK5 ==> ST
-  V5 ==> US
-  V5 ==> DHT
-  V5 ==> MQ
-  PB ==> PIN
-  P33 ==> GPS
-  BL ==> ML
-  BR ==> MR
-
-  D5 -- "PWM fwd out" --> BL
-  D6 -- "PWM rev out" --> BL
-  D9 -- "PWM fwd out" --> BR
-  D10 -- "PWM rev out" --> BR
-  D4 -- "enable out" --> BL
-  D4 -- "enable out" --> BR
-  D11 -- "pulse out" --> SP
-  D3 -- "pulse out" --> ST
-  D7 -- "trigger out" --> US
-  D8 -- "echo in" --> US
-  A2 <-- "single-wire data" --> DHT
-  A3 -- "analog in" --> MQ
-
-  UUSB <-- "USB serial, 115200 baud" --> PUSB
-  PUSB -- "USB video and audio in" --> CAM
-  G14 -- "TXD to GPS RX, 9600 baud" --> GPS
-  G15 -- "RXD from GPS TX, 9600 baud" --> GPS
-  HDMI -- "video out" --> LCD
-  AJ -- "audio out" --> SPK
-```
-
-**Figure 4.** Detailed hardware wiring diagram. Thick lines carry power; thin lines carry signals, labelled with the signal and its direction. Each line runs from the pin or port to the device it serves, so arrowheads mark the connection rather than the signal direction. All grounds are common; the Pi shares ground with the Arduino through the USB cable.
-
-The Arduino pins used by the firmware are shown in Figure 5 and detailed in Table 3. Each BTS7960 drives forward on one PWM input and reverse on the other, with only one active at a time; both drivers share one enable line, so one output disables all propulsion.
+The Arduino pins used by the firmware are shown in Figure 4 and detailed in Table 3. Each BTS7960 drives forward on one PWM input and reverse on the other, with only one active at a time; both drivers share one enable line, so one output disables all propulsion.
 
 ```mermaid
 flowchart LR
@@ -256,19 +165,19 @@ flowchart LR
   MQ["MQ-136"]
   PI["Raspberry Pi"]
 
-  UNO -- "D5, D6 PWM out" --> LD
-  UNO -- "D9, D10 PWM out" --> RD
-  UNO -- "D4 enable out" --> LD
-  UNO -- "D4 enable out" --> RD
-  UNO -- "D11 pulse out" --> PAN
-  UNO -- "D3 pulse out" --> TILT
-  UNO <-- "D7 trigger out, D8 echo in" --> US
-  UNO <-- "A2 single-wire data" --> DHT
-  UNO -- "A3 analog in" --> MQ
-  UNO <-- "D0, D1 USB serial" --> PI
+  UNO -- "D5 forward, D6 reverse: PWM out" --> LD
+  UNO -- "D9 forward, D10 reverse: PWM out" --> RD
+  UNO -- "D4: enable out" --> LD
+  UNO -- "D4: enable out" --> RD
+  UNO -- "D11: servo pulse out" --> PAN
+  UNO -- "D3: servo pulse out" --> TILT
+  UNO -- "D7: trigger out / D8: echo in" --> US
+  UNO -- "A2: data out, then reading in" --> DHT
+  UNO -- "A3: analog reading in" --> MQ
+  UNO -- "D0: TX out / D1: RX in" --> PI
 ```
 
-**Figure 5.** Arduino UNO pin diagram. Each line shows which pin serves which device, labelled with the pin and its direction; Table 3 gives the full pin map.
+**Figure 4.** Arduino UNO pin diagram. Every line is drawn from the Arduino outwards to the device it serves, so an arrowhead marks the connection and not the signal direction. Direction is given in the label instead, read from the Arduino's side: "out" leaves the pin and "in" arrives at it, and a label with both names the outgoing pin first. Table 3 gives the full pin map.
 
 **Table 3.** Arduino UNO pin map.
 
@@ -290,7 +199,7 @@ flowchart LR
 | Barrel jack | Power input | 8 V from buck converter | - |
 | 5 V, GND | Power output | Supply for HC-SR04, DHT11 and MQ-136 | Shared by the three sensors |
 
-The Pi ports and GPIO header pins used by the project are shown in Figure 5a and listed in Table 4.
+The Pi ports and GPIO header pins used by the project are shown in Figure 5 and listed in Table 4.
 
 ```mermaid
 flowchart LR
@@ -303,17 +212,17 @@ flowchart LR
   RT["Wi-Fi router"]
   PWR["USB power bank"]
 
-  PI <-- "USB-A, USB serial 115200 baud" --> UNO
-  PI -- "USB-A, video and audio capture in" --> CAM
-  PI == "pin 1 3.3 V, pin 6 GND" ==> GPS
-  PI <-- "pin 8 GPIO14 TXD, pin 10 GPIO15 RXD, 9600 baud" --> GPS
-  PI -- "micro-HDMI 0 out" --> LCD
-  PI -- "3.5 mm jack out" --> SPK
-  PI <-- "on-board Wi-Fi, control and media traffic" --> RT
-  PI -- "USB-C, Pi supply in" --> PWR
+  PI -- "USB-A: commands out / telemetry in, 115200 baud" --> UNO
+  PI -- "USB-A: video and audio in" --> CAM
+  PI == "pin 1 3.3 V, pin 6 GND: supply out" ==> GPS
+  PI -- "pin 8 GPIO14 TXD out / pin 10 GPIO15 RXD in, 9600 baud" --> GPS
+  PI -- "micro-HDMI 0: video out" --> LCD
+  PI -- "3.5 mm jack: audio out" --> SPK
+  PI -- "on-board Wi-Fi: telemetry and media out / commands in" --> RT
+  PI == "USB-C: 5 V supply in" ==> PWR
 ```
 
-**Figure 5a.** Raspberry Pi 4 port and GPIO diagram. Each line shows which port or header pin serves which device, labelled with the interface and its direction; Table 4 gives the full connection list. The thick line carries power.
+**Figure 5.** Raspberry Pi 4 port and GPIO diagram. Every line is drawn from the Pi outwards to the device it serves, so an arrowhead marks the connection and not the direction. Direction is given in the label instead, read from the Pi's side: "out" leaves the port or pin and "in" arrives at it. The thick lines carry power, and the Pi's own supply arrives on USB-C. Table 4 gives the full connection list.
 
 The GPS uses the Pi's primary UART with the serial login console disabled.
 
