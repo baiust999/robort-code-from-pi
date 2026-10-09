@@ -13,7 +13,9 @@ const robotIcon = L.divIcon({
   iconAnchor: [7, 7],
 });
 
-const DEFAULT_CENTER: [number, number] = [23.8103, 90.4125];
+// Center of the offline area.pmtiles bounds, so the dashboard opens on the
+// offline map area before a GPS fix arrives.
+const DEFAULT_CENTER: [number, number] = [23.46, 91.1495];
 
 // Mirrors MIN_TRACK_STEP_M in pi/p1_control/gps_reader.py.
 const MIN_TRACK_STEP_M = 10;
