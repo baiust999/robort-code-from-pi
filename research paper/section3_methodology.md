@@ -316,10 +316,9 @@ stateDiagram-v2
   ACTIVE --> PANIC: dead-man expiry
   PANIC --> READY: commands resume
   ESTOP --> READY: S
-  note right of ESTOP: Reserved latched operator-stop state; defined in the firmware state machine and reported as 3, but not entered in the current build, where the emergency stop is an ordinary S (Table 7).
 ```
 
-**Figure 8.** Firmware operating modes.
+**Figure 8.** Firmware operating modes. ESTOP is a reserved latched operator-stop state: it is defined in the firmware state machine and reported as 3, but is not entered in the current build, where the emergency stop is an ordinary S (Table 7).
 
 ### 3.5.1 Task Scheduling and Command Validation
 
