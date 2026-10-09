@@ -187,7 +187,7 @@ void CommandParser::execute(char opcode, long value, unsigned long now) {
 
     case CMD_STOP:
       g_motors.stop();
-      /* Clear operator e-stop but leave hard faults (gas etc.) latched. */
+      /* Clear operator e-stop but leave hard faults (dead-man etc.) latched. */
       if (g_state.mode() == MODE_ESTOP) {
         g_state.clearFault();
       }

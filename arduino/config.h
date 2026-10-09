@@ -88,7 +88,7 @@
  * ======================================================================== */
 #define ULTRASONIC_MAX_CM     400    /* HC-SR04 practical max range          */
 #define ULTRASONIC_TIMEOUT_US 25000UL /* pulseIn timeout (~4.2 m)            */
-#define GAS_ALARM_THRESHOLD   1000   /* raw ADC value -> gas panic; firmware-independent hard stop, above dashboard warn/crit (450/600) */
+#define GAS_ALARM_THRESHOLD   1000   /* raw ADC value -> GALM telemetry flag only; does NOT stop the motors, above dashboard warn/crit (450/600) */
 
 /* ===========================================================================
  * STATUS LED

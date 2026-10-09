@@ -25,7 +25,7 @@ enum RobotMode {
 enum FaultReason {
   FAULT_NONE = 0,
   FAULT_DEADMAN,       /* comms timeout                               */
-  FAULT_GAS,           /* MQ-136 over threshold                       */
+  FAULT_GAS,           /* unused: a gas alarm no longer faults        */
   FAULT_OPERATOR_ESTOP /* operator issued S/emergency                 */
 };
 

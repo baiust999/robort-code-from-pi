@@ -68,20 +68,12 @@ static void taskHeartbeat() {
 }
 
 /* ---------------------------------------------------------------------------
- * Safety supervisor: dead-man timer, gas panic, and fault
- * recovery. Runs frequently (10 ms) so faults are caught promptly.
+ * Safety supervisor: dead-man timer and fault recovery. Runs frequently
+ * (10 ms) so faults are caught promptly. A gas alarm is reported in
+ * telemetry only and never stops the motors.
  * ------------------------------------------------------------------------- */
 static void taskSafety() {
   unsigned long now = millis();
-  const SensorData &s = g_state.sensors();
-
-  /* --- Gas panic (highest priority, latching) -------------------------- */
-  if (s.gasAlarm && g_state.fault() != FAULT_GAS) {
-    g_state.setFault(FAULT_GAS);
-    g_motors.emergencyStop();
-    g_telemetry.sendPanic();
-    return;
-  }
 
   /* --- Dead-man timer: comms loss -> fail-safe shutdown ---------------- */
   if ((unsigned long)(now - g_state.lastCommandTime()) >= DEADMAN_TIMEOUT_MS) {
@@ -101,13 +93,6 @@ static void taskSafety() {
     g_state.clearFault();
     g_motors.enableDrivers(true);
     g_telemetry.sendEvent("DEADMAN_CLEARED");
-  }
-
-  /* --- Recovery: gas alarm cleared ------------------------------------- */
-  if (g_state.fault() == FAULT_GAS && !s.gasAlarm) {
-    g_state.clearFault();
-    g_motors.enableDrivers(true);
-    g_telemetry.sendEvent("GAS_CLEARED");
   }
 }
 
