@@ -195,7 +195,7 @@ flowchart LR
 | D11 | Output | Pan servo pulse | ServoTimer2Plus library on Timer2, 0-180 deg |
 | D13 | Digital output | On-board status LED | Toggles every 1000 ms |
 | A2 | Digital I/O, pull-up | DHT11 single-wire data | Read every 2000 ms, checksum verified |
-| A3 | Analog input | MQ-136 output | 10-bit ADC; gas stop at >= 1000 |
+| A3 | Analog input | MQ-136 output | 10-bit ADC; raw value reported in telemetry |
 | Barrel jack | Power input | 8 V from buck converter | - |
 | 5 V, GND | Power output | Supply for HC-SR04, DHT11 and MQ-136 | Shared by the three sensors |
 
@@ -312,9 +312,9 @@ stateDiagram-v2
   BOOT --> READY: outputs safe, drivers enabled
   READY --> ACTIVE: valid F, R, L or G
   ACTIVE --> READY: S
-  READY --> PANIC: dead-man expiry or gas alarm
-  ACTIVE --> PANIC: dead-man expiry or gas alarm
-  PANIC --> READY: commands resume or gas clears
+  READY --> PANIC: dead-man expiry
+  ACTIVE --> PANIC: dead-man expiry
+  PANIC --> READY: commands resume
   ESTOP --> READY: S
   note right of ESTOP: Reserved latched operator-stop state; defined in the firmware state machine and reported as 3, but not entered in the current build, where the emergency stop is an ordinary S (Table 7).
 ```
@@ -330,7 +330,7 @@ A cooperative scheduler runs the periodic tasks in Table 6 from the main loop, w
 | Task | Period | Work |
 |---|---|---|
 | Motor service | 10 ms | Ramp PWM toward target by 15 units per tick |
-| Safety supervisor | 10 ms | Dead-man and gas checks, fault recovery |
+| Safety supervisor | 10 ms | Dead-man check and fault recovery |
 | Fast sensors | 50 ms | HC-SR04 range (25 ms echo timeout) |
 | Slow sensors | 2000 ms | DHT11 and MQ-136 |
 | Telemetry | 500 ms | One 8-field CSV line |
@@ -382,11 +382,11 @@ sequenceDiagram
 
 **Figure 10.** Dead-man trip and recovery.
 
-### 3.5.3 Redundant Stop Paths and Gas-Triggered Stop
+### 3.5.3 Redundant Stop Paths and Gas Alarm Reporting
 
-Table 7 lists every path that stops the motors. The gas stop fires when the raw MQ-136 value reaches 1000; motion stays rejected until a later reading falls below it, and the dashboard warns earlier, at 450 (warning) and 600 (critical).
+Table 7 lists every path that stops the motors. The firmware's only automatic stop is the dead-man; every other row is an operator action or a P1 action, and the firmware itself never stops the motors on a sensor reading. The MQ-136 value is published in every telemetry frame as a raw ADC number, and the firmware sets a GALM flag in the heartbeat line once that reading reaches 1000, but it does not use either value to stop the motors or to reject motion; the alarm is advisory, and the operator may issue an S from the dashboard in response.
 
-These dashboard warning and critical levels are not fixed in the code. P1 reads them from an override file, /etc/robot/thresholds.json, at start-up, falling back to built-in defaults when the file is absent, and serves the active set to every dashboard over the session endpoint (Section 3.6) so all operators apply the same limits. The firmware gas stop at 1000 is independent of these display thresholds and cannot be changed from the dashboard.
+The dashboard surfaces the reading at two levels below the firmware flag, at 450 (warning) and 600 (critical). These levels are not fixed in the code. P1 reads them from an override file, /etc/robot/thresholds.json, at start-up, falling back to built-in defaults when the file is absent, and serves the active set to every dashboard over the session endpoint (Section 3.6) so all operators apply the same limits.
 
 **Table 7.** Stop paths.
 
@@ -399,7 +399,6 @@ These dashboard warning and critical levels are not fixed in the code. P1 reads 
 | P1 start-up | P1 | 3 x S, 200 ms apart | Before any other command |
 | P1 shutdown | P1 | S | Before the port closes |
 | Command flow stops | Firmware | PWM 0, drivers disabled | $t_{stop}$ above |
-| Gas value >= 1000 | Firmware | PWM 0, drivers disabled, motion rejected | Gas sampled every 2000 ms |
 
 ## 3.6 P1 Control Server and Telemetry
 
@@ -475,7 +474,7 @@ flowchart TB
   L4["systemd: restarts P3 after 5 s"]
   L3["P3: respawns P1 and P2, health checks"]
   L2["P1: lock, command check, stop on disconnect"]
-  L1["Firmware: validation, dead-man 2000 ms, gas stop"]
+  L1["Firmware: validation, dead-man 2000 ms"]
   M["Motors stopped"]
   L5 --> L4 --> L3 --> L2 --> L1 --> M
 ```
