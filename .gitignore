@@ -26,3 +26,12 @@ dist-ssr/
 # Claude Code
 .claude/settings.local.json
 .claude/*.tmp*
+
+# LaTeX build artifacts
+*.aux
+*.log
+*.out
+*.bbl
+*.blg
+*.toc
+research paper/figures/

@@ -17,11 +17,11 @@
 
 **2. Related Work**
 
-- 2.1 Teleoperated Search-and-Rescue Robots
-- 2.2 Human-Robot Interaction with Trapped Victims
-- 2.3 Real-Time Video and Audio Streaming for Teleoperation
-- 2.4 Fail-Safe and Fault-Tolerant Architectures for Mobile Robots
-- 2.5 Low-Cost Embedded Platforms for Field Robotics
+- 2.1 Teleoperated Search-and-Rescue Robots \cite{casper2003,liu2013,daun2023,megalingam2022}
+- 2.2 Human-Robot Interaction with Trapped Victims \cite{akgun2023,chitikena2023}
+- 2.3 Real-Time Video and Audio Streaming for Teleoperation \cite{shi2025webrtc,valin2012}
+- 2.4 Fail-Safe and Fault-Tolerant Architectures for Mobile Robots \cite{pont2001,schrick2025,koczi2025}
+- 2.5 Low-Cost Embedded Platforms for Field Robotics \cite{verano2022,ublox_neo6}
 - 2.6 Research Gap
 
 **3. Methodology**
