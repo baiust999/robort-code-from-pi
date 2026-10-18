@@ -18,14 +18,14 @@ enum RobotMode {
   MODE_READY,      /* idle, motors stopped, awaiting commands         */
   MODE_ACTIVE,     /* executing a motion command                      */
   MODE_ESTOP,      /* emergency stop latched (operator commanded)     */
-  MODE_PANIC       /* fault detected (gas / comms loss / sensor)      */
+  MODE_PANIC       /* fault detected (comms loss / dead-man)          */
 };
 
-/* Reason codes describing why the robot entered a fault/stop state. */
+/* Reason codes describing why the robot entered a fault/stop state.
+ * Note: a gas alarm is advisory only and never raises a fault here. */
 enum FaultReason {
   FAULT_NONE = 0,
   FAULT_DEADMAN,       /* comms timeout                               */
-  FAULT_GAS,           /* unused: a gas alarm no longer faults        */
   FAULT_OPERATOR_ESTOP /* operator issued S/emergency                 */
 };
 

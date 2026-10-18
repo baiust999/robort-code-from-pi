@@ -33,7 +33,7 @@
 - 3.5 Real-Time Firmware and Fail-Safe Control
   - 3.5.1 Task Scheduling and Command Validation
   - 3.5.2 Dead-Man Timer and Stop-Time Guarantee
-  - 3.5.3 Redundant Stop Paths and Gas-Triggered Stop
+  - 3.5.3 Redundant Stop Paths
 - 3.6 P1 Control Server and Telemetry
   - 3.6.1 Safe Startup and Single-Writer Serial Link
   - 3.6.2 Telemetry Pipeline and Session Resume

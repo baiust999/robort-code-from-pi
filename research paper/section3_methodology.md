@@ -395,11 +395,9 @@ sequenceDiagram
 
 **Figure 10.** Dead-man trip and recovery.
 
-### 3.5.3 Redundant Stop Paths and Gas Alarm Reporting
+### 3.5.3 Redundant Stop Paths
 
-Table 7 lists every path that stops the motors. The firmware's only automatic stop is the dead-man; every other row is an operator action or a P1 action, and the firmware itself never stops the motors on a sensor reading. The MQ-136 is used as a relative change detector, not a calibrated concentration meter: its raw 10-bit ADC value is published in every telemetry frame, and the firmware sets a GALM flag in the heartbeat line once that reading reaches 1000, but it does not use either value to stop the motors or to reject motion. The alarm is advisory, and the operator may issue an S from the dashboard in response. Calibration against a reference gas is out of scope and is listed as a limitation in Section 6.3.
-
-The dashboard surfaces the reading at two levels below the firmware flag, at 450 (warning) and 600 (critical). These two dashboard levels and the firmware's own 1000 GALM flag were chosen empirically rather than derived from a calibration curve. The dashboard levels are not fixed in the code: P1 reads them from an override file, /etc/robot/thresholds.json, at start-up, falling back to built-in defaults when the file is absent, and serves the active set to every dashboard over the session endpoint (Section 3.6) so all operators apply the same limits. A deployment can therefore revise the dashboard thresholds without reflashing; the firmware's 1000 flag is a compile-time constant (GAS_ALARM_THRESHOLD in arduino/config.h) and changing it would require reflashing.
+Table 7 lists every path that stops the motors. The firmware's only automatic stop is the dead-man; every other row is an operator action or a P1 action, and the firmware itself never stops the motors on a sensor reading. The MQ-136 gas sensor is advisory: its reading is published to the operator in telemetry and is not used to stop the motors.
 
 **Table 7.** Stop paths.
 

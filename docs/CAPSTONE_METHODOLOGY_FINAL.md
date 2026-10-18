@@ -331,7 +331,7 @@ loop() — every iteration:
 
 Scheduled tasks (arduino/arduino.ino):
 ├─ taskMotorService    10 ms   ramp PWM toward target (15 steps/tick)
-├─ taskSafety          10 ms   dead-man + gas panic + fault recovery
+├─ taskSafety          10 ms   dead-man + fault recovery
 ├─ taskSensorFast      50 ms   HC-SR04 (pulseIn, ≤ 25 ms timeout)
 ├─ taskSensorSlow    2000 ms   DHT11 (~25 ms bit-banged read) + MQ-136 ADC
 ├─ taskTelemetry      500 ms   CSV telemetry line
@@ -348,8 +348,8 @@ BOOT ──► READY ──(F/R/L/G)──► ACTIVE
            ▲                    │
            └──────── S ─────────┘
 
-any ──► PANIC  (dead-man timeout, or gas raw ADC ≥ 1000)
-PANIC ──► READY (commands resume / gas reading drops below threshold)
+any ──► PANIC  (dead-man timeout)
+PANIC ──► READY (commands resume)
 ```
 
 | Mode | `fw_state` in telemetry | Motion allowed |
@@ -457,7 +457,7 @@ Motor Commands:
 ├─ Right turn (G): left forward, right reverse (pivot)
 └─ Stop (S): targets set to 0, ramps down (≤ 120 ms from 180)
 
-Emergency stop (dead-man or gas panic): PWM set to 0 immediately,
+Emergency stop (dead-man): PWM set to 0 immediately,
 no ramp, and the enable line D4 is driven LOW.
 ```
 
@@ -490,9 +490,9 @@ Thresholds come from `/etc/robot/thresholds.json` (template in
 and `dashboard/src/lib/protocol.ts`. The dashboard's sensor cards use the
 built-in defaults.
 
-**Firmware gas panic:** independently of the dashboard, the firmware stops
-the motors (`PANIC GAS`) when the raw gas reading is **≥ 1000**
-(`GAS_ALARM_THRESHOLD`), and releases them when it falls back.
+**Gas is advisory only.** The firmware sets a `GALM` flag in telemetry when
+the raw gas reading is **≥ 1000** (`GAS_ALARM_THRESHOLD`), but it never faults
+or stops the motors on a gas reading; the operator decides whether to issue `S`.
 
 **Range is advisory only.** The HC-SR04 reading is shown to the operator; it
 never blocks or rejects a motor command.
@@ -676,8 +676,8 @@ count; `fw_state` is 1 ARMED, 2 DRIVING, 3 STOPPED; `uptime_ms` is `millis()`.
 | `NACK` | `NACK F ARG_RANGE` | Each rejected command |
 | `HB` | `HB READY 10345` | Every 1000 ms |
 | `STATUS` | `STATUS;FW=RESCUE-UNO;VER=1.0.0;MODE=READY;FAULT=NONE;UPTIME=…;DIR=S;SPD=0;DIST=124;T=28;H=62;GAS=312;GALM=0;PAN=90;TILT=90` | Reply to `?` |
-| `PANIC` | `PANIC DEADMAN`, `PANIC GAS` | Fault latched |
-| `EVT` | `EVT DEADMAN_CLEARED`, `EVT GAS_CLEARED` | Fault cleared |
+| `PANIC` | `PANIC DEADMAN` | Fault latched |
+| `EVT` | `EVT DEADMAN_CLEARED` | Fault cleared |
 
 P1 parses the CSV lines as telemetry; all other lines are written to the P1
 event log (`PANIC` at CRITICAL level).
@@ -979,7 +979,7 @@ Layer 1: Arduino
 | **WebRTC loss** | Peer connection leaves `connected` | Mission `DRIVING_LIMITED`; video panel shows an error | Operator clicks **Retry video** |
 | **GPS fix loss** | `gps_fix=false` | GPS card "no fix"; marker hidden | Resumes on next fix |
 | **No commands reach the Arduino** | Firmware dead-man (2000 ms) | Motors stop, `PANIC DEADMAN` | Clears when commands resume |
-| **Gas over firmware limit** | Raw ADC ≥ 1000 | Motors stop, `PANIC GAS` | Clears when the reading drops |
+| **Gas over firmware limit** | Raw ADC ≥ 1000 | `GALM` flag set in telemetry (advisory); motors keep running, operator decides | Flag clears when the reading drops |
 | **P1 crash** | P3 `poll()` (1 s) | Respawn after 10 s cooldown | Dashboard reconnects on its own |
 | **P2 crash** | P3 `poll()` (1 s) | Respawn after 10 s cooldown | Operator clicks **Retry video** |
 | **P1/P2 hang** | 3 missed `/health` checks (~30 s) | SIGKILL, then respawn | As above |
@@ -1668,9 +1668,10 @@ Obstacle distance (advisory only, never motor-blocking):
 ├─ Forward, reverse and turn commands: no range check anywhere
 └─ Operator decides whether to stop, reverse, or turn
 
-Gas:
+Gas (advisory only, never motor-blocking):
 ├─ Dashboard: amber ≥ 450, red ≥ 600 (raw ADC)
-└─ Firmware: motors stopped at ≥ 1000 (PANIC GAS), independent of the Pi
+├─ Firmware: GALM flag set at ≥ 1000 (telemetry only, no motor action)
+└─ Operator decides whether to issue S
 
 Transport:
 └─ Mission state → STOP or DRIVING_LIMITED (Section 31)
@@ -1734,8 +1735,9 @@ Operator disconnect (automatic):
   ├─ P1 sends S straight away (if P1 is running)
   └─ Otherwise the dead-man stops the motors within 2 s
 
-Gas panic (automatic):
-  └─ Raw gas ADC ≥ 1000 → PWM cut, drivers disabled, PANIC GAS
+Gas alarm (advisory, not a stop):
+  └─ Raw gas ADC ≥ 1000 → GALM flag in telemetry only; motors keep
+     running, the operator decides whether to issue S
 ```
 
 ---

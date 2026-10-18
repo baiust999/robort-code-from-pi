@@ -74,7 +74,6 @@ const char* RobotState::faultString() const {
   switch (_fault) {
     case FAULT_NONE:           return "NONE";
     case FAULT_DEADMAN:        return "DEADMAN";
-    case FAULT_GAS:            return "GAS";
     case FAULT_OPERATOR_ESTOP: return "ESTOP";
     default:                   return "UNKNOWN";
   }

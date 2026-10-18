@@ -24,7 +24,7 @@ services every subsystem without ever calling `delay()` in the main loop.
   so Timer1 stays free for right-motor PWM on D9/D10.
 - **Sensor suite** — HC-SR04 ultrasonic,
   DHT11 (bit-banged, no external library), MQ-136 gas.
-- **Safety supervisor** — gas panic, emergency stop,
+- **Safety supervisor** — dead-man timeout, emergency stop,
   fault latching and recovery.
 - **Telemetry** — periodic status line, heartbeat, `READY` banner, `PANIC`
   alerts, per-command `ACK` / `NACK`.
@@ -114,7 +114,7 @@ Any valid, well-formed line (including `H` and `?`) refreshes the dead-man timer
 | `HB`      | `HB READY 10345`                                     |
 | `TELEM`   | `TELEM;MODE=READY;FAULT=NONE;DIR=S;SPD=0;DIST=124;…` |
 | `STATUS`  | `STATUS;FW=RESCUE-UNO;VER=1.0.0;MODE=READY;…`        |
-| `PANIC`   | `PANIC GAS`                                          |
+| `PANIC`   | `PANIC DEADMAN`                                      |
 | `EVT`     | `EVT DEADMAN_CLEARED`                                |
 
 Telemetry `TELEM` / `STATUS` fields: `MODE, FAULT, DIR, SPD, DIST,
@@ -130,8 +130,8 @@ BOOT ──► READY ──► ACTIVE
            └──────────┘   (S / stop)
 
   any state ──► ESTOP   (operator stop while faulted)
-  any state ──► PANIC   (gas alarm, dead-man timeout)
-  PANIC/ESTOP ──► READY (fault cleared: comms resumed / gas cleared / S)
+  any state ──► PANIC   (dead-man timeout)
+  PANIC/ESTOP ──► READY (fault cleared: comms resumed / S)
 ```
 
 Motion is permitted only in `READY` / `ACTIVE` with no latched fault.
@@ -143,8 +143,9 @@ Motion is permitted only in `READY` / `ACTIVE` with no latched fault.
 - **Dead-man (2000 ms):** no valid command in the window → `emergencyStop()`
   (PWM cut, drivers disabled) → `PANIC DEADMAN`. Auto-recovers when commands
   resume.
-- **Gas panic:** `MQ-136` raw ADC ≥ threshold → latched `PANIC GAS`, motors
-  cut. Recovers when the reading drops.
+- **Gas (advisory):** the `MQ-136` raw ADC and a `GALM` flag (set at the
+  `GAS_ALARM_THRESHOLD`) are reported via telemetry/`STATUS` only; a gas
+  reading never faults or stops the motors — the operator decides.
 - **Obstacle distance:** the HC-SR04 `DIST` reading is reported via telemetry/
   `STATUS` only; it does not auto-stop the motors — the operator decides
   whether to stop, reverse, or continue.
