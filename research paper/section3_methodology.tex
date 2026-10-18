@@ -34,6 +34,11 @@
 \usepackage{caption}
 \usepackage[hidelinks]{hyperref}
 
+% Keep table numbering in plain Arabic numerals (1, 2, 3, ...) instead of
+% IEEEtran's default Roman numerals, so \ref{tab:N} matches the Arabic table
+% numbers used throughout the rest of the paper's prose.
+\renewcommand{\thetable}{\arabic{table}}
+
 \begin{document}
 
 \setcounter{section}{2}
@@ -78,7 +83,7 @@ flowchart LR
 \begin{figure*}[!t]
 \centering
 \includegraphics[width=0.85\linewidth]{figures/fig01_system_architecture.png}
-\caption*{\textbf{Figure 1.} Overall system architecture.}
+\caption{Overall system architecture.}
 \label{fig:1}
 \end{figure*}
 
@@ -115,7 +120,7 @@ sequenceDiagram
 \begin{figure}[!t]
 \centering
 \includegraphics[width=\linewidth]{figures/fig02_control_loop_sequence.png}
-\caption*{\textbf{Figure 2.} End-to-end control loop: command down, telemetry up.}
+\caption{End-to-end control loop: command down, telemetry up.}
 \label{fig:2}
 \end{figure}
 
@@ -128,7 +133,7 @@ The two transports in Figure~\ref{fig:1} run over one local network, which also 
 
 \begin{table*}[!t]
 \centering
-\caption*{\textbf{Table 1.} Network services on the Pi.}
+\caption{Network services on the Pi.}
 \label{tab:1}
 \begin{tabularx}{\linewidth}{l l l X}
 \toprule
@@ -176,7 +181,7 @@ The hardware is chosen so that the lowest tier can stop the robot by itself: the
 
 \begin{table*}[!t]
 \centering
-\caption*{\textbf{Table 2.} Hardware components.}
+\caption{Hardware components.}
 \label{tab:2}
 \begin{tabularx}{\linewidth}{p{3.3cm} X p{3.6cm}}
 \toprule
@@ -243,7 +248,7 @@ flowchart LR
 \begin{figure*}[!t]
 \centering
 \includegraphics[width=0.85\linewidth]{figures/fig03_hardware_power.png}
-\caption*{\textbf{Figure 3.} Hardware interconnection and power distribution. Thick lines carry power; thin lines carry signals, labelled with the interface and its direction. The Pi and the Arduino are the two hubs, and the separate motor and Pi supplies are grouped on the left.}
+\caption{Hardware interconnection and power distribution. Thick lines carry power; thin lines carry signals, labelled with the interface and its direction. The Pi and the Arduino are the two hubs, and the separate motor and Pi supplies are grouped on the left.}
 \label{fig:3}
 \end{figure*}
 
@@ -277,13 +282,13 @@ flowchart LR
 \begin{figure*}[!t]
 \centering
 \includegraphics[width=0.85\linewidth]{figures/fig04_arduino_pin_diagram.png}
-\caption*{\textbf{Figure 4.} Arduino UNO pin diagram. Every line is drawn from the Arduino outwards to the device it serves, so an arrowhead marks the connection and not the signal direction. Direction is given in the label instead, read from the Arduino's side: "out" leaves the pin and "in" arrives at it, and a label with both names the outgoing pin first. Table~\ref{tab:3} gives the full pin map.}
+\caption{Arduino UNO pin diagram. Every line is drawn from the Arduino outwards to the device it serves, so an arrowhead marks the connection and not the signal direction. Direction is given in the label instead, read from the Arduino's side: "out" leaves the pin and "in" arrives at it, and a label with both names the outgoing pin first. Table~\ref{tab:3} gives the full pin map.}
 \label{fig:4}
 \end{figure*}
 
 \begin{table*}[!t]
 \centering
-\caption*{\textbf{Table 3.} Arduino UNO pin map.}
+\caption{Arduino UNO pin map.}
 \label{tab:3}
 \begin{tabularx}{\linewidth}{l l l X}
 \toprule
@@ -335,7 +340,7 @@ flowchart LR
 \begin{figure*}[!t]
 \centering
 \includegraphics[width=0.85\linewidth]{figures/fig05_pi_port_gpio_diagram.png}
-\caption*{\textbf{Figure 5.} Raspberry Pi 4 port and GPIO diagram. Every line is drawn from the Pi outwards to the device it serves, so an arrowhead marks the connection and not the direction. Direction is given in the label instead, read from the Pi's side: "out" leaves the port or pin and "in" arrives at it. The thick lines carry power, and the Pi's own supply arrives on USB-C. Table~\ref{tab:4} gives the full connection list.}
+\caption{Raspberry Pi 4 port and GPIO diagram. Every line is drawn from the Pi outwards to the device it serves, so an arrowhead marks the connection and not the direction. Direction is given in the label instead, read from the Pi's side: "out" leaves the port or pin and "in" arrives at it. The thick lines carry power, and the Pi's own supply arrives on USB-C. Table~\ref{tab:4} gives the full connection list.}
 \label{fig:5}
 \end{figure*}
 
@@ -343,7 +348,7 @@ The GPS uses the Pi's primary UART with the serial login console disabled.
 
 \begin{table*}[!t]
 \centering
-\caption*{\textbf{Table 4.} Raspberry Pi 4 connections.}
+\caption{Raspberry Pi 4 connections.}
 \label{tab:4}
 \begin{tabularx}{\linewidth}{p{3.3cm} p{4cm} X}
 \toprule
@@ -372,7 +377,7 @@ The software forms three layers, each written in the language that suits its har
 
 \begin{table*}[!t]
 \centering
-\caption*{\textbf{Table 5.} Software stack.}
+\caption{Software stack.}
 \label{tab:5}
 \begin{tabularx}{\linewidth}{p{1.8cm} p{2.1cm} p{2.3cm} X X}
 \toprule
@@ -408,7 +413,7 @@ flowchart TB
 \begin{figure*}[!t]
 \centering
 \includegraphics[width=0.85\linewidth]{figures/fig06_pi_software_architecture.png}
-\caption*{\textbf{Figure 6.} Raspberry Pi software architecture and process supervision.}
+\caption{Raspberry Pi software architecture and process supervision.}
 \label{fig:6}
 \end{figure*}
 
@@ -438,7 +443,7 @@ flowchart TB
 \begin{figure*}[!t]
 \centering
 \includegraphics[width=0.85\linewidth]{figures/fig07_dashboard_software_architecture.png}
-\caption*{\textbf{Figure 7.} Operator dashboard software architecture.}
+\caption{Operator dashboard software architecture.}
 \label{fig:7}
 \end{figure*}
 
@@ -465,7 +470,7 @@ stateDiagram-v2
 \begin{figure}[!t]
 \centering
 \includegraphics[width=\linewidth]{figures/fig08_firmware_modes.png}
-\caption*{\textbf{Figure 8.} Firmware operating modes. ESTOP is a reserved latched operator-stop state: it is defined in the firmware state machine and reported as 3, but is not entered in the current build, where the emergency stop is an ordinary S (Table~\ref{tab:7}).}
+\caption{Firmware operating modes. ESTOP is a reserved latched operator-stop state: it is defined in the firmware state machine and reported as 3, but is not entered in the current build, where the emergency stop is an ordinary S (Table~\ref{tab:7}).}
 \label{fig:8}
 \end{figure}
 
@@ -476,7 +481,7 @@ A cooperative scheduler, rather than a pre-emptive RTOS on the ATmega328P \cite{
 
 \begin{table}[!t]
 \centering
-\caption*{\textbf{Table 6.} Firmware tasks.}
+\caption{Firmware tasks.}
 \label{tab:6}
 \begin{tabularx}{\linewidth}{l l X}
 \toprule
@@ -509,7 +514,7 @@ flowchart LR
 \begin{figure}[!t]
 \centering
 \includegraphics[width=\linewidth]{figures/fig09_command_validation.png}
-\caption*{\textbf{Figure 9.} Four-stage firmware-side command validation. The nine opcodes are F, R, L, G (speed), P, T (angle), S, H and ?.}
+\caption{Four-stage firmware-side command validation. The nine opcodes are F, R, L, G (speed), P, T (angle), S, H and ?.}
 \label{fig:9}
 \end{figure}
 
@@ -557,7 +562,7 @@ sequenceDiagram
 \begin{figure}[!t]
 \centering
 \includegraphics[width=\linewidth]{figures/fig10_deadman_trip_recovery.png}
-\caption*{\textbf{Figure 10.} Dead-man trip and recovery.}
+\caption{Dead-man trip and recovery.}
 \label{fig:10}
 \end{figure}
 
@@ -568,7 +573,7 @@ Table~\ref{tab:7} lists every path that stops the motors. The firmware's only au
 
 \begin{table*}[!t]
 \centering
-\caption*{\textbf{Table 7.} Stop paths.}
+\caption{Stop paths.}
 \label{tab:7}
 \begin{tabularx}{\linewidth}{X l X l}
 \toprule
@@ -616,7 +621,7 @@ sequenceDiagram
 \begin{figure}[!t]
 \centering
 \includegraphics[width=\linewidth]{figures/fig11_p1_startup_handshake.png}
-\caption*{\textbf{Figure 11.} P1 start-up handshake. A timeout ends P1 with a handshake-failure exit code.}
+\caption{P1 start-up handshake. A timeout ends P1 with a handshake-failure exit code.}
 \label{fig:11}
 \end{figure}
 
@@ -641,13 +646,13 @@ flowchart LR
 \begin{figure}[!t]
 \centering
 \includegraphics[width=\linewidth]{figures/fig12_telemetry_pipeline.png}
-\caption*{\textbf{Figure 12.} Telemetry pipeline.}
+\caption{Telemetry pipeline.}
 \label{fig:12}
 \end{figure}
 
 \begin{table}[!t]
 \centering
-\caption*{\textbf{Table 8.} Telemetry frame fields and accepted ranges (frame at most 80 characters).}
+\caption{Telemetry frame fields and accepted ranges (frame at most 80 characters).}
 \label{tab:8}
 \begin{tabularx}{\linewidth}{l l X}
 \toprule
@@ -696,7 +701,7 @@ flowchart TB
 \begin{figure}[!t]
 \centering
 \includegraphics[width=\linewidth]{figures/fig13_layered_fault_tolerance.png}
-\caption*{\textbf{Figure 13.} Layered fault tolerance, from the operator side down to the motors.}
+\caption{Layered fault tolerance, from the operator side down to the motors.}
 \label{fig:13}
 \end{figure}
 
@@ -719,7 +724,7 @@ stateDiagram-v2
 \begin{figure}[!t]
 \centering
 \includegraphics[width=\linewidth]{figures/fig14_per_process_supervision.png}
-\caption*{\textbf{Figure 14.} Per-process supervision. Health checks run every 10 s with a 5 s timeout.}
+\caption{Per-process supervision. Health checks run every 10 s with a 5 s timeout.}
 \label{fig:14}
 \end{figure}
 
@@ -739,7 +744,7 @@ P1 reports why it exited through its process exit code, which the watchdog reads
 
 \begin{table*}[!t]
 \centering
-\caption*{\textbf{Table 9.} Failure effects and recovery.}
+\caption{Failure effects and recovery.}
 \label{tab:9}
 \begin{tabularx}{\linewidth}{p{3cm} p{2.2cm} X X}
 \toprule
@@ -786,7 +791,7 @@ sequenceDiagram
 \begin{figure}[!t]
 \centering
 \includegraphics[width=\linewidth]{figures/fig15_wifi_drop_failure_chain.png}
-\caption*{\textbf{Figure 15.} Failure chain for a Wi-Fi drop: stop, reconnect, replay, resume.}
+\caption{Failure chain for a Wi-Fi drop: stop, reconnect, replay, resume.}
 \label{fig:15}
 \end{figure}
 
@@ -797,7 +802,7 @@ The dashboard reduces link and firmware status to one of four mission states, ev
 
 \begin{table}[!t]
 \centering
-\caption*{\textbf{Table 10.} Mission state rules (first match wins).}
+\caption{Mission state rules (first match wins).}
 \label{tab:10}
 \begin{tabularx}{\linewidth}{l l X}
 \toprule
@@ -837,13 +842,13 @@ sequenceDiagram
 \begin{figure}[!t]
 \centering
 \includegraphics[width=\linewidth]{figures/fig16_controller_takeover.png}
-\caption*{\textbf{Figure 16.} Controller takeover.}
+\caption{Controller takeover.}
 \label{fig:16}
 \end{figure}
 
 \begin{table}[!t]
 \centering
-\caption*{\textbf{Table 11.} Key check results.}
+\caption{Key check results.}
 \label{tab:11}
 \begin{tabularx}{\linewidth}{l X l}
 \toprule
@@ -898,13 +903,13 @@ flowchart LR
 \begin{figure*}[!t]
 \centering
 \includegraphics[width=0.85\linewidth]{figures/fig17_two_way_media_path.png}
-\caption*{\textbf{Figure 17.} Two-way media path (WebRTC). Video is encoded per session as VP8 or H.264, as negotiated with the browser; each session gets its own copy of every camera frame.}
+\caption{Two-way media path (WebRTC). Video is encoded per session as VP8 or H.264, as negotiated with the browser; each session gets its own copy of every camera frame.}
 \label{fig:17}
 \end{figure*}
 
 \begin{table*}[!t]
 \centering
-\caption*{\textbf{Table 12.} Video parameters.}
+\caption{Video parameters.}
 \label{tab:12}
 \begin{tabularx}{\linewidth}{p{3.3cm} X X}
 \toprule
@@ -950,7 +955,7 @@ sequenceDiagram
 \begin{figure}[!t]
 \centering
 \includegraphics[width=\linewidth]{figures/fig18_webrtc_signalling.png}
-\caption*{\textbf{Figure 18.} WebRTC signalling and session set-up between a dashboard and P2.}
+\caption{WebRTC signalling and session set-up between a dashboard and P2.}
 \label{fig:18}
 \end{figure}
 
@@ -967,7 +972,7 @@ Each dashboard connection carries one reliable, ordered data channel named "scre
 
 \begin{table*}[!t]
 \centering
-\caption*{\textbf{Table 13.} Data channel messages.}
+\caption{Data channel messages.}
 \label{tab:13}
 \begin{tabularx}{\linewidth}{l p{4.3cm} X}
 \toprule
@@ -1009,7 +1014,7 @@ stateDiagram-v2
 \begin{figure}[!t]
 \centering
 \includegraphics[width=\linewidth]{figures/fig19_robot_screen_floor_control.png}
-\caption*{\textbf{Figure 19.} Robot Screen floor control. A release clears the screen text and media.}
+\caption{Robot Screen floor control. A release clears the screen text and media.}
 \label{fig:19}
 \end{figure}
 
@@ -1020,7 +1025,7 @@ P2 encodes its own 60 ms Opus packets in both directions instead of the usual 20
 
 \begin{table*}[!t]
 \centering
-\caption*{\textbf{Table 14.} Audio parameters.}
+\caption{Audio parameters.}
 \label{tab:14}
 \begin{tabularx}{\linewidth}{p{3.3cm} X X}
 \toprule
@@ -1067,7 +1072,7 @@ flowchart LR
 \begin{figure*}[!t]
 \centering
 \includegraphics[width=0.85\linewidth]{figures/fig20_gps_map_dataflow.png}
-\caption*{\textbf{Figure 20.} GPS and map data flow. Online map tiles, when reachable, show outside the offline map area.}
+\caption{GPS and map data flow. Online map tiles, when reachable, show outside the offline map area.}
 \label{fig:20}
 \end{figure*}
 
