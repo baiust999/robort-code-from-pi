@@ -14,7 +14,7 @@ This chapter describes the system design: the structure, mechanisms and design c
 
 ## 3.1 System Architecture
 
-The architecture applies the design rule by separating the system into tiers that can fail on their own, in the layered style of prior teleoperated search-and-rescue systems [VERIFY: cite]. The system has four tiers: an Arduino UNO for real-time control, a Raspberry Pi 4, a local Wi-Fi network, and a browser dashboard (Figure 1). The Pi runs three separate Python processes: P1 (control server) links the dashboard to the Arduino, checks every drive command and collects telemetry and GPS; P2 (media server) streams the robot's camera and microphone to the operator and carries the operator's voice, video and text to the robot's screen; and P3 (watchdog) starts P1 and P2 and restarts either one if it crashes or stops responding. Control and media use separate transports that end in separate processes, so a media failure leaves driving and stopping intact.
+The architecture applies the design rule by separating the system into tiers that can fail on their own, in the layered style of prior teleoperated search-and-rescue systems [@casper2003; @liu2013]. The system has four tiers: an Arduino UNO for real-time control, a Raspberry Pi 4, a local Wi-Fi network, and a browser dashboard (Figure 1). The Pi runs three separate Python processes: P1 (control server) links the dashboard to the Arduino, checks every drive command and collects telemetry and GPS; P2 (media server) streams the robot's camera and microphone to the operator and carries the operator's voice, video and text to the robot's screen; and P3 (watchdog) starts P1 and P2 and restarts either one if it crashes or stops responding. Control and media use separate transports that end in separate processes, so a media failure leaves driving and stopping intact.
 
 ```mermaid
 flowchart LR
@@ -108,8 +108,8 @@ The hardware is chosen so that the lowest tier can stop the robot by itself: the
 | Edge computer | Raspberry Pi 4 Model B, 4 GB | Runs P1, P2, P3 and the Robot Screen |
 | Microcontroller | Arduino UNO (ATmega328P, 16 MHz) | Real-time control and sensing |
 | Motor drivers | 2 x BTS7960 | One driver per side |
-| Drive motors | 4 x DC gear motor [VERIFY: motor nominal voltage V, no-load RPM, stall current A, gear ratio] | Differential (skid) steering, left and right pairs |
-| Camera servos | 2 x hobby servo [VERIFY: servo model and torque at 5 V] | Pan and tilt, 0-180 deg, home at 90 deg |
+| Drive motors | 4 x 25GA-370 geared DC motor with encoder, 12 V, 60 RPM no-load, 65 mm wheels | Differential (skid) steering, left and right pairs |
+| Camera servos | 2 x TowerPro SG90 micro servo, about 1.8 kgf-cm stall torque at 4.8 V, 180 deg | Pan and tilt, 0-180 deg, home at 90 deg |
 | Range sensor | HC-SR04 | Forward range, 0-400 cm |
 | Temperature and humidity | DHT11 | degC and % RH |
 | Gas sensor | MQ-136 | Raw 10-bit value 0-1023, uncalibrated |
@@ -117,10 +117,10 @@ The hardware is chosen so that the lowest tier can stop the robot by itself: the
 | Camera and microphone | USB webcam with built-in microphone | 640x480 video at 10 fps; 48 kHz audio |
 | Robot display | 7-inch HDMI display, 1024x600 | Victim-facing Robot Screen |
 | Speaker | Speaker | Operator voice to the victim |
-| Battery | 4S pack, 14.8 V nominal, 16.8 V full [VERIFY: battery chemistry (LiFePO4 / Li-ion / LiPo), nominal capacity Ah, continuous discharge A] | Motor and logic power |
+| Battery | 4S Li-ion pack, 14.8 V nominal, 16.8 V full, continuous discharge limited by the 4S 40 A BMS [NEEDS SPEC: nominal capacity Ah] | Motor and logic power |
 | Battery management | 4S 40 A BMS | Pack protection |
 | Buck converters | 2 x buck converter, 8 V and 5 V outputs | 8 V to the Arduino barrel jack; 5 V to the servos |
-| Pi supply | USB power bank | Separate supply for the Pi |
+| Pi supply | Remax 50000 mAh USB power bank | Separate supply for the Pi |
 
 ```mermaid
 flowchart LR
@@ -332,7 +332,7 @@ stateDiagram-v2
 
 ### 3.5.1 Task Scheduling and Command Validation
 
-A cooperative scheduler, rather than a pre-emptive RTOS on the ATmega328P [VERIFY: cite], runs the periodic tasks in Table 6 from the main loop, with timing based on unsigned millisecond differences so that counter rollover does not break it. The command parser is polled on every loop pass and checks each command in four stages before it acts (Figure 9).
+A cooperative scheduler, rather than a pre-emptive RTOS on the ATmega328P [@pont2001], runs the periodic tasks in Table 6 from the main loop, with timing based on unsigned millisecond differences so that counter rollover does not break it. The command parser is polled on every loop pass and checks each command in four stages before it acts (Figure 9).
 
 **Table 6.** Firmware tasks.
 
@@ -364,7 +364,7 @@ The Pi control server applies a tighter safety cap before sending: speed is clam
 
 ### 3.5.2 Dead-Man Timer and Stop-Time Guarantee
 
-Every command that passes stages 1 to 3 re-arms the dead-man timer, including heartbeats; this dead-man (watchdog) pattern, in which loss of a periodic command forces the actuators to a safe state, is a standard fail-safe for teleoperated mobile robots [VERIFY: cite]. When the timer expires, the supervisor sets the PWM outputs to zero and pulls the shared enable line low at once, without ramping (Figure 10). The worst-case stop time after the last command is:
+Every command that passes stages 1 to 3 re-arms the dead-man timer, including heartbeats; this dead-man (watchdog) pattern, in which loss of a periodic command forces the actuators to a safe state, is a standard fail-safe for teleoperated mobile robots [@liu2013]. When the timer expires, the supervisor sets the PWM outputs to zero and pulls the shared enable line low at once, without ramping (Figure 10). The worst-case stop time after the last command is:
 
 $$t_{stop} \le T_{DM} + T_{S} + J$$
 
@@ -614,7 +614,7 @@ Failure counters are kept in memory per process. The dashboard discards a refuse
 
 With one controller established (Section 3.8), the same operator can see, hear and talk to the victim. This path must never delay a stop. The robot carries a display and speaker facing the victim, driven by a kiosk browser (the Robot Screen) on the Pi, and all communication between the operator and the victim runs through P2. Here "P2" names the media process (Section 3.4), not a peer-to-peer protocol.
 
-aiortc was chosen over server-oriented WebRTC stacks such as GStreamer's webrtcbin, Janus and mediasoup because it integrates as a single Python process with the P2 asyncio event loop, reuses one PyAV capture across sessions, and needs no separate signalling server, following established use of WebRTC for low-latency teleoperation [VERIFY: cite]. Human-subject interaction in this design, namely the Robot Screen used with role-played victims and the usability study with 8 to 12 operators (Section 5.8), is conducted under the ethics statement in [VERIFY: Section 4.1 or Section 7, whichever this paper places it in].
+aiortc was chosen over server-oriented WebRTC stacks such as GStreamer's webrtcbin, Janus and mediasoup because it integrates as a single Python process with the P2 asyncio event loop, reuses one PyAV capture across sessions, and needs no separate signalling server, following established use of WebRTC for low-latency teleoperation [@shi2025webrtc]. Human-subject interaction in this design, namely the Robot Screen used with role-played victims and the usability study with 8 to 12 operators (Section 5.8), is conducted under the ethics statement in Section 4.1.
 
 Media is kept out of P1 because video encoding is the heaviest load on the Pi, and a stall or crash in a codec library must not delay a stop; P2 can also be restarted while P1 keeps driving (Table 9). The only link between them is P2's once-per-second query for the controller's address (Section 3.7.1); P2 never sends anything to P1 or to the Arduino.
 
@@ -724,7 +724,7 @@ stateDiagram-v2
 
 ### 3.9.5 Low-Latency Audio on a Constrained CPU
 
-P2 encodes its own 60 ms Opus packets in both directions instead of the usual 20 ms [VERIFY: cite], which cuts the packet rate from 50 to 16.7 packets/s and the per-packet work on the event loop to a third. It captures the microphone through a shared ALSA device with a fixed period of 960 frames (20 ms), which gives 50 reads/s against about 511 reads/s for the device's smallest period of 94 frames (Table 14).
+P2 encodes its own 60 ms Opus packets in both directions instead of the usual 20 ms [@valin2012], which cuts the packet rate from 50 to 16.7 packets/s and the per-packet work on the event loop to a third. It captures the microphone through a shared ALSA device with a fixed period of 960 frames (20 ms), which gives 50 reads/s against about 511 reads/s for the device's smallest period of 94 frames (Table 14).
 
 **Table 14.** Audio parameters.
 
@@ -740,13 +740,13 @@ P2 encodes its own 60 ms Opus packets in both directions instead of the usual 20
 
 ## 3.10 GPS Localisation and Offline Mapping
 
-The operator also needs to know where the robot is, both to guide it and to report the victim's position to the rescue team, without depending on the internet. P1 reads NMEA sentences from the NEO-6M receiver ([VERIFY: cite datasheet]; nominal accuracy [VERIFY: 2.5 m CEP]) on a separate thread, merges the latest fix into each telemetry snapshot (Section 3.6.2) and adds a track point only after the robot moves at least 10 m, so drift around a stopped robot adds no points (Figure 20). This 10 m filter lies above the receiver's nominal CEP, so the static drift measured for this unit (8.9 m CEP50 over 6888 samples, tools/eval/results/gps_static.csv) stays below the threshold and produces no spurious points; the full result is reported in Section 5.6. Distance uses the equirectangular approximation:
+The operator also needs to know where the robot is, both to guide it and to report the victim's position to the rescue team, without depending on the internet. P1 reads NMEA sentences from the NEO-6M receiver ([@ublox_neo6]; nominal accuracy 2.5 m CEP) on a separate thread, merges the latest fix into each telemetry snapshot (Section 3.6.2) and adds a track point only after the robot moves at least 10 m, so drift around a stopped robot adds no points (Figure 20). This 10 m filter lies above the receiver's nominal CEP, so the static drift measured for this unit (8.9 m CEP50 over 6888 samples, tools/eval/results/gps_static.csv) stays below the threshold and produces no spurious points; the full result is reported in Section 5.6. Distance uses the equirectangular approximation:
 
 $$d = R \sqrt{(\Delta\varphi)^2 + (\Delta\lambda \cos\bar{\varphi})^2}$$
 
 where $R = 6371000$ m, $\Delta\varphi$ and $\Delta\lambda$ are the latitude and longitude differences in radians, and $\bar{\varphi}$ is their mean latitude.
 
-At the scales of these trials (under 2 km), the error of this approximation against the haversine formula stays below [VERIFY: numeric bound] while saving two trigonometric evaluations per update [VERIFY: cite].
+At the scales of these trials (under 2 km), the error of this approximation against the haversine formula stays below 0.01 mm at the trial latitude (computed over all bearings; 0.0036 mm at a 2 km baseline), which is negligible beside both the 10 m track filter and the 8.9 m CEP50 of the receiver, while saving two trigonometric evaluations per update.
 
 ```mermaid
 flowchart LR
