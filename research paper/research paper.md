@@ -19,8 +19,9 @@
   - C3: two-way victim audio/video under CPU, power and bandwidth limits
   - C4: affordability as a deployment constraint, not a marketing claim
 - 1.3 Contributions
-  - RQ1-RQ3 stated here, each mapped to a contribution and answered in Section 8.1
-  - Contributions mapped to C1-C4 and to the evaluation in Section 7
+  - RQ1-RQ3 stated here, each mapped to a contribution and answered in Section 7.1
+  - Contributions mapped to C1-C4 and to the evaluation in Section 5, summarised
+    in Section 7.2
   - (unnumbered closing paragraph: organization of the paper)
 
 **2. Related Work**
@@ -79,13 +80,62 @@
 
 **4. Experimental Setup**
 
+- Scope rule: this section holds only what is shared across all nine experiments
+  (environment, metric definitions, baselines) plus one experiment matrix. The
+  procedure specific to a single experiment is not written here; it opens the
+  matching Section 5 subsection, so no experiment is described twice.
 - 4.1 Test Environment and Hardware Configuration
+  - The robot as built: hardware per Section 3.3 (Table 2), wiring per Figure 3
+  - Operator station: laptop, browser, insecure-origin exception (Section 3.2)
+  - Network: 802.11n, 2.4 GHz channel 10, 20 MHz, single /24, router at the
+    staging point (Section 3.2)
+  - Software versions and settings: firmware, Python, FastAPI, aiortc, PyAV;
+    MOCK_HARDWARE off for all reported runs (Section 3.4)
+  - Test sites: indoor corridor and lab for latency, fault and resource runs;
+    outdoor area for range and GPS runs
 - 4.2 Evaluation Metrics
-- 4.3 Experimental Scenarios and Procedures
+  - Each metric defined by start point, end point and unit, and mapped one-to-one
+    to the Section 5 subsection that reports it
+  - Control latency (dashboard keypress to firmware action; WebSocket round trip)
+    -> Section 5.1
+  - Emergency-stop time (stop event to motors disabled) and the dead-man worst
+    case -> Section 5.1
+  - Video fps, resolution and glass-to-glass latency; audio mouth-to-ear latency
+    at Opus 32 kbps, 60 ms packets -> Section 5.2
+  - Link quality against distance: RSSI, packet loss, round-trip time,
+    throughput -> Section 5.3
+  - Recovery time (process death or hang to service answering again) -> Section 5.4
+  - Pi CPU, memory, temperature and power -> Section 5.5
+  - Ranging error against tape measure; GPS static hold and track drift
+    -> Section 5.6
+  - Field-trial task times and success -> Section 5.7
+  - Operator task completion time, success rate and questionnaire score
+    -> Section 5.8
+  - Total bill of materials in USD -> Section 5.9
+  - Pass/fail thresholds carried over from Section 3: 2000 ms dead-man window,
+    3000 ms dashboard telemetry timeout, 500 ms telemetry cadence
+    (Sections 3.5.2, 3.6.2, Table 1a)
+- 4.3 Experiment Matrix
+  - One table, no per-experiment prose: experiment | site | trials (N) |
+    tool under tools/eval/ | metric from 4.2 | reported in
+  - Nine rows, one per Section 5 subsection; tools are wslatency.py,
+    faultinject.py, netsweep.py, reslog.py, gpsdrift.py, record.py and
+    summarize.py, with raw output under tools/eval/results/
+  - Validity rule for a trial, and the discard criteria, stated once here
 - 4.4 Baselines for Comparison
+  - Internal ablations of this system: dead-man timer removed, P3 watchdog
+    disabled, control and media in one process, alternative audio bitrate
+  - Specification targets from Section 3 used as pass/fail thresholds (4.2)
+  - Literature baselines: reported figures from the platforms in the Section 2.6
+    comparison table \cite{casper2003,liu2013,daun2023,megalingam2022}, taken
+    from their papers and not re-run here, so the comparison is qualitative plus
+    reported values rather than a controlled head-to-head
 
 **5. Results**
 
+- Each subsection opens with its own short procedure paragraph (what was run and
+  how), then reports the numbers; Section 4 is not repeated and no new metric is
+  introduced here
 - 5.1 Control Latency and Emergency-Stop Response
 - 5.2 Video and Audio Streaming Performance
 - 5.3 Communication Range and Link Degradation
@@ -103,7 +153,36 @@
 - 6.3 Limitations
 - 6.4 Threats to Validity
 
-**7. Conclusion and Future Work**
+**7. Conclusion**
+
+- 7.1 Answers to the Research Questions
+  - One subsection-level answer per research question, each stating the claim,
+    the measured evidence from Section 5 that supports it, and the bound within
+    which the claim holds
+  - RQ labels and their count must match Section 1.3
+    [VERIFY: Section 1.3 states RQ1-RQ3, Section 3 maps design pillars to
+    RQ1-RQ4; reconcile before writing this subsection]
+- 7.2 Summary of Contributions
+  - Each contribution restated and mapped back to the challenge it addresses
+    (C1-C4, Section 1.2) and to the subsection of Section 5 that evaluates it
+  - What the system demonstrates as a whole: a bounded stop time, process
+    supervision and two-way victim interaction on low-cost edge hardware
+  - (unnumbered closing paragraph: what a deploying team can take from this work)
+
+**8. Future Work**
+
+- One item per limitation recorded in Section 6.3, in the same order, so every
+  deferred item has a stated path forward
+- Extending radio reach beyond a single Wi-Fi cell: repeater, mesh or second
+  radio (deferred in Sections 3.2 and 6.3)
+- Transport security: TLS on both ports, removing the insecure-origin exception
+  the operator currently sets by hand (Section 3.2)
+- Autonomy above the teleoperation tier, kept subordinate to the stop guarantee:
+  supervisory or shared-collaborative control in the Section 2.1 taxonomy
+- Larger operator study and field validation with trained rescue personnel,
+  beyond the sample reported in Section 5.8
+- Hardware extensions: thermal or gas sensing for victim detection, extended
+  battery endurance, ruggedised chassis
 
 ---
 
