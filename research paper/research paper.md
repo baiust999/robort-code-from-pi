@@ -10,19 +10,46 @@
 **1. Introduction**
 
 - 1.1 Motivation
-- 1.2 Challenges
-- 1.3 Research Questions
-- 1.4 Contributions
-- 1.5 Paper Organization
+  - Disaster burden and the time-critical "golden window" \cite{cred2026,tabib2024}
+  - Why teleoperation remains the operationally relevant mode for confined-space
+    victim contact, despite the field's shift toward full autonomy \cite{avi2026review}
+- 1.2 Problem Statement and Challenges
+  - C1: guaranteeing a bounded stop time on a non-real-time software stack
+  - C2: single points of failure in low-cost single-board deployments
+  - C3: two-way victim audio/video under CPU, power and bandwidth limits
+  - C4: affordability as a deployment constraint, not a marketing claim
+- 1.3 Contributions
+  - RQ1-RQ3 stated here, each mapped to a contribution and answered in Section 8.1
+  - Contributions mapped to C1-C4 and to the evaluation in Section 7
+  - (unnumbered closing paragraph: organization of the paper)
 
 **2. Related Work**
 
-- 2.1 Teleoperated Search-and-Rescue Robots \cite{casper2003,liu2013,daun2023,megalingam2022}
-- 2.2 Human-Robot Interaction with Trapped Victims \cite{akgun2023,chitikena2023}
-- 2.3 Real-Time Video and Audio Streaming for Teleoperation \cite{shi2025webrtc,valin2012}
-- 2.4 Fail-Safe and Fault-Tolerant Architectures for Mobile Robots \cite{pont2001,schrick2025,koczi2025}
-- 2.5 Low-Cost Embedded Platforms for Field Robotics \cite{verano2022,ublox_neo6}
+- 2.1 Positioning Within the SAR Robotics Literature \cite{avi2026review,kareem2026}
+  - The four-way autonomy/HRI taxonomy (Teleoperation, Supervisory Control,
+    Shared-Collaborative Control, Fully Autonomous); this work is Teleoperation
+  - Teleoperation is 12.8% of the 2025-2026 corpus (5 of 39 papers), yet
+    Teleoperation and Supervisory Control are real-world field-validated
+    60-75% of the time versus 7.4% for Fully Autonomous systems
+- 2.2 Teleoperated Rescue Platforms and Their Reported Contributions
+  \cite{casper2003,liu2013,daun2023,megalingam2022}
+  - Contribution in existing teleoperated systems concentrates on mechanical
+    capability or perception accuracy; control safety and victim-facing
+    interaction are deferred or absent \cite{avi2026review}
+  - Mine- and tunnel-rescue robotics outside this corpus remains predominantly
+    teleoperation-oriented \cite{bakzadeh2026}
+- 2.3 Fail-Safe and Fault-Tolerant Architectures for Low-Cost Mobile Robots
+  \cite{pont2001,schrick2025,koczi2025,verano2022}
+- 2.4 Human-Robot Interaction with Trapped Victims \cite{akgun2023,chitikena2023}
+  - Across the screened 2025-2026 corpus, victims appear only as detection
+    targets; no system provides two-way victim communication \cite{avi2026review}
+- 2.5 Real-Time Media Streaming on Constrained Edge Hardware
+  \cite{shi2025webrtc,valin2012}
 - 2.6 Research Gap
+  - Table 1: qualitative comparison of representative teleoperated rescue
+    platforms (cost, bounded stop-time guarantee, process supervision,
+    two-way victim audio, real-world field validation)
+  - The gap is evidenced from a PRISMA-screened corpus, not asserted
 
 **3. Methodology**
 

@@ -4,7 +4,7 @@ Generated from `/home/pi/robot/tools/eval/results` by tools/eval/summarize.py. E
 
 ## Section 5.1
 
-### Command confirmation latency over the real control path (upper bound: 200 ms telemetry quantisation)
+### Command confirmation latency over the real control path (telemetry-confirmed metrics are upper bounds: 700 ms quantisation; deadman_panic is not)
 
 Source: `latency.csv`, 240 raw rows.
 
@@ -81,7 +81,7 @@ Source: `gps_static.csv`, 1 raw row.
 
 - [ ] 5.1 Control latency, 240 fps video (key press -> wheel motion) (`latency_video.csv`)
 - [ ] 5.1 Emergency-stop stopping distance (`estop.csv`)
-- [ ] 5.1 Dead-man wheel-stop time (expected 2.0 s) (`deadman_physical.csv`)
+- [ ] 5.1 Dead-man wheel-stop time (bound about 2.06 s: 2000 ms window + 10 ms supervisor period + one loop pass) (`deadman_physical.csv`)
 - [ ] 5.2 End-to-end video delay (`glass2glass.csv`)
 - [ ] 5.3 Wi-Fi range and link degradation (`network.csv`)
 - [ ] 5.4 Manually injected faults: health transitions (`fault_watch.csv`)

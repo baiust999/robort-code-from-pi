@@ -37,7 +37,8 @@ REPORTS: tuple[dict, ...] = (
     {
         "section": "5.1", "file": "latency.csv",
         "title": "Command confirmation latency over the real control path "
-                 "(upper bound: 200 ms telemetry quantisation)",
+                 "(telemetry-confirmed metrics are upper bounds: 700 ms "
+                 "quantisation; deadman_panic is not)",
         "kind": "agg", "group": ["metric", "label"], "metrics": [("value_ms", "latency (ms)")],
         "where": ("ok", "1"),
     },
@@ -49,7 +50,8 @@ REPORTS: tuple[dict, ...] = (
     },
     {
         "section": "5.1", "file": "deadman_physical.csv",
-        "title": "Dead-man wheel-stop time (expected 2.0 s)",
+        "title": "Dead-man wheel-stop time (bound about 2.06 s: 2000 ms window "
+                 "+ 10 ms supervisor period + one loop pass)",
         "kind": "agg", "group": ["speed_pwm"], "metrics": [("stop_s", "stop time (s)")],
     },
     {

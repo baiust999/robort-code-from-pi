@@ -25,7 +25,7 @@ The controller key the drive probes need lives in a root-only drop-in:
 
 | Script | Paper | TEST_REPORT | Measures |
 |---|---|---|---|
-| `wslatency.py` | 5.1 | H7, N6 | Command -> telemetry confirmation, and the firmware dead-man trip, over the real WebSocket path. Automated, high n. |
+| `wslatency.py` | 5.1 | H7, N6 | Command -> telemetry confirmation, and the firmware dead-man trip, over the real WebSocket path. Automated, high n. Records the dead-man trip twice: `deadman_trip` (fw_state in telemetry, quantised) and `deadman_panic` (the firmware's immediate PANIC notice, read from P1's event log, so it needs to run on the Pi). |
 | `record.py latency_video` | 5.1 | N6 | True key-press-to-wheel latency from 240 fps video. |
 | `record.py estop` | 5.1 | I6 | Emergency-stop stopping distance. |
 | `record.py deadman_physical` | 5.1 | H7 | Time until the wheels actually stop. |
@@ -172,10 +172,13 @@ progress check on the campaign.
 ## Reporting rules this harness assumes
 
 - Every figure gets n, mean and SD. A single trial is not a result.
-- `wslatency.py` figures carry up to one 200 ms telemetry period of
-  quantisation error (`protocol.TELEMETRY_PERIOD_MS`) and are upper bounds.
-  Quote the 240 fps video figure as the control latency and this as the
-  high-n confirmation of it; say so explicitly.
+- `wslatency.py` figures confirmed through a telemetry field carry up to
+  700 ms of quantisation error and are upper bounds: one firmware frame period
+  (500 ms, `arduino/config.h TELEMETRY_PERIOD_MS`) plus one P1 rebroadcast
+  period (200 ms, `protocol.TELEMETRY_PERIOD_MS`). Quote the 240 fps video
+  figure as the control latency and this as the high-n confirmation of it; say
+  so explicitly. `deadman_panic` is the one exception: it is timed from P1's
+  own log line, so its resolution is the log's millisecond timestamp.
 - Keep the CSVs in `results/` and cite them in the paper's Data and Code
   Availability statement. They are the evidence that the tests were run.
 - A failed test is a result. Record it, write it up in TEST_REPORT section 9,
@@ -197,11 +200,21 @@ First real run on the assembled robot, 30 trials each, robot on blocks,
 Reading these:
 
 - The **minimum** is the tightest upper bound on true latency, not the mean.
-  Quantisation adds a uniform 0-400 ms (one Arduino frame period plus one P1
-  rebroadcast period), so the mean sits about 200 ms above the truth while the
-  minimum is the closest any trial got to it.
-- `deadman_trip` of 2409 ms against a 2000 ms firmware timer (`DEADMAN_MS`) is
-  that same ~400 ms of pipeline, not a late timer. No trial exceeded 2.6 s.
+  Quantisation adds 0-700 ms (one 500 ms Arduino frame period plus one 200 ms
+  P1 rebroadcast period), so the mean sits about 350 ms above the truth while
+  the minimum is the closest any trial got to it.
+- `deadman_trip` of 2409 ms is not a late timer. The motors stop at about
+  2060 ms (2000 ms `DEADMAN_MS` + 10 ms supervisor period + one loop pass);
+  the rest is that reporting pipeline. No trial exceeded 2.6 s.
+- These rows predate the `deadman_panic` metric and the corrected
+  `resolution_ms` column, so they carry 200 in it. The `deadman_trip`
+  definition itself is unchanged, so the values remain comparable with later
+  runs.
+- Caveat on the spread of `deadman_trip`: the jitter is 0-200 ms, one P1
+  period, which cannot decorrelate a trial from the 500 ms firmware cycle.
+  Phase is sampled incompletely, which is why the minimum sits near 2201 ms
+  rather than near the 2060 ms stop bound, and why the SD understates the true
+  quantisation spread. `deadman_panic` is free of this, being unquantised.
 - `pan_echo` includes servo travel, so it is not comparable to the motor
   figures.
 - The `on-pi-phaselocked` rows in `latency.csv` are the same probes run before

@@ -8,22 +8,51 @@ confirm each command in telemetry. Four probes:
                 (dashboard -> P1 -> UART -> Arduino -> telemetry -> dashboard)
   motor_start   motor command -> firmware reports DRIVING (ACTIVE)
   motor_stop    emergency stop -> firmware reports READY again
-  deadman_trip  commands cease -> firmware reports STOPPED (expect ~2.0 s,
-                protocol.DEADMAN_MS)
+  deadman_trip  commands cease -> fw_state in telemetry reports STOPPED. The
+                motors stop at protocol.DEADMAN_MS (2000 ms) plus the
+                supervisor period and one loop pass, about 2060 ms; this
+                metric adds the telemetry reporting delay below, so expect
+                ~2.4 s here.
+  deadman_panic same trip, timed from the firmware's immediate PANIC notice
+                instead, read out of P1's event log. Expect ~2.06 s. Recorded
+                alongside deadman_trip in the same trial.
 
 IMPORTANT, state this in the paper: the Arduino emits a telemetry frame every
-200 ms and P1 rebroadcasts on its own 200 ms timer (protocol.TELEMETRY_PERIOD_MS),
-so a confirmation can lag the command by up to two periods. These figures are
-UPPER BOUNDS, not the control latency itself; the 240 fps video measurement
-(record.py latency_video) is the one that measures true key-press-to-wheel
-motion. Report both and say which is which.
+500 ms (arduino/config.h, TELEMETRY_PERIOD_MS) and P1 rebroadcasts on its own
+200 ms timer (protocol.TELEMETRY_PERIOD_MS, 200 ms), so a confirmation that
+waits on a telemetry field can lag the event by up to 700 ms, and by about
+350 ms on average. These figures are UPPER BOUNDS, not the control latency
+itself; the 240 fps video measurement (record.py latency_video) is the one that
+measures true key-press-to-wheel motion. Report both and say which is which.
+
+That delay is avoidable for the dead-man trip. The firmware also emits a
+tagged PANIC line in the same supervisor pass that stops the motors, costing
+only serial transit, but P1 does not forward it: p1_control/main.py calls
+set_handlers with on_event=None, so it never reaches this WebSocket. It is
+still written to P1's event log, so the deadman probe tails that log
+(--p1-log) and records deadman_panic from the log line's own millisecond
+timestamp. The log has to be local, so that metric needs this probe run on the
+Pi; without it the probe still records deadman_trip and warns.
+
+Reading the log rather than teaching P1 to forward the event is deliberate:
+the control process is the system under test, and changing it partway through
+the measurement campaign would put earlier results on a different build.
+Forwarding firmware events to the operator remains worth doing as a design
+improvement in its own right.
 
 Each trial would otherwise fire immediately after a frame arrives, always
-landing at the same point in the 200 ms cycle and producing a falsely tight
-distribution at the worst-case phase. A uniform random 0-200 ms delay before
-each command samples the cycle evenly instead, so the spread in the results is
-the real quantisation spread. --no-jitter disables it, which is only useful for
-demonstrating the artifact.
+landing at the same point in the reporting cycle and producing a falsely tight
+distribution at one phase. A uniform random 0-200 ms delay before each command
+spreads trials across the P1 rebroadcast cycle instead. --no-jitter disables
+it, which is only useful for demonstrating the artifact.
+
+KNOWN LIMITATION of that jitter: 200 ms is one P1 period, but the slower cycle
+a confirmation must clear is the firmware's 500 ms telemetry period, and a
+200 ms delay cannot decorrelate a trial from a 500 ms cycle. Phase is therefore
+sampled incompletely and the reported spread understates the true quantisation
+spread; in the on-pi deadman_trip run this shows up as a minimum near 2200 ms
+rather than near the ~2060 ms stop bound. Widening the delay to 500 ms would
+fix it and would invalidate existing rows for comparison.
 
 Run from the operator laptop for an end-to-end figure including Wi-Fi, or on
 the Pi for the robot-internal figure.
@@ -37,9 +66,11 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
 import random
 import sys
 import time
+from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -54,7 +85,17 @@ except ImportError:  # websockets < 14
 COLUMNS = ("iso_ts", "probe", "metric", "trial", "label", "value_ms",
            "resolution_ms", "ok", "detail")
 
-TELEMETRY_PERIOD_MS = 200
+TELEMETRY_PERIOD_MS = 200  # P1 rebroadcast, protocol.TELEMETRY_PERIOD_MS
+FW_TELEMETRY_PERIOD_MS = 500  # firmware frame, arduino/config.h
+# A confirmation that waits on a telemetry field has to clear both cycles, so
+# the quantisation on those metrics is the sum, not either one alone. Rows
+# collected before this correction carry 200 in the resolution_ms column.
+TELEMETRY_RESOLUTION_MS = FW_TELEMETRY_PERIOD_MS + TELEMETRY_PERIOD_MS
+# The PANIC notice is timed from P1's own log timestamp, which logging_setup.py
+# renders to milliseconds.
+LOG_RESOLUTION_MS = 1
+# Direct request/response: no telemetry cycle in the path.
+DIRECT_RESOLUTION_MS = 0
 # arduino/telemetry.cpp:62 maps firmware modes onto the three telemetry values:
 # ACTIVE -> 2, READY -> 1, and BOOT/ESTOP/PANIC all -> 3. An ordinary stop
 # command takes ACTIVE back to READY (arduino/command_parser.cpp:195), so a
@@ -163,13 +204,102 @@ class Link:
 
 
 def record(out: Path, probe: str, metric: str, trial: int, label: str,
-           value_ms: float | None, detail: str = "") -> None:
+           value_ms: float | None, detail: str = "",
+           resolution_ms: float = TELEMETRY_RESOLUTION_MS) -> None:
     append_row(out, COLUMNS, {
         "iso_ts": now_iso(), "probe": probe, "metric": metric, "trial": trial,
         "label": label, "value_ms": round(value_ms, 1) if value_ms is not None else "",
-        "resolution_ms": TELEMETRY_PERIOD_MS, "ok": int(value_ms is not None),
+        "resolution_ms": resolution_ms, "ok": int(value_ms is not None),
         "detail": detail,
     })
+
+
+def default_p1_log() -> Path:
+    """Where P1 writes p1_events.log, mirroring common/config.py Paths."""
+    explicit = os.environ.get("ROBOT_LOG_DIR")
+    if explicit:
+        return Path(explicit) / "p1_events.log"
+    root = Path(os.environ.get("ROBOT_ROOT", "")) if os.environ.get("ROBOT_ROOT") else None
+    if root is None:
+        repo = Path(__file__).resolve().parents[2]
+        root = repo / "var"
+    log_dir = Path("/var/log/robot") if root == Path("/") else root / "log"
+    return log_dir / "p1_events.log"
+
+
+def _parse_log_ts(line: str) -> float | None:
+    """Epoch seconds from the leading [ISO8601] field of an event line."""
+    if not line.startswith("["):
+        return None
+    end = line.find("]")
+    if end < 0:
+        return None
+    try:
+        return datetime.fromisoformat(line[1:end]).timestamp()
+    except ValueError:
+        return None
+
+
+class PanicLog:
+    """Tails P1's event log for the immediate FW_PANIC notice.
+
+    The firmware emits a tagged PANIC line in the same supervisor pass that
+    stops the motors (arduino/arduino.ino:83), so that notice costs only serial
+    transit. P1 logs it but does not forward it: p1_control/main.py calls
+    set_handlers with on_event=None, so it never reaches the control WebSocket.
+    Reading the log is therefore the only way to time the fast notice without
+    modifying the control process, which would change the system under test
+    partway through the measurement campaign.
+
+    The reported value comes from the log line's own timestamp, not from when
+    this tail noticed it, so the poll interval below does not affect accuracy.
+    """
+
+    POLL_S = 0.005
+
+    def __init__(self, path: Path) -> None:
+        self.path = path
+        self._handle = None
+
+    def open(self) -> bool:
+        try:
+            self._handle = self.path.open("r", encoding="utf-8", errors="replace")
+        except OSError:
+            return False
+        self._handle.seek(0, os.SEEK_END)
+        return True
+
+    def mark(self) -> None:
+        """Drop anything written before this trial's last command."""
+        if self._handle is not None:
+            self._handle.read()
+
+    async def await_panic(self, timeout: float) -> float | None:
+        """Epoch seconds of the next dead-man PANIC line, or None on timeout.
+
+        A read can catch the writer mid-append, so a line is only considered
+        once its terminator is present; otherwise the partial read is rewound
+        and retried. Without that, a split line would drop a PANIC and the
+        trial would look like a miss.
+        """
+        if self._handle is None:
+            return None
+        deadline = time.perf_counter() + timeout
+        while time.perf_counter() < deadline:
+            position = self._handle.tell()
+            line = self._handle.readline()
+            if not line.endswith("\n"):
+                self._handle.seek(position)
+                await asyncio.sleep(self.POLL_S)
+                continue
+            if "[FW_PANIC]" in line and "DEADMAN" in line:
+                return _parse_log_ts(line)
+        return None
+
+    def close(self) -> None:
+        if self._handle is not None:
+            self._handle.close()
+            self._handle = None
 
 
 async def probe_hello(args: argparse.Namespace, url: str) -> None:
@@ -183,7 +313,8 @@ async def probe_hello(args: argparse.Namespace, url: str) -> None:
                 ack = json.loads(await asyncio.wait_for(socket.recv(), timeout=10))
                 elapsed = (time.perf_counter() - start) * 1000
             record(args.out, "hello", "hello_rtt", trial, args.label, elapsed,
-                   f"role={ack.get('role')} auth={ack.get('auth')}")
+                   f"role={ack.get('role')} auth={ack.get('auth')}",
+                   resolution_ms=DIRECT_RESOLUTION_MS)
             print(f"  hello {trial}: {elapsed:.1f} ms")
         except (OSError, asyncio.TimeoutError, json.JSONDecodeError) as error:
             record(args.out, "hello", "hello_rtt", trial, args.label, None, str(error))
@@ -230,11 +361,25 @@ async def probe_motor(link: Link, args: argparse.Namespace) -> None:
         await asyncio.sleep(args.settle)
 
 
-async def probe_deadman(link: Link, args: argparse.Namespace) -> None:
-    """Drive, then go silent. Expect a trip at protocol.DEADMAN_MS (2000 ms).
+async def probe_deadman(link: Link, args: argparse.Namespace,
+                        panic_log: "PanicLog | None" = None) -> None:
+    """Drive, then go silent. The motors stop at DEADMAN_MS plus the supervisor
+    period and one loop pass, about 2060 ms.
 
-    The firmware timer is what is measured here; that the wheels physically
-    stop is test H7, recorded with record.py deadman_physical.
+    The firmware announces the trip on two paths, so each trial records two
+    metrics rather than conflating them:
+
+      deadman_panic  the tagged PANIC line, emitted in the same supervisor
+                     pass that stops the motors. Read from P1's event log,
+                     because P1 does not forward firmware events to the
+                     WebSocket. This is the responsive path.
+      deadman_trip   the fw_state field in periodic telemetry, which carries
+                     up to 700 ms of reporting delay on top of the stop. Its
+                     definition is unchanged from earlier runs, so previously
+                     collected rows stay comparable.
+
+    Neither is the stop time itself. That the wheels physically stop is test
+    H7, recorded with record.py deadman_physical.
     """
     print("  (robot will drive briefly then dead-man stop on each trial -- keep it clear)")
     for trial in range(1, args.trials + 1):
@@ -251,15 +396,34 @@ async def probe_deadman(link: Link, args: argparse.Namespace) -> None:
             continue
 
         link.beating = False  # go silent: nothing re-arms the timer now
+        if panic_log is not None:
+            panic_log.mark()
         last_command = await link.jittered_send(
             {"type": "motor", "dir": "F", "speed": args.speed})
+        # The same instant as last_command, on the wall clock the log uses.
+        sent_wall = time.time() - (time.perf_counter() - last_command)
+
+        # Both paths are watched concurrently so that waiting on one cannot
+        # delay the timestamp taken for the other.
+        panic_task = (asyncio.create_task(panic_log.await_panic(10.0))
+                      if panic_log is not None else None)
         frame, arrived = await link.await_frame(
             lambda f: f.get("fw_state") == FW_STOPPED, timeout=10.0)
         elapsed = (arrived - last_command) * 1000 if frame else None
+        panic_at = await panic_task if panic_task is not None else None
         link.beating = True
+
+        panic_ms = (panic_at - sent_wall) * 1000 if panic_at is not None else None
+        if panic_log is not None:
+            record(args.out, "deadman", "deadman_panic", trial, args.label, panic_ms,
+                   f"FW_PANIC log line, speed={args.speed}",
+                   resolution_ms=LOG_RESOLUTION_MS)
         record(args.out, "deadman", "deadman_trip", trial, args.label, elapsed,
-               f"expected ~2000 ms, speed={args.speed}")
-        print(f"  deadman {trial}: {f'{elapsed:.0f} ms' if elapsed else 'NO TRIP (FAIL)'}")
+               f"fw_state in telemetry, expected ~2400 ms, speed={args.speed}")
+        shown = f"{elapsed:.0f} ms" if elapsed else "NO TRIP (FAIL)"
+        if panic_log is not None:
+            shown += f" (PANIC at {f'{panic_ms:.0f} ms' if panic_ms else 'not seen'})"
+        print(f"  deadman {trial}: {shown}")
         await asyncio.sleep(max(args.settle, 1.0))
 
 
@@ -296,6 +460,18 @@ async def run(args: argparse.Namespace) -> int:
                 file=sys.stderr)
             return 2
 
+        panic_log = None
+        if "deadman" in probes:
+            candidate = PanicLog(args.p1_log)
+            if candidate.open():
+                panic_log = candidate
+                print(f"  tailing {args.p1_log} for the FW_PANIC notice")
+            else:
+                print(f"WARNING: cannot read {args.p1_log}; recording "
+                      "deadman_trip only, without the fast PANIC path. "
+                      "Run this probe on the Pi, or pass --p1-log.",
+                      file=sys.stderr)
+
         link = Link(socket, args.label, jitter=args.jitter)
         await link.start()
         try:
@@ -306,13 +482,19 @@ async def run(args: argparse.Namespace) -> int:
                 elif probe == "motor":
                     await probe_motor(link, args)
                 elif probe == "deadman":
-                    await probe_deadman(link, args)
+                    await probe_deadman(link, args, panic_log)
             await link.settle_ready()
         finally:
             await link.stop()
+            if panic_log is not None:
+                panic_log.close()
 
     print(f"\nwritten to {args.out}")
-    print(f"NOTE: {TELEMETRY_PERIOD_MS} ms telemetry quantisation -- these are upper bounds.")
+    print(f"NOTE: metrics confirmed through telemetry carry up to "
+          f"{TELEMETRY_RESOLUTION_MS} ms of quantisation "
+          f"({FW_TELEMETRY_PERIOD_MS} ms firmware frame + {TELEMETRY_PERIOD_MS} ms "
+          "P1 rebroadcast) and are upper bounds, not stop or control latency. "
+          "deadman_panic is the exception: it is timed from P1's log line.")
     return 0
 
 
@@ -331,6 +513,9 @@ def main() -> int:
     parser.add_argument("--no-jitter", dest="jitter", action="store_false",
                         help="send without phase jitter (demonstrates the artifact)")
     parser.add_argument("--out", type=Path, default=RESULTS_DIR / "latency.csv")
+    parser.add_argument("--p1-log", type=Path, default=default_p1_log(),
+                        help="P1 event log, tailed for the FW_PANIC notice "
+                             "in the dead-man probe (must be local to P1)")
     args = parser.parse_args()
     if args.probe in ("all", "motor", "deadman"):
         print("WARNING: the motor and dead-man probes make the robot DRIVE. "
