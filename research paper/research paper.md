@@ -80,56 +80,34 @@
 
 **4. Experimental Setup**
 
-- Scope rule: this section holds only what is shared across all nine experiments
-  (environment, metric definitions, baselines) plus one experiment matrix. The
-  procedure specific to a single experiment is not written here; it opens the
-  matching Section 5 subsection, so no experiment is described twice.
-- 4.1 Test Environment and Hardware Configuration
-  - The robot as built: hardware per Section 3.3 (Table 2), wiring per Figure 3
-  - Operator station: laptop, browser, insecure-origin exception (Section 3.2)
-  - Network: 802.11n, 2.4 GHz channel 10, 20 MHz, single /24, router at the
-    staging point (Section 3.2)
-  - Software versions and settings: firmware, Python, FastAPI, aiortc, PyAV;
-    MOCK_HARDWARE off for all reported runs (Section 3.4)
+- Scope rule: only what is shared across all nine experiments appears here
+  (test conditions, metric definitions, baselines). Procedure specific to one
+  experiment opens the matching Section 5 subsection, so nothing is described
+  twice. Hardware, network and software are specified in Sections 3.2-3.4 and
+  are not restated.
+- 4.1 Test Conditions
+  - One paragraph: the robot as built (Table 2, Figure 3), operator laptop and
+    browser, single 802.11n cell (Section 3.2), MOCK_HARDWARE off for all runs
   - Test sites: indoor corridor and lab for latency, fault and resource runs;
     outdoor area for range and GPS runs
-- 4.2 Evaluation Metrics
-  - Each metric defined by start point, end point and unit, and mapped one-to-one
-    to the Section 5 subsection that reports it
-  - Control latency (dashboard keypress to firmware action; WebSocket round trip)
-    -> Section 5.1
-  - Emergency-stop time (stop event to motors disabled) and the dead-man worst
-    case -> Section 5.1
-  - Video fps, resolution and glass-to-glass latency; audio mouth-to-ear latency
-    at Opus 32 kbps, 60 ms packets -> Section 5.2
-  - Link quality against distance: RSSI, packet loss, round-trip time,
-    throughput -> Section 5.3
-  - Recovery time (process death or hang to service answering again) -> Section 5.4
-  - Pi CPU, memory, temperature and power -> Section 5.5
-  - Ranging error against tape measure; GPS static hold and track drift
-    -> Section 5.6
-  - Field-trial task times and success -> Section 5.7
-  - Operator task completion time, success rate and questionnaire score
-    -> Section 5.8
-  - Total bill of materials in USD -> Section 5.9
-  - Pass/fail thresholds carried over from Section 3: 2000 ms dead-man window,
-    3000 ms dashboard telemetry timeout, 500 ms telemetry cadence
-    (Sections 3.5.2, 3.6.2, Table 1a)
-- 4.3 Experiment Matrix
-  - One table, no per-experiment prose: experiment | site | trials (N) |
-    tool under tools/eval/ | metric from 4.2 | reported in
-  - Nine rows, one per Section 5 subsection; tools are wslatency.py,
+- 4.2 Experiments, Metrics and Validity Rules
+  - Table 3 (the only table in this section): experiment | site | trials (N) |
+    tool under tools/eval/ | metric, start point to end point, unit | reported in
+  - Nine rows, one per Section 5 subsection (5.1-5.9); tools are wslatency.py,
     faultinject.py, netsweep.py, reslog.py, gpsdrift.py, record.py and
-    summarize.py, with raw output under tools/eval/results/
-  - Validity rule for a trial, and the discard criteria, stated once here
-- 4.4 Baselines for Comparison
-  - Internal ablations of this system: dead-man timer removed, P3 watchdog
-    disabled, control and media in one process, alternative audio bitrate
-  - Specification targets from Section 3 used as pass/fail thresholds (4.2)
-  - Literature baselines: reported figures from the platforms in the Section 2.6
-    comparison table \cite{casper2003,liu2013,daun2023,megalingam2022}, taken
-    from their papers and not re-run here, so the comparison is qualitative plus
-    reported values rather than a controlled head-to-head
+    summarize.py, raw output under tools/eval/results/
+  - Pass/fail thresholds from Section 3, stated in one sentence: 2000 ms
+    dead-man window, 3000 ms telemetry timeout, 500 ms telemetry cadence
+    (Sections 3.5.2, 3.6.2)
+  - Validity rule for a trial and discard criteria, stated once
+- 4.3 Baselines
+  - Internal ablations: dead-man timer removed, P3 watchdog disabled, control
+    and media in one process, alternative audio bitrate
+  - Specification targets from Section 3 as pass/fail thresholds
+  - Literature baselines: figures reported by the platforms in the Section 2.6
+    comparison \cite{casper2003,liu2013,daun2023,megalingam2022}, taken from
+    their papers and not re-run; comparison is qualitative plus reported values,
+    not a controlled head-to-head
 
 **5. Results**
 
