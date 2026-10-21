@@ -58,17 +58,17 @@ Source: `faults.csv`, 30 raw rows.
 
 ### Resource utilisation on the Raspberry Pi 4 (per-process CPU is % of one core)
 
-Source: `resources.csv`, 3000 raw rows.
+Source: `resources.csv`, 3010 raw rows.
 
 | condition | measure | n | mean | sd | min | max | median | p95 |
 |---|---|---|---|---|---|---|---|---|
-| driving | total CPU (%) | 299 | 10.61 | 13.44 | 1.8 | 81.9 | 5.3 | 40.83 |
-| driving | P1 CPU (%) | 299 | 4.86 | 1.85 | 1.0 | 15.0 | 5.0 | 8.0 |
-| driving | P2 CPU (%) | 299 | 0.93 | 0.54 | 0.0 | 3.0 | 1.0 | 2.0 |
-| driving | P3 CPU (%) | 299 | 0.14 | 0.34 | 0.0 | 1.0 | 0.0 | 1.0 |
-| driving | memory used (MB) | 299 | 2192.72 | 26.08 | 2157.7 | 2254.6 | 2185.8 | 2244.72 |
-| driving | SoC temp (C) | 299 | 43.72 | 0.96 | 41.9 | 46.3 | 43.3 | 45.3 |
-| driving | uplink (kbps) | 299 | 276.88 | 714.66 | 2.9 | 5847.3 | 4.1 | 1345.17 |
+| driving | total CPU (%) | 309 | 20.7 | 8.66 | 9.7 | 61.2 | 18.5 | 40.98 |
+| driving | P1 CPU (%) | 309 | 3.74 | 0.96 | 2.0 | 8.0 | 4.0 | 5.0 |
+| driving | P2 CPU (%) | 309 | 1.12 | 1.37 | 0.0 | 8.0 | 1.0 | 2.0 |
+| driving | P3 CPU (%) | 309 | 0.12 | 0.34 | 0.0 | 2.0 | 0.0 | 1.0 |
+| driving | memory used (MB) | 309 | 2429.29 | 31.48 | 2355.8 | 2508.5 | 2434.8 | 2478.24 |
+| driving | SoC temp (C) | 309 | 48.04 | 0.83 | 45.8 | 51.6 | 48.2 | 49.2 |
+| driving | uplink (kbps) | 309 | 923.71 | 506.87 | 97.4 | 2499.9 | 1152.2 | 1528.44 |
 | driving+media | total CPU (%) | 299 | 68.46 | 7.69 | 51.6 | 96.7 | 66.9 | 85.4 |
 | driving+media | P1 CPU (%) | 299 | 8.79 | 0.91 | 6.0 | 11.0 | 9.0 | 10.0 |
 | driving+media | P2 CPU (%) | 299 | 118.1 | 7.59 | 81.9 | 131.0 | 120.0 | 125.37 |
@@ -91,12 +91,12 @@ Source: `resources.csv`, 3000 raw rows.
 | idle-partial-10min | SoC temp (C) | 603 | 47.2 | 1.69 | 43.8 | 52.6 | 47.2 | 51.05 |
 | idle-partial-10min | uplink (kbps) | 603 | 803.32 | 1539.03 | 0.5 | 8473.9 | 127.0 | 5349.24 |
 
-- under-voltage seen [driving]: 299/299 samples
+- under-voltage seen [driving]: 0/309 samples
 - under-voltage seen [driving+media]: 299/299 samples
 - under-voltage seen [idle]: 0/1799 samples
 - under-voltage seen [idle-partial-10min]: 0/603 samples
 
-- throttled samples [driving]: 30/299 samples
+- throttled samples [driving]: 0/309 samples
 - throttled samples [driving+media]: 276/299 samples
 - throttled samples [idle]: 0/1799 samples
 - throttled samples [idle-partial-10min]: 0/603 samples
@@ -118,7 +118,7 @@ Source: `gps_static.csv`, 1 raw row.
 - [ ] 5.2 End-to-end video delay (`glass2glass.csv`)
 - [ ] 5.3 Wi-Fi range and link degradation (`network.csv`)
 - [ ] 5.4 Manually injected faults: health transitions (`fault_watch.csv`)
-- [ ] 5.6 Ultrasonic range error by true distance (`ultrasonic.csv`)
+- [x] 5.6 Ultrasonic range error by true distance (`ultrasonic.csv`)
 - [ ] 5.6 Temperature and humidity error vs reference instrument (`thermal.csv`)
 - [ ] 5.6 Gas sensor response (raw ADC counts, uncalibrated) (`gas.csv`)
 - [ ] 5.7 End-to-end rescue runs (`field.csv`)
