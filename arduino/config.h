@@ -43,11 +43,13 @@
  * Two BTS7960 drivers: one per side (differential drive).
  * Each BTS7960 exposes RPWM (forward) and LPWM (reverse) inputs.
  * EN pins are tied together and driven by a single enable line.
+ * Pin numbers match the as-built wiring: the left motor's driver sits on 9/10
+ * and the right motor's driver on 5/6 with its RPWM/LPWM reversed.
  * ======================================================================== */
-#define LEFT_RPWM_PIN         5    /* PWM capable */
-#define LEFT_LPWM_PIN         6    /* PWM capable */
-#define RIGHT_RPWM_PIN        9    /* PWM capable */
-#define RIGHT_LPWM_PIN       10    /* PWM capable */
+#define LEFT_RPWM_PIN         9    /* PWM capable */
+#define LEFT_LPWM_PIN        10    /* PWM capable */
+#define RIGHT_RPWM_PIN        6    /* PWM capable */
+#define RIGHT_LPWM_PIN        5    /* PWM capable */
 #define MOTOR_EN_PIN          4    /* common enable for both drivers        */
 
 #define MOTOR_PWM_MIN         0
