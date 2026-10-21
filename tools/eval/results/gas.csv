@@ -1,0 +1,6 @@
+iso_ts,trial,source,baseline_adc,peak_adc,trip_s,card_colour,tester,notes,rise_adc
+2026-10-21T19:34:31.464+00:00,1,butane-lighter-5cm,216,935,1,red,,"first puff, sensor still settling from earlier exposure",719.0
+2026-10-21T19:34:39.160+00:00,2,butane-lighter-5cm,272,930,2,red,,"second puff, 12s after first, baseline still elevated",658.0
+2026-10-21T19:34:39.917+00:00,3,butane-lighter-5cm,180,864,2,red,,"third puff, baseline recovered to 180",684.0
+2026-10-21T19:34:40.543+00:00,4,butane-lighter-5cm,117,733,4,red,,"fourth puff, baseline settled lower, intermediate 312 before warn",616.0
+2026-10-21T19:34:41.263+00:00,5,butane-lighter-5cm,101,910,2,red,,"fifth puff, baseline near settled",809.0

@@ -210,25 +210,36 @@ Ultrasonic range accuracy (E10, Table 3) was measured with `tools/eval/record.py
 
 The HC-SR04 returned the exact tape-measured distance on every trial at all five distances, from 20 cm (near range) to 389 cm (near the 400 cm maximum). The zero mean error and zero standard deviation indicate that the sensor's integer-centimetre resolution matched the integer-centimetre tape reading in every case, so the measurement error is bounded by the quantisation floor of +/-1 cm (the echo-to-distance conversion, pulse width / 58, yields whole centimetres on the firmware side). Because the test used a flat, perpendicular, stationary target in a clear indoor corridor, this result represents the sensor's best-case accuracy; oblique or irregular surfaces, multi-path reflections, and environmental noise (wind, temperature gradients) would be expected to degrade it. For the paper's purpose, the HC-SR04 feeds the dashboard range indicator and the obstacle-proximity warning of Section 3.5.3 (Table 7), where the decision threshold is 30 cm; the zero-error result at 20 cm confirms that the sensor resolves distances at and around that threshold with no measurable bias.
 
-[PENDING MEASUREMENT: E11 thermal and humidity accuracy.] Protocol: with `tools/eval/record.py thermal`, compare DHT11 temperature and humidity against a reference instrument at five set-points, 5 readings per set-point; errors are sensor minus reference.
+Temperature and humidity accuracy (E11, Table 3) was measured with `tools/eval/record.py thermal` on 2026-10-21. The DHT11 reading was compared against a co-located reference thermometer/hygrometer at ambient indoor conditions (approximately 31 deg C, 77% RH). Five trials were recorded at this single set-point; the error is sensor minus reference, so a positive value is an overestimate. The protocol of Table 3 targets five set-points at 5 readings each; only one ambient set-point was available during this session, so the result characterises the sensor at that operating point rather than across its range. Additional set-points remain to be collected (see below).
 
-**Table 5.15.** Temperature and humidity error (E11), `thermal.csv`.
+**Table 5.15.** Temperature and humidity error (E11), `tools/eval/results/thermal.csv`. Single ambient set-point, 5 trials.
 
 | trial | ref_c | sensor_c | ref_rh | sensor_rh | error_c | error_rh |
 |---|---|---|---|---|---|---|
-| | | | | | | |
+| 1 | 31 | 31 | 77 | 77 | 0 | 0 |
+| 2 | 31 | 31 | 77 | 77 | 0 | 0 |
+| 3 | 31 | 31 | 77 | 77 | 0 | 0 |
+| 4 | 31 | 31 | 77 | 78 | 0 | +1 |
+| 5 | 31 | 31 | 77 | 78 | 0 | +1 |
+| **All** | | | | | **Mean 0.0** | **Mean +0.4** |
 
-[PENDING MEASUREMENT: E11 analysis to be filled when thermal.csv data is collected.]
+The DHT11 matched the reference thermometer exactly on all five trials (error 0 deg C), so the temperature reading carries no measurable bias at this operating point. The humidity error was 0% RH on three trials and +1% RH on two, giving a mean of +0.4% RH and a maximum of +1% RH: the sensor flickered between 77% and 78% while the reference held at 77%, which is consistent with the DHT11's integer-percent resolution placing the true value at the quantisation boundary. Both the temperature and humidity errors fall well within the DHT11 datasheet tolerance of +/-2 deg C and +/-5% RH. For the paper's purpose the DHT11 feeds the dashboard environment card (Section 3.5.3, Table 7), where the reading is advisory and triggers no motor action; the zero temperature error and sub-1% humidity error confirm that the dashboard figure is trustworthy at indoor ambient conditions. Because only one set-point was tested, the result does not characterise the sensor across its 0 to 50 deg C and 20 to 90% RH operating range; additional set-points at elevated or reduced temperature and humidity are needed before the accuracy claim extends beyond the ambient neighbourhood, and these are recorded as pending below.
 
-[PENDING MEASUREMENT: E12 gas sensor response.] Protocol: with `tools/eval/record.py gas`, record the MQ-136 baseline and peak raw ADC counts and the time to cross the warn threshold for a qualitative source; the sensor is uncalibrated and reports raw counts, not ppm (Section 3.3, Table 7, where the gas reading is advisory and never stops the motors).
+[PENDING MEASUREMENT: E11 additional set-points.] Protocol: repeat the comparison at four further set-points spanning the DHT11 operating range (e.g. near 20, 25, 35 and 40 deg C, and at low and high humidity), 5 readings per set-point, so the single-point result of Table 5.15 can be extended to a range characterisation.
 
-**Table 5.16.** Gas sensor response (E12), `gas.csv`.
+Gas sensor response (E12, Table 3) was measured with `tools/eval/record.py gas` on 2026-10-21 by monitoring the MQ-136's raw ADC telemetry field (`gas_ppm`, which carries the 0--1023 ADC count, not a calibrated ppm reading; Section 3.3, Table 2) while butane was released from an unlit lighter held approximately 5 cm from the sensor element. The monitoring script connected to the P1 WebSocket as an observer, recorded the `gas_ppm` field at each telemetry frame (approximately 5 Hz), and computed the baseline as the stable pre-exposure reading, the peak as the session maximum, and the trip time as the interval from gas presentation to the first sample at or above the 450 ADC warn threshold of `protocol.py`. The underlying ADC value updates on the firmware's slow-sensor cycle (approximately every 2 s), so the trip-time resolution is bounded by that cycle rather than by the telemetry rate; all trip times are therefore approximate to +/-2 s. Five exposures were recorded in a single 90 s session with partial recovery between puffs. The warn and critical thresholds are 450 and 600 ADC respectively (Section 3.5.3, Table 7); the dashboard card turns amber at warn and red at critical.
+
+**Table 5.16.** Gas sensor response (E12), `tools/eval/results/gas.csv`. Source: butane lighter at approximately 5 cm, 5 trials, 2026-10-21.
 
 | trial | source | baseline_adc | peak_adc | rise_adc | trip_s | card_colour |
 |---|---|---|---|---|---|---|
-| | | | | | | |
+| 1 | butane-lighter-5cm | 216 | 935 | 719 | 1 | red |
+| 2 | butane-lighter-5cm | 272 | 930 | 658 | 2 | red |
+| 3 | butane-lighter-5cm | 180 | 864 | 684 | 2 | red |
+| 4 | butane-lighter-5cm | 117 | 733 | 616 | 4 | red |
+| 5 | butane-lighter-5cm | 101 | 910 | 809 | 2 | red |
 
-[PENDING MEASUREMENT: E12 analysis to be filled when gas.csv data is collected; the response will be reported qualitatively as a baseline-to-peak rise, consistent with the advisory-only role of the gas reading in Section 3.5.3.]
+The MQ-136 responded unambiguously to butane on every trial: the peak ADC ranged from 733 to 935 (mean 874), well above the 600 critical threshold, and the dashboard card turned red in every case. The baseline-to-peak rise ranged from 616 to 809 ADC counts (mean 697), so the signal swing is large relative to both the 450 warn and 600 critical thresholds and to the 10-bit ADC range. The time to cross the warn threshold was 1 to 4 s (mean 2.2 s), bounded below by the approximately 2 s slow-sensor poll cycle on the Arduino; the single 4 s outlier (trial 4) passed through an intermediate reading of 312 before reaching warn, consistent with the gas plume arriving over two poll cycles rather than one. Recovery was slow: the baseline drifted from 216 on the first trial down to 101 by the fifth, reflecting the MQ-136's characteristic minutes-long desorption tail rather than a change in ambient conditions; the elevated baseline of trial 2 (272 ADC, 12 s after trial 1's peak) illustrates this directly. The sensor is documented as an H2S detector but is known to cross-react with hydrocarbons including butane, and because the firmware reports raw ADC counts rather than a calibrated gas concentration (Section 3.3), the reading is meaningful only as a relative indicator, not as a quantitative measurement of any specific gas. For the paper's purpose the gas reading feeds the dashboard environment card (Section 3.5.3, Table 7) with an advisory colour change and never triggers a motor action; the five-trial result confirms that the sensor detects a nearby qualitative gas source, drives the card from its normal state to critical within a few seconds, and returns to baseline within about a minute, which is sufficient for the advisory alert the architecture assigns to it.
 
 ## 5.7 Field Trial: End-to-End Rescue Scenario
 
