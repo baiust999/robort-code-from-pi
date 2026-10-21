@@ -1,0 +1,4 @@
+iso_ts,label,t_s,field,from_value,to_value,held_s
+2026-10-21T19:41:58.475+00:00,F6-arduino-unplug,4.70,serial_connected,1,0,4.70
+2026-10-21T19:53:11.692+00:00,F7-wifi-drop,26.85,ws_clients,1,0,26.85
+2026-10-21T19:53:13.598+00:00,F7-wifi-drop,28.76,ws_clients,0,1,1.91
