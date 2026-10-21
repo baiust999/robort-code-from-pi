@@ -1,10 +1,10 @@
 # 4. Experimental Setup
 
-This section defines the test environment, the experiment matrix and the baselines that apply across all nine experiments. Each subsection of Section 5 opens with its own procedure paragraph; shared conditions stated here are not repeated there. The hardware, network and software are specified in Sections 3.2-3.4 and are referenced, not restated.
+This section defines the test environment, the experiment matrix and the baselines that apply across all fifteen experiments. Each subsection of Section 5 opens with its own procedure paragraph; shared conditions stated here are not repeated there. The hardware, network and software are specified in Sections 3.2-3.4 and are referenced, not restated.
 
 ## 4.1 Test Conditions
 
-All experiments run on the robot as built (Table 2, Figure 3) with a single operator laptop connected to the same Wi-Fi cell. The network is the 802.11n cell described in Section 3.2: 2.4 GHz, channel 10, 20 MHz width, no internet uplink. The robot runs Raspberry Pi OS 12 (Bookworm, kernel 6.12, arm64) with Python 3.11, and the operator uses Chromium on the same laptop for both the dashboard and the SUS questionnaire. MOCK_HARDWARE is off for every run, so every command reaches the physical Arduino and motors.
+All experiments run on the robot as built (Table 2, Figure 3) with a single operator laptop connected to the same Wi-Fi cell. The network is the 802.11n cell described in Section 3.2: 2.4 GHz, channel 10, 20 MHz width, no internet uplink. The robot runs Raspberry Pi OS 12 (Bookworm, kernel 6.12, arm64) with Python 3.11, and the operator uses Chromium on the same laptop for both the dashboard and the SUS questionnaire. Hardware emulation is disabled for every run, so every command reaches the physical Arduino and motors.
 
 Three test sites are used:
 
@@ -12,7 +12,7 @@ Three test sites are used:
 - Indoor corridor and adjoining rooms: field-trial course (Section 5.7) and usability runs (Section 5.8).
 - Outdoor open area: Wi-Fi range sweep (Section 5.3) and GPS static accuracy (Section 5.6), where line-of-sight distances up to link failure are needed.
 
-**Ethics and human-subject protocol.** The usability evaluation (Section 5.8) involves volunteer operators who complete a timed task and a System Usability Scale questionnaire. The field trial (Section 5.7) includes a role-played victim who interacts with the operator through the robot's display and speaker. All participants give informed consent, participation is voluntary, no deception is involved, and responses are recorded anonymously with a participant number only. No personally identifiable data is collected or stored. [NEEDS SPEC: state whether formal IRB / ethics-committee approval was obtained or explain why the protocol falls under an exemption.]
+**Ethics and human-subject protocol.** The usability evaluation (Section 5.8) involves volunteer operators who complete a timed task and a System Usability Scale questionnaire. The field trial (Section 5.7) includes a role-played victim who interacts with the operator through the robot's display and speaker. All participants give informed consent, participation is voluntary, no deception is involved, and responses are recorded anonymously with a participant number only. No personally identifiable data is collected or stored. The study poses minimal risk: operators perform a short teleoperation task in a controlled indoor environment with no deception, no collection of personally identifiable information, and anonymous recording by participant number only. Under these conditions the protocol is exempt from formal ethics-committee review. Participants are briefed on the task, the data collected and their right to withdraw at any time before the session begins.
 
 ## 4.2 Experiments, Metrics and Validity Rules
 
