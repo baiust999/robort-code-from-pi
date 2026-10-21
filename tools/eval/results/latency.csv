@@ -239,3 +239,183 @@ iso_ts,probe,metric,trial,label,value_ms,resolution_ms,ok,detail
 2026-10-07T21:47:03.624+00:00,deadman,deadman_trip,28,on-pi,2395.7,200,1,"expected ~2000 ms, speed=150"
 2026-10-07T21:47:07.629+00:00,deadman,deadman_trip,29,on-pi,2413.4,200,1,"expected ~2000 ms, speed=150"
 2026-10-07T21:47:11.638+00:00,deadman,deadman_trip,30,on-pi,2492.3,200,1,"expected ~2000 ms, speed=150"
+2026-10-21T12:53:27.819+00:00,hello,hello_rtt,1,on-pi-2026-10-21,226.5,0,1,role=controller auth=ok
+2026-10-21T12:53:28.441+00:00,hello,hello_rtt,2,on-pi-2026-10-21,110.4,0,1,role=controller auth=ok
+2026-10-21T12:53:29.203+00:00,hello,hello_rtt,3,on-pi-2026-10-21,123.9,0,1,role=controller auth=ok
+2026-10-21T12:53:29.841+00:00,hello,hello_rtt,4,on-pi-2026-10-21,116.3,0,1,role=controller auth=ok
+2026-10-21T12:53:30.457+00:00,hello,hello_rtt,5,on-pi-2026-10-21,99.4,0,1,role=controller auth=ok
+2026-10-21T12:53:31.217+00:00,hello,hello_rtt,6,on-pi-2026-10-21,117.2,0,1,role=controller auth=ok
+2026-10-21T12:53:31.830+00:00,hello,hello_rtt,7,on-pi-2026-10-21,96.9,0,1,role=controller auth=ok
+2026-10-21T12:53:32.455+00:00,hello,hello_rtt,8,on-pi-2026-10-21,115.3,0,1,role=controller auth=ok
+2026-10-21T12:53:33.229+00:00,hello,hello_rtt,9,on-pi-2026-10-21,249.1,0,1,role=controller auth=ok
+2026-10-21T12:53:33.839+00:00,hello,hello_rtt,10,on-pi-2026-10-21,97.4,0,1,role=controller auth=ok
+2026-10-21T12:53:34.471+00:00,hello,hello_rtt,11,on-pi-2026-10-21,114.2,0,1,role=None auth=None
+2026-10-21T12:53:35.066+00:00,hello,hello_rtt,12,on-pi-2026-10-21,78.4,0,1,role=controller auth=ok
+2026-10-21T12:53:35.835+00:00,hello,hello_rtt,13,on-pi-2026-10-21,255.9,0,1,role=controller auth=ok
+2026-10-21T12:53:36.469+00:00,hello,hello_rtt,14,on-pi-2026-10-21,117.0,0,1,role=None auth=None
+2026-10-21T12:53:37.222+00:00,hello,hello_rtt,15,on-pi-2026-10-21,115.5,0,1,role=controller auth=ok
+2026-10-21T12:53:37.831+00:00,hello,hello_rtt,16,on-pi-2026-10-21,97.9,0,1,role=controller auth=ok
+2026-10-21T12:53:38.478+00:00,hello,hello_rtt,17,on-pi-2026-10-21,30.1,0,1,role=controller auth=ok
+2026-10-21T12:53:39.085+00:00,hello,hello_rtt,18,on-pi-2026-10-21,96.3,0,1,role=controller auth=ok
+2026-10-21T12:53:39.725+00:00,hello,hello_rtt,19,on-pi-2026-10-21,130.0,0,1,role=controller auth=ok
+2026-10-21T12:53:40.357+00:00,hello,hello_rtt,20,on-pi-2026-10-21,123.8,0,1,role=controller auth=ok
+2026-10-21T12:53:41.125+00:00,hello,hello_rtt,21,on-pi-2026-10-21,143.3,0,1,role=controller auth=ok
+2026-10-21T12:53:41.861+00:00,hello,hello_rtt,22,on-pi-2026-10-21,224.2,0,1,role=controller auth=ok
+2026-10-21T12:53:42.489+00:00,hello,hello_rtt,23,on-pi-2026-10-21,109.2,0,1,role=None auth=None
+2026-10-21T12:53:43.351+00:00,hello,hello_rtt,24,on-pi-2026-10-21,245.9,0,1,role=controller auth=ok
+2026-10-21T12:53:43.976+00:00,hello,hello_rtt,25,on-pi-2026-10-21,110.7,0,1,role=controller auth=ok
+2026-10-21T12:53:44.611+00:00,hello,hello_rtt,26,on-pi-2026-10-21,121.0,0,1,role=controller auth=ok
+2026-10-21T12:53:45.384+00:00,hello,hello_rtt,27,on-pi-2026-10-21,243.7,0,1,role=controller auth=ok
+2026-10-21T12:53:46.006+00:00,hello,hello_rtt,28,on-pi-2026-10-21,102.4,0,1,role=controller auth=ok
+2026-10-21T12:53:46.623+00:00,hello,hello_rtt,29,on-pi-2026-10-21,105.1,0,1,role=controller auth=ok
+2026-10-21T12:53:47.370+00:00,hello,hello_rtt,30,on-pi-2026-10-21,222.6,0,1,role=controller auth=ok
+2026-10-21T12:53:48.749+00:00,pan,pan_echo,1,on-pi-2026-10-21,637.1,700,1,angle=40
+2026-10-21T12:53:49.743+00:00,pan,pan_echo,2,on-pi-2026-10-21,453.5,700,1,angle=60
+2026-10-21T12:53:50.752+00:00,pan,pan_echo,3,on-pi-2026-10-21,349.6,700,1,angle=110
+2026-10-21T12:53:51.749+00:00,pan,pan_echo,4,on-pi-2026-10-21,333.0,700,1,angle=130
+2026-10-21T12:53:52.752+00:00,pan,pan_echo,5,on-pi-2026-10-21,309.0,700,1,angle=150
+2026-10-21T12:53:53.754+00:00,pan,pan_echo,6,on-pi-2026-10-21,419.5,700,1,angle=170
+2026-10-21T12:53:54.798+00:00,pan,pan_echo,7,on-pi-2026-10-21,362.2,700,1,angle=30
+2026-10-21T12:53:55.758+00:00,pan,pan_echo,8,on-pi-2026-10-21,265.6,700,1,angle=70
+2026-10-21T12:53:56.760+00:00,pan,pan_echo,9,on-pi-2026-10-21,478.5,700,1,angle=120
+2026-10-21T12:53:57.766+00:00,pan,pan_echo,10,on-pi-2026-10-21,377.5,700,1,angle=20
+2026-10-21T12:53:58.775+00:00,pan,pan_echo,11,on-pi-2026-10-21,430.4,700,1,angle=40
+2026-10-21T12:53:59.769+00:00,pan,pan_echo,12,on-pi-2026-10-21,304.2,700,1,angle=60
+2026-10-21T12:54:00.773+00:00,pan,pan_echo,13,on-pi-2026-10-21,393.1,700,1,angle=110
+2026-10-21T12:54:01.774+00:00,pan,pan_echo,14,on-pi-2026-10-21,484.3,700,1,angle=130
+2026-10-21T12:54:02.779+00:00,pan,pan_echo,15,on-pi-2026-10-21,378.9,700,1,angle=150
+2026-10-21T12:54:03.784+00:00,pan,pan_echo,16,on-pi-2026-10-21,444.1,700,1,angle=170
+2026-10-21T12:54:04.782+00:00,pan,pan_echo,17,on-pi-2026-10-21,314.4,700,1,angle=30
+2026-10-21T12:54:05.781+00:00,pan,pan_echo,18,on-pi-2026-10-21,468.9,700,1,angle=70
+2026-10-21T12:54:06.792+00:00,pan,pan_echo,19,on-pi-2026-10-21,308.8,700,1,angle=120
+2026-10-21T12:54:07.793+00:00,pan,pan_echo,20,on-pi-2026-10-21,433.1,700,1,angle=20
+2026-10-21T12:54:08.795+00:00,pan,pan_echo,21,on-pi-2026-10-21,313.5,700,1,angle=40
+2026-10-21T12:54:09.797+00:00,pan,pan_echo,22,on-pi-2026-10-21,460.3,700,1,angle=60
+2026-10-21T12:54:10.794+00:00,pan,pan_echo,23,on-pi-2026-10-21,331.1,700,1,angle=110
+2026-10-21T12:54:11.795+00:00,pan,pan_echo,24,on-pi-2026-10-21,328.0,700,1,angle=130
+2026-10-21T12:54:12.813+00:00,pan,pan_echo,25,on-pi-2026-10-21,470.8,700,1,angle=150
+2026-10-21T12:54:13.819+00:00,pan,pan_echo,26,on-pi-2026-10-21,362.5,700,1,angle=170
+2026-10-21T12:54:14.807+00:00,pan,pan_echo,27,on-pi-2026-10-21,284.9,700,1,angle=30
+2026-10-21T12:54:15.804+00:00,pan,pan_echo,28,on-pi-2026-10-21,442.3,700,1,angle=70
+2026-10-21T12:54:16.809+00:00,pan,pan_echo,29,on-pi-2026-10-21,403.8,700,1,angle=120
+2026-10-21T12:54:17.811+00:00,pan,pan_echo,30,on-pi-2026-10-21,345.4,700,1,angle=20
+2026-10-21T12:54:18.815+00:00,motor,motor_start,1,on-pi-2026-10-21,288.1,700,1,speed=150
+2026-10-21T12:54:19.812+00:00,motor,motor_stop,1,on-pi-2026-10-21,195.5,700,1,speed=150
+2026-10-21T12:54:20.823+00:00,motor,motor_start,2,on-pi-2026-10-21,394.5,700,1,speed=150
+2026-10-21T12:54:21.825+00:00,motor,motor_stop,2,on-pi-2026-10-21,338.9,700,1,speed=150
+2026-10-21T12:54:22.826+00:00,motor,motor_start,3,on-pi-2026-10-21,318.3,700,1,speed=150
+2026-10-21T12:54:23.825+00:00,motor,motor_stop,3,on-pi-2026-10-21,245.7,700,1,speed=150
+2026-10-21T12:54:24.829+00:00,motor,motor_start,4,on-pi-2026-10-21,364.9,700,1,speed=150
+2026-10-21T12:54:25.838+00:00,motor,motor_stop,4,on-pi-2026-10-21,345.9,700,1,speed=150
+2026-10-21T12:54:26.840+00:00,motor,motor_start,5,on-pi-2026-10-21,369.7,700,1,speed=150
+2026-10-21T12:54:27.846+00:00,motor,motor_stop,5,on-pi-2026-10-21,325.3,700,1,speed=150
+2026-10-21T12:54:28.840+00:00,motor,motor_start,6,on-pi-2026-10-21,209.8,700,1,speed=150
+2026-10-21T12:54:29.843+00:00,motor,motor_stop,6,on-pi-2026-10-21,323.6,700,1,speed=150
+2026-10-21T12:54:30.844+00:00,motor,motor_start,7,on-pi-2026-10-21,297.1,700,1,speed=150
+2026-10-21T12:54:31.843+00:00,motor,motor_stop,7,on-pi-2026-10-21,349.5,700,1,speed=150
+2026-10-21T12:54:32.851+00:00,motor,motor_start,8,on-pi-2026-10-21,249.9,700,1,speed=150
+2026-10-21T12:54:33.849+00:00,motor,motor_stop,8,on-pi-2026-10-21,378.7,700,1,speed=150
+2026-10-21T12:54:34.849+00:00,motor,motor_start,9,on-pi-2026-10-21,280.7,700,1,speed=150
+2026-10-21T12:54:35.853+00:00,motor,motor_stop,9,on-pi-2026-10-21,385.6,700,1,speed=150
+2026-10-21T12:54:36.859+00:00,motor,motor_start,10,on-pi-2026-10-21,434.1,700,1,speed=150
+2026-10-21T12:54:37.859+00:00,motor,motor_stop,10,on-pi-2026-10-21,371.0,700,1,speed=150
+2026-10-21T12:54:38.866+00:00,motor,motor_start,11,on-pi-2026-10-21,264.8,700,1,speed=150
+2026-10-21T12:54:39.856+00:00,motor,motor_stop,11,on-pi-2026-10-21,256.1,700,1,speed=150
+2026-10-21T12:54:40.862+00:00,motor,motor_start,12,on-pi-2026-10-21,330.7,700,1,speed=150
+2026-10-21T12:54:41.869+00:00,motor,motor_stop,12,on-pi-2026-10-21,373.9,700,1,speed=150
+2026-10-21T12:54:42.872+00:00,motor,motor_start,13,on-pi-2026-10-21,229.6,700,1,speed=150
+2026-10-21T12:54:43.874+00:00,motor,motor_stop,13,on-pi-2026-10-21,324.0,700,1,speed=150
+2026-10-21T12:54:44.881+00:00,motor,motor_start,14,on-pi-2026-10-21,253.8,700,1,speed=150
+2026-10-21T12:54:45.886+00:00,motor,motor_stop,14,on-pi-2026-10-21,342.0,700,1,speed=150
+2026-10-21T12:54:46.893+00:00,motor,motor_start,15,on-pi-2026-10-21,354.1,700,1,speed=150
+2026-10-21T12:54:47.883+00:00,motor,motor_stop,15,on-pi-2026-10-21,288.5,700,1,speed=150
+2026-10-21T12:54:48.885+00:00,motor,motor_start,16,on-pi-2026-10-21,253.1,700,1,speed=150
+2026-10-21T12:54:49.891+00:00,motor,motor_stop,16,on-pi-2026-10-21,218.4,700,1,speed=150
+2026-10-21T12:54:50.885+00:00,motor,motor_start,17,on-pi-2026-10-21,318.8,700,1,speed=150
+2026-10-21T12:54:51.892+00:00,motor,motor_stop,17,on-pi-2026-10-21,305.5,700,1,speed=150
+2026-10-21T12:54:52.895+00:00,motor,motor_start,18,on-pi-2026-10-21,185.2,700,1,speed=150
+2026-10-21T12:54:53.891+00:00,motor,motor_stop,18,on-pi-2026-10-21,372.5,700,1,speed=150
+2026-10-21T12:54:54.915+00:00,motor,motor_start,19,on-pi-2026-10-21,265.2,700,1,speed=150
+2026-10-21T12:54:55.895+00:00,motor,motor_stop,19,on-pi-2026-10-21,274.2,700,1,speed=150
+2026-10-21T12:54:56.911+00:00,motor,motor_start,20,on-pi-2026-10-21,210.0,700,1,speed=150
+2026-10-21T12:54:57.906+00:00,motor,motor_stop,20,on-pi-2026-10-21,226.7,700,1,speed=150
+2026-10-21T12:54:58.903+00:00,motor,motor_start,21,on-pi-2026-10-21,262.8,700,1,speed=150
+2026-10-21T12:54:59.911+00:00,motor,motor_stop,21,on-pi-2026-10-21,285.9,700,1,speed=150
+2026-10-21T12:55:00.909+00:00,motor,motor_start,22,on-pi-2026-10-21,284.8,700,1,speed=150
+2026-10-21T12:55:01.929+00:00,motor,motor_stop,22,on-pi-2026-10-21,348.7,700,1,speed=150
+2026-10-21T12:55:02.920+00:00,motor,motor_start,23,on-pi-2026-10-21,265.2,700,1,speed=150
+2026-10-21T12:55:03.918+00:00,motor,motor_stop,23,on-pi-2026-10-21,383.6,700,1,speed=150
+2026-10-21T12:55:04.928+00:00,motor,motor_start,24,on-pi-2026-10-21,256.8,700,1,speed=150
+2026-10-21T12:55:05.926+00:00,motor,motor_stop,24,on-pi-2026-10-21,241.8,700,1,speed=150
+2026-10-21T12:55:06.929+00:00,motor,motor_start,25,on-pi-2026-10-21,232.6,700,1,speed=150
+2026-10-21T12:55:07.932+00:00,motor,motor_stop,25,on-pi-2026-10-21,295.7,700,1,speed=150
+2026-10-21T12:55:08.930+00:00,motor,motor_start,26,on-pi-2026-10-21,263.8,700,1,speed=150
+2026-10-21T12:55:09.938+00:00,motor,motor_stop,26,on-pi-2026-10-21,271.7,700,1,speed=150
+2026-10-21T12:55:10.934+00:00,motor,motor_start,27,on-pi-2026-10-21,232.1,700,1,speed=150
+2026-10-21T12:55:11.934+00:00,motor,motor_stop,27,on-pi-2026-10-21,220.2,700,1,speed=150
+2026-10-21T12:55:12.946+00:00,motor,motor_start,28,on-pi-2026-10-21,180.1,700,1,speed=150
+2026-10-21T12:55:13.944+00:00,motor,motor_stop,28,on-pi-2026-10-21,214.4,700,1,speed=150
+2026-10-21T12:55:14.937+00:00,motor,motor_start,29,on-pi-2026-10-21,184.3,700,1,speed=150
+2026-10-21T12:55:15.939+00:00,motor,motor_stop,29,on-pi-2026-10-21,319.0,700,1,speed=150
+2026-10-21T12:55:16.945+00:00,motor,motor_start,30,on-pi-2026-10-21,228.0,700,1,speed=150
+2026-10-21T12:55:17.943+00:00,motor,motor_stop,30,on-pi-2026-10-21,264.9,700,1,speed=150
+2026-10-21T12:55:21.581+00:00,deadman,deadman_panic,1,on-pi-2026-10-21,2063.3,1,1,"FW_PANIC log line, speed=150"
+2026-10-21T12:55:21.588+00:00,deadman,deadman_trip,1,on-pi-2026-10-21,2562.0,700,1,"fw_state in telemetry, expected ~2400 ms, speed=150"
+2026-10-21T12:55:25.573+00:00,deadman,deadman_panic,2,on-pi-2026-10-21,2112.3,1,1,"FW_PANIC log line, speed=150"
+2026-10-21T12:55:25.574+00:00,deadman,deadman_trip,2,on-pi-2026-10-21,2471.8,700,1,"fw_state in telemetry, expected ~2400 ms, speed=150"
+2026-10-21T12:55:29.479+00:00,deadman,deadman_panic,3,on-pi-2026-10-21,2071.3,1,1,"FW_PANIC log line, speed=150"
+2026-10-21T12:55:29.481+00:00,deadman,deadman_trip,3,on-pi-2026-10-21,2319.2,700,1,"fw_state in telemetry, expected ~2400 ms, speed=150"
+2026-10-21T12:55:33.487+00:00,deadman,deadman_panic,4,on-pi-2026-10-21,2114.3,1,1,"FW_PANIC log line, speed=150"
+2026-10-21T12:55:33.495+00:00,deadman,deadman_trip,4,on-pi-2026-10-21,2372.1,700,1,"fw_state in telemetry, expected ~2400 ms, speed=150"
+2026-10-21T12:55:37.506+00:00,deadman,deadman_panic,5,on-pi-2026-10-21,2053.4,1,1,"FW_PANIC log line, speed=150"
+2026-10-21T12:55:37.508+00:00,deadman,deadman_trip,5,on-pi-2026-10-21,2408.7,700,1,"fw_state in telemetry, expected ~2400 ms, speed=150"
+2026-10-21T12:55:41.509+00:00,deadman,deadman_panic,6,on-pi-2026-10-21,2086.4,1,1,"FW_PANIC log line, speed=150"
+2026-10-21T12:55:41.510+00:00,deadman,deadman_trip,6,on-pi-2026-10-21,2470.0,700,1,"fw_state in telemetry, expected ~2400 ms, speed=150"
+2026-10-21T12:55:45.622+00:00,deadman,deadman_panic,7,on-pi-2026-10-21,2063.6,1,1,"FW_PANIC log line, speed=150"
+2026-10-21T12:55:45.623+00:00,deadman,deadman_trip,7,on-pi-2026-10-21,2538.5,700,1,"fw_state in telemetry, expected ~2400 ms, speed=150"
+2026-10-21T12:55:49.531+00:00,deadman,deadman_panic,8,on-pi-2026-10-21,2046.1,1,1,"FW_PANIC log line, speed=150"
+2026-10-21T12:55:49.532+00:00,deadman,deadman_trip,8,on-pi-2026-10-21,2434.8,700,1,"fw_state in telemetry, expected ~2400 ms, speed=150"
+2026-10-21T12:55:53.531+00:00,deadman,deadman_panic,9,on-pi-2026-10-21,2022.3,1,1,"FW_PANIC log line, speed=150"
+2026-10-21T12:55:53.533+00:00,deadman,deadman_trip,9,on-pi-2026-10-21,2393.0,700,1,"fw_state in telemetry, expected ~2400 ms, speed=150"
+2026-10-21T12:55:57.563+00:00,deadman,deadman_panic,10,on-pi-2026-10-21,2078.6,1,1,"FW_PANIC log line, speed=150"
+2026-10-21T12:55:57.566+00:00,deadman,deadman_trip,10,on-pi-2026-10-21,2464.9,700,1,"fw_state in telemetry, expected ~2400 ms, speed=150"
+2026-10-21T12:56:01.563+00:00,deadman,deadman_panic,11,on-pi-2026-10-21,2122.3,1,1,"FW_PANIC log line, speed=150"
+2026-10-21T12:56:01.573+00:00,deadman,deadman_trip,11,on-pi-2026-10-21,2506.8,700,1,"fw_state in telemetry, expected ~2400 ms, speed=150"
+2026-10-21T12:56:05.561+00:00,deadman,deadman_panic,12,on-pi-2026-10-21,2106.1,1,1,"FW_PANIC log line, speed=150"
+2026-10-21T12:56:05.562+00:00,deadman,deadman_trip,12,on-pi-2026-10-21,2497.5,700,1,"fw_state in telemetry, expected ~2400 ms, speed=150"
+2026-10-21T12:56:09.602+00:00,deadman,deadman_panic,13,on-pi-2026-10-21,2039.7,1,1,"FW_PANIC log line, speed=150"
+2026-10-21T12:56:09.603+00:00,deadman,deadman_trip,13,on-pi-2026-10-21,2223.8,700,1,"fw_state in telemetry, expected ~2400 ms, speed=150"
+2026-10-21T12:56:13.591+00:00,deadman,deadman_panic,14,on-pi-2026-10-21,2097.5,1,1,"FW_PANIC log line, speed=150"
+2026-10-21T12:56:13.592+00:00,deadman,deadman_trip,14,on-pi-2026-10-21,2252.2,700,1,"fw_state in telemetry, expected ~2400 ms, speed=150"
+2026-10-21T12:56:17.599+00:00,deadman,deadman_panic,15,on-pi-2026-10-21,2032.8,1,1,"FW_PANIC log line, speed=150"
+2026-10-21T12:56:17.604+00:00,deadman,deadman_trip,15,on-pi-2026-10-21,2278.3,700,1,"fw_state in telemetry, expected ~2400 ms, speed=150"
+2026-10-21T12:56:21.615+00:00,deadman,deadman_panic,16,on-pi-2026-10-21,2072.1,1,1,"FW_PANIC log line, speed=150"
+2026-10-21T12:56:21.616+00:00,deadman,deadman_trip,16,on-pi-2026-10-21,2334.4,700,1,"fw_state in telemetry, expected ~2400 ms, speed=150"
+2026-10-21T12:56:25.615+00:00,deadman,deadman_panic,17,on-pi-2026-10-21,2043.9,1,1,"FW_PANIC log line, speed=150"
+2026-10-21T12:56:25.616+00:00,deadman,deadman_trip,17,on-pi-2026-10-21,2197.5,700,1,"fw_state in telemetry, expected ~2400 ms, speed=150"
+2026-10-21T12:56:29.645+00:00,deadman,deadman_panic,18,on-pi-2026-10-21,2072.7,1,1,"FW_PANIC log line, speed=150"
+2026-10-21T12:56:29.646+00:00,deadman,deadman_trip,18,on-pi-2026-10-21,2344.4,700,1,"fw_state in telemetry, expected ~2400 ms, speed=150"
+2026-10-21T12:56:33.741+00:00,deadman,deadman_panic,19,on-pi-2026-10-21,2122.3,1,1,"FW_PANIC log line, speed=150"
+2026-10-21T12:56:33.745+00:00,deadman,deadman_trip,19,on-pi-2026-10-21,2593.2,700,1,"fw_state in telemetry, expected ~2400 ms, speed=150"
+2026-10-21T12:56:37.641+00:00,deadman,deadman_panic,20,on-pi-2026-10-21,2106.7,1,1,"FW_PANIC log line, speed=150"
+2026-10-21T12:56:37.642+00:00,deadman,deadman_trip,20,on-pi-2026-10-21,2478.3,700,1,"fw_state in telemetry, expected ~2400 ms, speed=150"
+2026-10-21T12:56:41.655+00:00,deadman,deadman_panic,21,on-pi-2026-10-21,2102.7,1,1,"FW_PANIC log line, speed=150"
+2026-10-21T12:56:41.661+00:00,deadman,deadman_trip,21,on-pi-2026-10-21,2488.9,700,1,"fw_state in telemetry, expected ~2400 ms, speed=150"
+2026-10-21T12:56:45.679+00:00,deadman,deadman_panic,22,on-pi-2026-10-21,2053.0,1,1,"FW_PANIC log line, speed=150"
+2026-10-21T12:56:45.681+00:00,deadman,deadman_trip,22,on-pi-2026-10-21,2324.8,700,1,"fw_state in telemetry, expected ~2400 ms, speed=150"
+2026-10-21T12:56:49.802+00:00,deadman,deadman_panic,23,on-pi-2026-10-21,2074.3,1,1,"FW_PANIC log line, speed=150"
+2026-10-21T12:56:49.803+00:00,deadman,deadman_trip,23,on-pi-2026-10-21,2544.7,700,1,"fw_state in telemetry, expected ~2400 ms, speed=150"
+2026-10-21T12:56:53.827+00:00,deadman,deadman_panic,24,on-pi-2026-10-21,2084.6,1,1,"FW_PANIC log line, speed=150"
+2026-10-21T12:56:53.833+00:00,deadman,deadman_trip,24,on-pi-2026-10-21,2587.7,700,1,"fw_state in telemetry, expected ~2400 ms, speed=150"
+2026-10-21T12:56:57.812+00:00,deadman,deadman_panic,25,on-pi-2026-10-21,2119.0,1,1,"FW_PANIC log line, speed=150"
+2026-10-21T12:56:57.813+00:00,deadman,deadman_trip,25,on-pi-2026-10-21,2478.7,700,1,"fw_state in telemetry, expected ~2400 ms, speed=150"
+2026-10-21T12:57:01.818+00:00,deadman,deadman_panic,26,on-pi-2026-10-21,2083.6,1,1,"FW_PANIC log line, speed=150"
+2026-10-21T12:57:01.819+00:00,deadman,deadman_trip,26,on-pi-2026-10-21,2571.3,700,1,"fw_state in telemetry, expected ~2400 ms, speed=150"
+2026-10-21T12:57:05.727+00:00,deadman,deadman_panic,27,on-pi-2026-10-21,2095.9,1,1,"FW_PANIC log line, speed=150"
+2026-10-21T12:57:05.728+00:00,deadman,deadman_trip,27,on-pi-2026-10-21,2471.1,700,1,"fw_state in telemetry, expected ~2400 ms, speed=150"
+2026-10-21T12:57:09.724+00:00,deadman,deadman_panic,28,on-pi-2026-10-21,2060.4,1,1,"FW_PANIC log line, speed=150"
+2026-10-21T12:57:09.725+00:00,deadman,deadman_trip,28,on-pi-2026-10-21,2437.7,700,1,"fw_state in telemetry, expected ~2400 ms, speed=150"
+2026-10-21T12:57:13.840+00:00,deadman,deadman_panic,29,on-pi-2026-10-21,2102.0,1,1,"FW_PANIC log line, speed=150"
+2026-10-21T12:57:13.842+00:00,deadman,deadman_trip,29,on-pi-2026-10-21,2576.8,700,1,"fw_state in telemetry, expected ~2400 ms, speed=150"
+2026-10-21T12:57:17.749+00:00,deadman,deadman_panic,30,on-pi-2026-10-21,2070.3,1,1,"FW_PANIC log line, speed=150"
+2026-10-21T12:57:17.750+00:00,deadman,deadman_trip,30,on-pi-2026-10-21,2453.6,700,1,"fw_state in telemetry, expected ~2400 ms, speed=150"

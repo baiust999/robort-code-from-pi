@@ -148,3 +148,30 @@ dashboard kept working. Video, images and text messages work without this.
 
 - Service: `journalctl -u robot-watchdog.service -f`
 - Application logs and telemetry: `/var/log/robot/` (rotated by `deploy/logrotate/robot`)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
