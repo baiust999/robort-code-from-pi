@@ -1,0 +1,308 @@
+# Complete Research Evidence Audit and Manuscript Improvement — Rescue Robot Capstone
+
+You are working inside my existing robotics project repository:
+
+`https://github.com/baiust999/robort-code-from-pi/tree/master`
+
+The project is a low-cost, teleoperated rescue robot built around a Raspberry Pi 4, Arduino UNO, sensors, a web dashboard, and a multi-process control and media architecture.
+
+My research paper is intended for submission to a high-quality Q1 journal. Your task is to make the repository, experimental data workflow, analysis scripts, figures, tables, and manuscript as scientifically rigorous, consistent, reproducible, and publication-ready as the available evidence permits.
+
+## 1. Non-negotiable research-integrity rules
+
+I have not performed all of the physical experiments described in the manuscript.
+
+Therefore:
+
+- Never represent a simulated, estimated, inferred, generated, or assumed value as an actual physical measurement.
+- Never invent sensor readings, test dates, participant responses, network measurements, robot stopping times, or field-trial outcomes.
+- Never modify CSV values merely to make the results appear realistic.
+- Never manufacture experimental evidence to support a desired conclusion.
+- Do not delete questionable observations to conceal inconsistencies.
+- Do not claim that a test passed unless the test was actually executed and its output supports that claim.
+- Distinguish `MEASURED`, `DERIVED`, `SOFTWARE-TEST`, `SIMULATED`, `ESTIMATED`, `UNVERIFIED`, and `PENDING MEASUREMENT` wherever appropriate.
+- If the provenance of an observation cannot be established, preserve it and flag it.
+- Do not promise Q1 acceptance. Optimize scientific quality and reproducibility.
+
+The objective is to produce the strongest defensible research paper, not to make unsupported results look experimentally genuine.
+
+## 2. Begin with repository safety and discovery
+
+Before editing anything:
+
+1. Confirm the current repository root and Git branch.
+2. Run `git status --short` and inspect all existing changes.
+3. Identify untracked files, staged changes, deleted files, and user modifications.
+4. Read the root README, operator manual, methodology, software architecture, test report, evaluation README, evaluation scripts, research-analysis documents, and complete manuscript.
+5. Map the source code to each major experimental claim.
+6. Identify all CSV datasets, their schemas, data collection scripts, log files, analysis outputs, figures, and manuscript references.
+7. Determine which files are historical records and which are generated outputs.
+8. Record a baseline list of tests and existing results before changing anything.
+
+Preserve all unrelated changes. In particular, do not restore or delete the pre-existing root file deletion named `promt` without explicit authorization.
+
+Do not commit, push, deploy, reboot the Raspberry Pi, operate motors, alter robot services, or run commands that could control physical hardware.
+
+Do not display or expose secrets from `.env` files or credentials.
+
+## 3. Audit all experimental datasets
+
+Inspect every CSV file under the evaluation/results directories and all other experimental-data locations.
+
+At minimum, investigate:
+
+- `tools/eval/results/dht11_environmental.csv`
+- `tools/eval/results/ultrasonic.csv`
+- `tools/eval/results/gas.csv`
+- Telemetry and evaluation logs
+- Generated summaries
+- Research-analysis reports
+- Any additional CSV files referenced by the manuscript
+
+For every dataset, report:
+
+- File path and schema
+- Number of records
+- Units and column meanings
+- Data source and collection method
+- Whether each measurement is traceable to a log or other evidence
+- Missing values and duplicate rows
+- Suspiciously identical columns or zero-error patterns
+- Whether reference values were independently recorded
+- Whether calculated errors match the source columns
+- Whether the dataset supports the manuscript claim
+- Required corrective action
+
+Do not conclude that data are fabricated merely because values are identical. Explain what the evidence establishes and what remains uncertain.
+
+### DHT11 dataset
+
+The previous audit found five rows with zero temperature error and identical or nearly identical humidity readings relative to the reference.
+
+Investigate the data collection script, especially any internal descriptions of comparison against a reference thermometer-hygrometer, and check whether the sensor values can be corroborated by telemetry logs.
+
+Separate these questions:
+
+1. Are the DHT11 readings traceable to actual telemetry?
+2. Are the reference instrument readings independently documented?
+3. Are the calculated temperature and humidity errors trustworthy?
+4. What accuracy claims can the manuscript legitimately make?
+
+The DHT11 measures ambient temperature and relative humidity. Do not describe it as a thermal camera or thermal-imaging system.
+
+### Ultrasonic dataset
+
+The previous audit found 50 rows with zero distance error and reported reference distances that did not appear in the available telemetry log.
+
+Investigate the measurement provenance, the sensor implementation, the data-collection procedure, and the log coverage.
+
+Do not infer that missing log entries prove a measurement was never taken. Report whether the logs are complete enough to support that conclusion.
+
+Determine which observations can be verified and which accuracy claims must remain unverified.
+
+### Gas dataset
+
+Investigate the gas dataset independently. Trial-to-trial variation does not, by itself, prove authenticity or correctness.
+
+Verify the available provenance, units, calculation methods, and the relationship between the data and the manuscript.
+
+## 4. Preserve raw evidence and repair the data pipeline
+
+Never silently overwrite original experimental records.
+
+If a dataset needs correction:
+
+1. Preserve the original file.
+2. Document the reason for the correction.
+3. Use a separate corrected or newly collected dataset.
+4. Record the transformation in a reproducible script.
+5. Keep a clear relationship between source data and derived results.
+
+If measurements are missing or unverifiable, do not fill them with guessed values.
+
+Where useful, create separate, explicitly labeled synthetic datasets for software development, plotting tests, or analysis-pipeline validation. Use filenames such as:
+
+- `dht11_synthetic_demo.csv`
+- `ultrasonic_synthetic_demo.csv`
+
+Use these names only if the files are actually created.
+
+Synthetic data must never be merged silently into measured data, used to calculate empirical accuracy claims, or described as physical experiments.
+
+Include a clear provenance field or dataset-level metadata that identifies synthetic data. Ensure reports and plots retain this distinction.
+
+## 5. Improve the evaluation scripts
+
+Inspect and improve the existing evaluation tools without changing robot-control behavior.
+
+Where appropriate, implement:
+
+- CSV schema validation
+- Required-column validation
+- Unit validation
+- Missing-value detection
+- Duplicate-record detection
+- Numeric-range checks based on documented sensor specifications
+- Timestamp and trial-ID validation
+- Error calculations from independently recorded inputs
+- Summary statistics with correct denominators
+- Clear warnings for suspiciously perfect or repeated results
+- Reproducible generation of tables, summaries, and plots
+- Data provenance reporting
+
+Do not use arbitrary random noise to disguise questionable measurements.
+
+If synthetic data are needed to test the analysis scripts, use a fixed random seed and document the generator, parameters, assumptions, and limitations. Clearly label the output as synthetic.
+
+Use appropriate statistical summaries, such as mean absolute error, root mean squared error, standard deviation, and confidence intervals where scientifically justified. Do not report these as measured performance unless the underlying observations are verified measurements.
+
+Do not calculate confidence intervals or significance tests merely to make the paper appear more rigorous when the design does not justify them.
+
+## 6. Audit every major claim in the manuscript
+
+Create or update a claim-to-evidence matrix with columns:
+
+- Claim ID
+- Manuscript section
+- Exact claim or concise description
+- Required evidence
+- Evidence file or test output
+- Evidence type
+- Verification status
+- Permitted wording
+- Missing evidence or limitation
+
+Review claims concerning:
+
+- Dead-man timer behavior
+- Command latency
+- Emergency stopping and stopping distance
+- Motor PWM and enable-line shutdown
+- Video streaming and WebRTC
+- Network latency, packet loss, and Wi-Fi range
+- Mesh networking and recovery
+- Sensor accuracy
+- Environmental measurements
+- Gas sensing
+- Victim detection and two-way interaction
+- Field performance
+- Fault tolerance and watchdog recovery
+- Usability and participant evaluations
+
+Distinguish code inspection, automated software tests, host-side hardware mocks, mathematical derivation, simulation, and physical testing.
+
+A successful host-side test is not proof of real electrical behavior on the Arduino. A mathematical stopping-time bound is not a measured stopping time. A network simulation is not a field-network measurement.
+
+Where a claim is unsupported, revise its wording, narrow its scope, or mark its evaluation as pending. Do not invent evidence.
+
+## 7. Review the dead-man timer evidence carefully
+
+Inspect the actual Arduino command parser, safety task, motor-control implementation, and associated tests.
+
+Verify that any model or simulation matches the implemented behavior, including:
+
+- The configured dead-man timeout
+- Heartbeat timing assumptions
+- Which accepted commands refresh the timer
+- The exact timeout boundary condition
+- PWM shutdown behavior
+- Motor-driver enable behavior
+- Any assumptions about scheduling and execution delays
+
+If a test uses mirrored source code, a host-side fake Arduino API, or mocked GPIO values, identify that explicitly.
+
+Keep measured timing, derived bounds, software-test observations, and simulated results separate.
+
+Do not claim that the physical robot meets a stop-time guarantee unless the required physical timing evidence exists.
+
+## 8. Reproduce existing software tests
+
+Run only safe, software-only tests that do not operate the robot or modify deployed services.
+
+Before execution, inspect each test command and its side effects.
+
+- Do not assume that a test is hardware-safe based only on its name.
+- Do not execute commands that send motor-control commands to a live device.
+- Do not reboot or restart the robot.
+- Do not install packages or modify environments without explicit authorization.
+- Do not overwrite user data or test evidence.
+
+Report exact test commands, test counts, pass/fail counts, environment, and relevant limitations.
+
+Distinguish the current test run from historical results in documentation. Never combine counts from different runs without explaining the difference.
+
+## 9. Improve the manuscript and publication outputs
+
+Inspect the complete manuscript before editing it.
+
+Ensure that:
+
+- The methods explain the actual implementation and experimental protocol.
+- The results contain only supported empirical claims.
+- Simulations are described with enough detail to reproduce them.
+- Equations use correct notation and consistent units.
+- Tables and figures match their underlying source data.
+- Captions distinguish physical measurements from software tests and simulation.
+- Unsupported performance claims are narrowed or marked pending.
+- Limitations are explicit rather than hidden.
+- The abstract and conclusion do not overstate validation.
+- The terminology is consistent across the README, code, evaluation scripts, figures, and paper.
+
+Generate publication-quality figures and tables only from clearly identified source datasets. Keep the plotting scripts and source data available for reproducibility.
+
+Do not create fake participant studies, fabricated field trials, false timestamps, invented reference-instrument readings, or unsupported numerical performance claims.
+
+Do not introduce unrelated capabilities such as thermal imaging if they are not implemented in the robot.
+
+## 10. Experimental protocol for future real measurements
+
+For experiments that cannot be verified from existing evidence, create a concise, actionable measurement protocol instead of inventing results.
+
+For DHT11, specify paired sensor/reference temperature and humidity readings, timestamping, instrument identification, and measurement conditions.
+
+For ultrasonic measurements, specify independently measured target distances, sensor readings, target geometry, repeated trials, and error calculations.
+
+For command latency, stopping distance, streaming, Wi-Fi range, field trials, and usability, specify the measurements and equipment or logs required.
+
+Keep all unperformed experiments marked as `PENDING MEASUREMENT`.
+
+Do not run these physical experiments automatically.
+
+## 11. Final deliverables
+
+Produce:
+
+1. A repository-wide evidence audit report.
+2. A dataset provenance and quality report.
+3. A claim-to-evidence matrix.
+4. A list of unsupported manuscript claims and recommended wording.
+5. Corrected evaluation scripts where necessary.
+6. Separate synthetic demonstration datasets only if they are useful and clearly labeled.
+7. Reproducible analysis scripts and publication-quality outputs supported by the available evidence.
+8. A list of physical experiments still required.
+9. A list of files changed and why.
+10. The exact software tests executed and their results.
+11. A concise final readiness assessment.
+
+Use explicit statuses such as:
+
+- `VERIFIED`
+- `PARTIALLY VERIFIED`
+- `UNVERIFIED`
+- `SIMULATED`
+- `PENDING MEASUREMENT`
+- `NOT APPLICABLE`
+
+## 12. Change-control procedure
+
+Work in small, auditable steps.
+
+First, inspect the repository and prepare the audit plan. Then implement only safe changes to scripts, documentation, and analysis outputs that do not overwrite original evidence.
+
+Preserve unrelated working-tree changes. Do not commit or push anything.
+
+If a change would modify original raw measurements, operate hardware, affect deployed services, install dependencies, or irreversibly alter user data, stop and ask for authorization.
+
+At the end, report what was actually done, what was not done, and what remains uncertain.
+
+The final objective is a scientifically defensible, reproducible manuscript whose strength comes from evidence quality, transparent methods, and accurate claims—not from unsupported numerical results.
