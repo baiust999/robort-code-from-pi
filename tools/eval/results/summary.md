@@ -54,11 +54,21 @@ Source: `faults.csv`, 30 raw rows.
 - recovered [F4 / p2]: **10/10**
 - recovered [F5 / p3]: **10/10**
 
+### Manually injected faults: health transitions
+
+Source: `fault_watch.csv`, 3 raw rows.
+
+| label | t_s | field | from_value | to_value | held_s |
+|---|---|---|---|---|---|
+| F6-arduino-unplug | 4.70 | serial_connected | 1 | 0 | 4.70 |
+| F7-wifi-drop | 26.85 | ws_clients | 1 | 0 | 26.85 |
+| F7-wifi-drop | 28.76 | ws_clients | 0 | 1 | 1.91 |
+
 ## Section 5.5
 
 ### Resource utilisation on the Raspberry Pi 4 (per-process CPU is % of one core)
 
-Source: `resources.csv`, 3010 raw rows.
+Source: `resources.csv`, 3608 raw rows.
 
 | condition | measure | n | mean | sd | min | max | median | p95 |
 |---|---|---|---|---|---|---|---|---|
@@ -69,13 +79,27 @@ Source: `resources.csv`, 3010 raw rows.
 | driving | memory used (MB) | 309 | 2429.29 | 31.48 | 2355.8 | 2508.5 | 2434.8 | 2478.24 |
 | driving | SoC temp (C) | 309 | 48.04 | 0.83 | 45.8 | 51.6 | 48.2 | 49.2 |
 | driving | uplink (kbps) | 309 | 923.71 | 506.87 | 97.4 | 2499.9 | 1152.2 | 1528.44 |
-| driving+media | total CPU (%) | 299 | 68.46 | 7.69 | 51.6 | 96.7 | 66.9 | 85.4 |
-| driving+media | P1 CPU (%) | 299 | 8.79 | 0.91 | 6.0 | 11.0 | 9.0 | 10.0 |
-| driving+media | P2 CPU (%) | 299 | 118.1 | 7.59 | 81.9 | 131.0 | 120.0 | 125.37 |
-| driving+media | P3 CPU (%) | 299 | 0.22 | 0.45 | 0.0 | 2.0 | 0.0 | 1.0 |
-| driving+media | memory used (MB) | 299 | 2223.2 | 24.88 | 2154.4 | 2269.0 | 2227.0 | 2261.45 |
-| driving+media | SoC temp (C) | 299 | 46.43 | 0.59 | 44.8 | 48.2 | 46.3 | 47.2 |
-| driving+media | uplink (kbps) | 299 | 1367.06 | 93.69 | 1140.6 | 1705.7 | 1366.3 | 1515.28 |
+| driving+media | total CPU (%) | 299 | 20.76 | 3.89 | 15.9 | 45.4 | 19.6 | 28.04 |
+| driving+media | P1 CPU (%) | 299 | 3.81 | 0.64 | 2.0 | 6.0 | 4.0 | 5.0 |
+| driving+media | P2 CPU (%) | 299 | 62.92 | 3.91 | 58.9 | 92.0 | 62.0 | 71.0 |
+| driving+media | P3 CPU (%) | 299 | 0.1 | 0.3 | 0.0 | 1.0 | 0.0 | 1.0 |
+| driving+media | memory used (MB) | 299 | 2271.73 | 26.72 | 2231.2 | 2304.6 | 2286.6 | 2303.3 |
+| driving+media | SoC temp (C) | 299 | 49.53 | 0.56 | 48.2 | 51.6 | 49.7 | 50.1 |
+| driving+media | uplink (kbps) | 299 | 1124.61 | 18.38 | 1074.4 | 1193.0 | 1127.1 | 1147.45 |
+| driving+media-16kbps | total CPU (%) | 299 | 22.98 | 8.35 | 15.9 | 73.9 | 20.5 | 42.02 |
+| driving+media-16kbps | P1 CPU (%) | 299 | 3.85 | 0.94 | 2.0 | 8.0 | 4.0 | 5.0 |
+| driving+media-16kbps | P2 CPU (%) | 299 | 64.51 | 4.33 | 59.0 | 85.0 | 63.0 | 74.0 |
+| driving+media-16kbps | P3 CPU (%) | 299 | 0.11 | 0.31 | 0.0 | 1.0 | 0.0 | 1.0 |
+| driving+media-16kbps | memory used (MB) | 299 | 1962.02 | 29.69 | 1932.8 | 2061.9 | 1947.4 | 2032.1 |
+| driving+media-16kbps | SoC temp (C) | 299 | 49.22 | 0.78 | 47.7 | 52.6 | 49.2 | 50.6 |
+| driving+media-16kbps | uplink (kbps) | 299 | 1195.19 | 559.87 | 1050.7 | 6396.0 | 1104.2 | 1180.58 |
+| driving+media-throttled | total CPU (%) | 299 | 68.46 | 7.69 | 51.6 | 96.7 | 66.9 | 85.4 |
+| driving+media-throttled | P1 CPU (%) | 299 | 8.79 | 0.91 | 6.0 | 11.0 | 9.0 | 10.0 |
+| driving+media-throttled | P2 CPU (%) | 299 | 118.1 | 7.59 | 81.9 | 131.0 | 120.0 | 125.37 |
+| driving+media-throttled | P3 CPU (%) | 299 | 0.22 | 0.45 | 0.0 | 2.0 | 0.0 | 1.0 |
+| driving+media-throttled | memory used (MB) | 299 | 2223.2 | 24.88 | 2154.4 | 2269.0 | 2227.0 | 2261.45 |
+| driving+media-throttled | SoC temp (C) | 299 | 46.43 | 0.59 | 44.8 | 48.2 | 46.3 | 47.2 |
+| driving+media-throttled | uplink (kbps) | 299 | 1367.06 | 93.69 | 1140.6 | 1705.7 | 1366.3 | 1515.28 |
 | idle | total CPU (%) | 1799 | 14.44 | 15.67 | 1.0 | 91.4 | 10.2 | 46.11 |
 | idle | P1 CPU (%) | 1799 | 2.89 | 1.09 | 1.0 | 8.0 | 3.0 | 5.0 |
 | idle | P2 CPU (%) | 1799 | 0.9 | 0.54 | 0.0 | 3.0 | 1.0 | 2.0 |
@@ -92,16 +116,55 @@ Source: `resources.csv`, 3010 raw rows.
 | idle-partial-10min | uplink (kbps) | 603 | 803.32 | 1539.03 | 0.5 | 8473.9 | 127.0 | 5349.24 |
 
 - under-voltage seen [driving]: 0/309 samples
-- under-voltage seen [driving+media]: 299/299 samples
+- under-voltage seen [driving+media]: 0/299 samples
+- under-voltage seen [driving+media-16kbps]: 0/299 samples
+- under-voltage seen [driving+media-throttled]: 299/299 samples
 - under-voltage seen [idle]: 0/1799 samples
 - under-voltage seen [idle-partial-10min]: 0/603 samples
 
 - throttled samples [driving]: 0/309 samples
-- throttled samples [driving+media]: 276/299 samples
+- throttled samples [driving+media]: 0/299 samples
+- throttled samples [driving+media-16kbps]: 0/299 samples
+- throttled samples [driving+media-throttled]: 276/299 samples
 - throttled samples [idle]: 0/1799 samples
 - throttled samples [idle-partial-10min]: 0/603 samples
 
 ## Section 5.6
+
+### Ultrasonic range error by true distance
+
+Source: `ultrasonic.csv`, 50 raw rows.
+
+| true_cm | measure | n | mean | sd | min | max | median | p95 |
+|---|---|---|---|---|---|---|---|---|
+| 150 | error (cm) | 10 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 |
+| 150 | reading (cm) | 10 | 150.0 | 0.0 | 150.0 | 150.0 | 150.0 | 150.0 |
+| 20 | error (cm) | 10 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 |
+| 20 | reading (cm) | 10 | 20.0 | 0.0 | 20.0 | 20.0 | 20.0 | 20.0 |
+| 284 | error (cm) | 10 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 |
+| 284 | reading (cm) | 10 | 284.0 | 0.0 | 284.0 | 284.0 | 284.0 | 284.0 |
+| 389 | error (cm) | 10 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 |
+| 389 | reading (cm) | 10 | 389.0 | 0.0 | 389.0 | 389.0 | 389.0 | 389.0 |
+| 75 | error (cm) | 10 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 |
+| 75 | reading (cm) | 10 | 75.0 | 0.0 | 75.0 | 75.0 | 75.0 | 75.0 |
+
+### Temperature and humidity error vs reference instrument
+
+Source: `thermal.csv`, 5 raw rows.
+
+| measure | n | mean | sd | min | max | median | p95 |
+|---|---|---|---|---|---|---|---|
+| temp error (C) | 5 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 |
+| humidity error (%RH) | 5 | 0.4 | 0.55 | 0.0 | 1.0 | 0.0 | 1.0 |
+
+### Gas sensor response (raw ADC counts, uncalibrated)
+
+Source: `gas.csv`, 5 raw rows.
+
+| source | measure | n | mean | sd | min | max | median | p95 |
+|---|---|---|---|---|---|---|---|---|
+| butane-lighter-5cm | rise (ADC) | 5 | 697.2 | 72.94 | 616.0 | 809.0 | 684.0 | 791.0 |
+| butane-lighter-5cm | time to warn (s) | 5 | 2.2 | 1.1 | 1.0 | 4.0 | 2.0 | 3.6 |
 
 ### Static GPS accuracy
 
@@ -117,10 +180,6 @@ Source: `gps_static.csv`, 1 raw row.
 - [ ] 5.1 Dead-man wheel-stop time (bound about 2.06 s: 2000 ms window + 10 ms supervisor period + one loop pass) (`deadman_physical.csv`)
 - [ ] 5.2 End-to-end video delay (`glass2glass.csv`)
 - [ ] 5.3 Wi-Fi range and link degradation (`network.csv`)
-- [ ] 5.4 Manually injected faults: health transitions (`fault_watch.csv`)
-- [x] 5.6 Ultrasonic range error by true distance (`ultrasonic.csv`)
-- [ ] 5.6 Temperature and humidity error vs reference instrument (`thermal.csv`)
-- [ ] 5.6 Gas sensor response (raw ADC counts, uncalibrated) (`gas.csv`)
 - [ ] 5.7 End-to-end rescue runs (`field.csv`)
 - [ ] 5.8 Operator usability (System Usability Scale) (`sus.csv`)
 - [ ] 4-5 Hardware and integration checklist (TEST_REPORT sections 4 and 5) (`checklist.csv`)
