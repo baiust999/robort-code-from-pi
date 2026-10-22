@@ -9,6 +9,7 @@ used, matching the task's own vocabulary:
 
 - **HISTORICAL-TEST** -- the 2026-10-08 116-test record, quoted not rerun.
 - **FRESH-TEST** -- rerun or newly written in this task, executed and passing.
+- **NATIVE-FIRMWARE-TEST** -- this task's new evidence class: the real, unmodified `arduino/*.cpp` sources compiled and run natively against a host Arduino-API stub, no board, stronger than a test against `MockArduino` but still not hardware-in-the-loop.
 - **MEASURED** -- a real instrument reading on the assembled robot, logged in `tools/eval/results/`.
 - **CALCULATED** -- arithmetic/statistics derived from MEASURED or logged data.
 - **SIMULATED** -- a software model with no physical measurement behind it.
@@ -17,7 +18,7 @@ used, matching the task's own vocabulary:
 
 | Claim | Evidence class | What supports it | This task's contribution |
 |---|---|---|---|
-| The dead-man timer stops the robot if commands stop arriving | MEASURED + CALCULATED + FRESH-TEST | `latency.csv` deadman_trip/deadman_panic (30 trials); P1-log decomposition in `section5_stats.md` (max 2042 ms); `pi/tests/test_mock_deadman.py` (historical) | Independently reproduced the latency CI by hand (Section 2.1, `calculation_report.md`); added `test_deadman_boundaries.py` proving the exact 2000 ms boundary and that pan/tilt/status cannot mask an expired drive command (a safety property with no prior test) |
+| The dead-man timer stops the robot if commands stop arriving | MEASURED + CALCULATED + FRESH-TEST + NATIVE-FIRMWARE-TEST | `latency.csv` deadman_trip/deadman_panic (30 trials); P1-log decomposition in `section5_stats.md` (max 2042 ms); `pi/tests/test_mock_deadman.py` (historical) | Independently reproduced the latency CI by hand (Section 2.1, `calculation_report.md`); added `test_deadman_boundaries.py` proving the exact 2000 ms boundary (for `MockArduino`) and that pan/tilt/status cannot mask an expired drive command *in the mock*. A later pass compiled the real `arduino/*.cpp` natively and found the opposite is true of the real firmware on both points: it trips at, not after, exactly 2000 ms, and pan/tilt/status *do* re-arm it (`research-analysis/native/`, 10/10 native tests passed). The dead-man still measurably stops the robot either way (Table 5.2b); only the boundary-direction and arming-set details change, and only the mock's version of them was previously claimed |
 | The dead-man window tolerates some heartbeat loss before tripping | SIMULATED | none existed before this task | New: `simulation_report.md` / `sim/deadman_robustness_sim.py` -- derives a 3-consecutive-loss margin at the real 500 ms heartbeat period from verified constants, with a Monte Carlo sensitivity sweep. This is SIMULATED, not a network measurement; Section 5.3 (Wi-Fi) is still PENDING |
 | Server-side command validation rejects malformed/out-of-range input | HISTORICAL-TEST + FRESH-TEST | `pi/tests/test_command_validator.py` (13 tests, far-out-of-range values) | New: `test_command_validator_boundaries.py` (8 tests) proves no off-by-one at the exact PWM/angle/sequence boundaries, which the far-out-of-range tests could not distinguish from a correct implementation |
 | 116 (now 121) automated unit tests pass, proving the software logic | HISTORICAL-TEST + FRESH-TEST | `docs/TEST_REPORT.md` (116, 2026-10-08) | Reproduced fresh on 2026-10-22: 121 passed, 0 failed, in the full-dependency venv (`test_inventory.md` Section 3). Explained, with an exact mechanism, why an incomplete venv (`pi/.venv`) previously showed 86 passed/7 errors -- missing `av`/`aiortc`, not a regression (`test_inventory.md` Section 4) |
@@ -42,3 +43,10 @@ used, matching the task's own vocabulary:
   boundary tests) and SIMULATED (the dead-man heartbeat-loss model). Both
   are software-verification/analytical evidence, not physical measurement,
   and should not be presented as such if folded into the manuscript.
+- A third, added in a later pass the same day: NATIVE-FIRMWARE-TEST (the
+  10 tests compiled and run against the real `arduino/*.cpp` sources). This
+  one is not purely additive: it corrects two specific claims the earlier
+  FRESH-TEST pass made about "the" dead-man boundary and arming behaviour,
+  which turn out to describe `pi/common/mock_hardware.py` only. See the
+  dead-man row above and `research-analysis/software_verification_results.md`'s
+  2026-10-22 addendum for the exact correction.

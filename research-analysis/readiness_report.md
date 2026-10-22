@@ -37,6 +37,15 @@ committed or pushed.
   `grep`, `wc`, `diff`, `mkdir` under `research-analysis/`, and the new
   Python scripts under `research-analysis/sim/`) are read-only against the
   repository or write only within `research-analysis/`.
+- (2026-10-22, later pass) `g++` compiling `research-analysis/native/fake_arduino/Arduino.cpp`
+  together with the unmodified `arduino/*.cpp` sources and
+  `research-analysis/native/tests/test_main.cpp` into
+  `research-analysis/native/build/deadman_native_tests`, then running that
+  binary -- a pure host-side compile and execute, reading `arduino/*.cpp` and
+  writing only under `research-analysis/native/build/`. It does not open
+  `/dev/ttyUSB0` or any serial device, bind a socket, or touch `pi/` or
+  `var/`. `arduino-cli` was located (`which arduino-cli`) but not invoked;
+  the native build uses the system `g++` only.
 
 ## 3. New files created
 
@@ -57,6 +66,18 @@ research-analysis/
     test_command_framing_boundaries.py
   sim/
     deadman_robustness_sim.py
+  native/                       (added 2026-10-22, later pass)
+    fake_arduino/
+      Arduino.h
+      Arduino.cpp
+      ServoTimer2Plus.h
+    tests/
+      mirrored_safety_task.h
+      test_main.cpp
+    build/
+      deadman_native_tests      (compiled binary, reproducible from the
+                                  sources above; see output/ for the build
+                                  command and its result)
   output/
     rerun_full_venv_2026-10-22.txt
     rerun_pi_venv_incomplete_2026-10-22.txt
@@ -65,10 +86,30 @@ research-analysis/
     new_boundary_tests_2026-10-22.txt
     section5_stats_rerun_2026-10-22.md
     deadman_sim_report.md
+    native_deadman_tests_2026-10-22.txt   (added 2026-10-22, later pass)
   scripts/                      (created, left empty -- no additional
                                   reproduction script was judged necessary
                                   beyond the ones above)
 ```
+
+**Later pass, 2026-10-22, addendum.** This pass's goal was to replace
+dead-man simulation evidence with real software-test evidence wherever
+feasible. It modified three existing `research-analysis/` files
+(`software_verification_results.md`, `test_inventory.md`,
+`evidence_to_claim_matrix.md`, each with a dated addendum, nothing deleted)
+and `research paper/section5_results.md` (Section 5.1a gained the native
+test writeup and two corrections; Section 5.1b gained one limitations
+sentence; the Section 5.10 summary gained one sentence), plus the `native/`
+tree above. `git status --porcelain=v1 -uall` confirmed before any edit
+that the only pre-existing change in the tree was the unrelated `promt`
+deletion (per project memory, the user's own hand-off file, not touched by
+this pass), and confirmed again after editing that no file under
+`arduino/`, `pi/`, `dashboard/`, `deploy/`, `var/`, any systemd unit, or any
+original CSV in `tools/eval/results/` was created, edited, renamed, or
+deleted. No motor was driven, no serial device was opened, no package was
+installed, no service was restarted, and nothing was committed or pushed.
+`g++` and `arduino-cli` were already present on this host; neither was
+installed by this pass.
 
 ## 4. Tests not run, and why
 
@@ -100,6 +141,7 @@ research-analysis/
 | New boundary unit tests | 2026-10-22 | 17 passed, 0 failed | Newly written and executed in this task |
 | Bibliography re-verification | 2026-10-22 | 18/19 VERIFIED, 1 UNVERIFIABLE-BY-DESIGN, 0 mismatches | Independently re-checked in this task against Crossref/primary sources |
 | Dead-man heartbeat-loss model | n/a | SIMULATED only | Software model, explicitly not a measurement |
+| Native firmware tests (real `arduino/*.cpp`, compiled) | 2026-10-22 | 10 test functions / 27 checks, 10 passed, 0 failed | Newly written and executed in this task's later pass; found two corrections to the FRESH-TEST row above (see Section 7) |
 
 ## 6. Measured vs. calculated vs. software-test vs. simulated -- final distinction
 
@@ -115,6 +157,11 @@ research-analysis/
   (`pi/tests/`) and the 17 new boundary tests (`research-analysis/tests/`),
   all executed in this task against `MOCK_HARDWARE` software, proving
   software logic only, never the physical firmware, motors, or radio link.
+- **NATIVE-FIRMWARE-TEST**: the 10 new tests under `research-analysis/native/`,
+  which compile and run the real, unmodified `arduino/*.cpp` sources (not
+  `MockArduino`) against a host stub of the Arduino API. Stronger evidence
+  about the firmware's own logic than SOFTWARE-TEST above, but still not
+  hardware-in-the-loop: no board, no electrical signals, no UART timing.
 - **SIMULATED**: only `sim/deadman_robustness_sim.py`'s output. No other
   file in `research-analysis/` contains simulated data presented as
   measured.
@@ -136,6 +183,22 @@ research-analysis/
    the same day the robot is driven further -- documented, not a defect,
    but worth noting if that specific row is ever quoted with a "generated
    on" date (Section 2.3, `calculation_report.md`).
+5. **(2026-10-22, later pass) `pi/common/mock_hardware.py` and
+   `pi/common/protocol.py`'s `DEADMAN_ARMING_COMMANDS` do not match the
+   real firmware's dead-man semantics on two points**, confirmed by native
+   compilation of `arduino/*.cpp` (Section 5, "Native firmware tests" row;
+   full writeup in `software_verification_results.md`'s addendum): the
+   mock treats elapsed `== DEADMAN_MS` as alive where the firmware treats
+   it as tripped, and the mock excludes pan/tilt/status from re-arming the
+   timer where the firmware includes them. Not fixed here: this task's
+   safety rules forbid changing `pi/` source (it ships with the live
+   service, even though `MOCK_HARDWARE` defaults off on the Pi), so the
+   correction was made only in the manuscript and these analysis documents,
+   not in the mock itself. Whoever next touches `mock_hardware.py` should
+   decide whether to bring it in line with the firmware or to document the
+   divergence in its own docstring (it currently claims to model the
+   firmware "closely enough... for driving and telemetry purposes," which
+   is true for its original purpose but not for dead-man re-arming).
 
 ## 8. Explicitly not claimed
 
@@ -145,3 +208,12 @@ behaviour; that any bibliography entry's claim-to-citation fit was checked
 (only the bibliographic record itself); that Q1/IEEE Access acceptance is
 guaranteed by any of this; or that any Section 5 `[PENDING MEASUREMENT]`
 item has been filled. None of those things happened in this task.
+
+(2026-10-22, later pass) This task also does not claim that the native
+firmware tests under `research-analysis/native/` are hardware-in-the-loop
+testing, that they measure any electrical signal, UART timing, or
+ATmega-specific behaviour, or that they fill E4 (the dead-man wheel-stop
+physical measurement). They establish only that the *compiled logic* of
+the unmodified `arduino/*.cpp` sources behaves as described in
+`software_verification_results.md`'s addendum, run on the development
+host, not on the robot's own microcontroller.

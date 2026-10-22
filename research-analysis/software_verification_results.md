@@ -98,6 +98,92 @@ They do not prove anything about the real Arduino firmware's behaviour
 board, out of scope here), about timing under real network conditions, or
 about any code path not exercised by these specific inputs.
 
+## Addendum, 2026-10-22 (later pass): native firmware tests, and two corrections to the claims above
+
+A later pass in the same task added `research-analysis/native/`: the real,
+unmodified `arduino/*.cpp` sources (`protocol.cpp`, `utils.cpp`,
+`robot_state.cpp`, `motors.cpp`, `servos.cpp`, `telemetry.cpp`,
+`command_parser.cpp`) compiled with `g++` against a small host stub of the
+Arduino API (`research-analysis/native/fake_arduino/`), producing a native
+test binary that exercises the actual compiled firmware logic rather than
+`MockArduino`. `arduino.ino`'s `taskSafety()` is a `static` function in that
+one `.ino` translation unit and cannot be linked from a separate binary; it
+is reproduced verbatim in `research-analysis/native/tests/mirrored_safety_task.h`,
+cited against its exact source lines, rather than re-derived -- the one
+piece of control flow in this test not compiled directly from `arduino/`.
+Everything else -- the command-parsing pipeline, the dead-man state machine,
+motor PWM ramping and the enable line, telemetry formatting -- is the real
+source, unmodified, compiled and run as-is.
+
+Build and run command, compiler version, and full output:
+`research-analysis/output/native_deadman_tests_2026-10-22.txt`. Result:
+**10 test functions, 27 checks, 10 of 10 passed** (`research-analysis/native/tests/test_main.cpp`,
+`research-analysis/native/build/deadman_native_tests`).
+
+**This found that two of the claims in the "What these new tests prove"
+section above are wrong about the real firmware, though correct about
+`MockArduino`:**
+
+1. **Boundary direction.** The paragraph above says the dead-man's
+   "alive/tripped boundary is exactly where the source says it is
+   (inclusive at `DEADMAN_MS`)" for `MockArduino`, whose `_check_deadman`
+   uses `elapsed <= DEADMAN_MS` to mean "alive". The real firmware's
+   `taskSafety()` in `arduino/arduino.ino` (lines 79-88) checks
+   `(now - lastCommandTime) >= DEADMAN_TIMEOUT_MS` to mean "trip" -- the
+   opposite inclusive direction. At exactly 2000 ms of silence, `MockArduino`
+   reports alive; the compiled firmware reports tripped. Confirmed by
+   `test_at_exactly_boundary` in the native suite.
+2. **Pan/tilt/status re-arming.** The paragraph above says "panning,
+   tilting, or requesting status does not extend the dead-man window,
+   matching the documented design intent in `protocol.py`". That is true of
+   `pi/common/protocol.py`'s `DEADMAN_ARMING_COMMANDS`, which deliberately
+   excludes `P`/`T`/`?`, and of `MockArduino`, which implements exactly that
+   exclusion. It is not true of `arduino/command_parser.cpp`: `handleLine()`
+   calls `g_state.noteCommandReceived(now)` for *any* syntactically valid
+   command before the state-machine gate even runs, with its own comment
+   reading "Any well-formed command counts as comms activity for the
+   dead-man timer, even a query or heartbeat." Confirmed by
+   `test_pan_command_rearm_behaviour_on_real_firmware` and
+   `test_tilt_and_status_rearm_behaviour_on_real_firmware`: both re-arm the
+   real firmware's dead-man.
+
+Both are one-line, commented design choices in the real firmware, not bugs
+introduced by this test. The point is narrower and more important: `pi/common/mock_hardware.py`
+and `pi/common/protocol.py`'s `DEADMAN_ARMING_COMMANDS` do not faithfully
+model the Arduino's own re-arming rule, so any test or claim built only on
+the mock (including the "17 new tests" and the "138 tests" total above, and
+the manuscript text that cited them) was characterising the mock, not the
+robot, for these two specific properties.
+
+**New coverage with no prior test, mock or native:**
+
+- **Motor safe-state at the GPIO level.** `test_motor_enable_line_and_pwm_go_safe_on_trip`
+  confirms that on a trip, the motor enable line goes `LOW` and all four
+  BTS7960 PWM pins (`LEFT_RPWM`, `LEFT_LPWM`, `RIGHT_RPWM`, `RIGHT_LPWM`) go
+  to 0. `MockArduino` has no pin model at all, so no prior test, including
+  the 138 above, checked this at any level.
+- **Recovery after a timeout.** `test_recovery_first_command_after_trip`
+  shows the real firmware's first command after a trip is rejected
+  (`NACK F REJECTED`) because `checkState()` still sees `MODE_PANIC` for
+  that one command, but `lastCommandTime` was already refreshed by the same
+  command (stage ordering in `handleLine()`), so the very next 10 ms safety
+  pass clears the fault (`EVT DEADMAN_CLEARED`) with no further input, and a
+  second attempt at the same command succeeds. Re-running `MockArduino`
+  directly (recorded in the same output file) shows it accepts the first
+  post-trip command immediately, with neither a rejection nor a clear event,
+  because it has no `MODE_PANIC`/`MODE_ESTOP` gate at all (stated in its own
+  module docstring). Neither recovery path was tested anywhere before this
+  pass.
+
+**What this is not:** hardware-in-the-loop testing. No board, no real UART
+timing, no electrical measurement of the EN line or PWM duty cycle, and no
+ATmega-specific behaviour (Timer2, `analogWrite` frequency) is exercised;
+`fake_hw::digitalState`/`analogState` are recorded host-side values, not
+voltages. This closes the "would require hardware-in-the-loop testing...
+out of scope here" gap noted below only insofar as it tests the compiled
+logic without a board; it does not establish anything about the physical
+electrical signals, which remain [PENDING MEASUREMENT] along with E4.
+
 ## Gaps identified but not filled in this pass, with reasons
 
 - **Watchdog (P3) recovery logic using mocks:** `tools/eval/faultinject.py`

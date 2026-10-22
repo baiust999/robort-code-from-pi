@@ -122,10 +122,27 @@ count.
 | Fresh rerun, full suite, full venv | 121 passed, 0 failed | this task | 2026-10-22 |
 | Rerun, incomplete `pi/.venv`, forced through | 86 passed, 7 errors (env-caused) | this task | 2026-10-22 |
 | New boundary unit tests, this task | 17 passed, 0 failed | `research-analysis/tests/` | 2026-10-22 |
+| Native firmware tests (real, compiled `arduino/*.cpp`), this task | 10 test functions / 27 checks, 10 passed, 0 failed | `research-analysis/native/` | 2026-10-22 |
 | Hardware checklist (H1-H15) | 0 run | `docs/TEST_REPORT.md` Section 4 | not run -- needs physical hardware access, out of scope (software-only task) |
 | Integration checklist (I1-I19) | 0 run | `docs/TEST_REPORT.md` Section 5 | not run -- needs the live dashboard/operator in the loop |
 | Network tests (N1-N8) | 0 run | `docs/TEST_REPORT.md` Section 6 | not run -- needs physical distance trials |
 | Field test | 0 run | `docs/TEST_REPORT.md` Section 8 | not run -- needs a physical rescue scenario |
+
+## 7. Native firmware tests, this task, 2026-10-22 (later pass)
+
+A distinct evidence class from everything above: instead of importing
+`pi/common`/`pi/p1_control` (as sections 3, 5 and 6 do), this test compiles
+the real, unmodified `arduino/*.cpp` files with `g++` against a host stub
+of the Arduino API and runs the resulting native binary. See
+`software_verification_results.md`'s "Addendum, 2026-10-22" for the full
+writeup and `research-analysis/output/native_deadman_tests_2026-10-22.txt`
+for the exact build command, compiler version (`g++ (Debian 12.2.0-14+deb12u1) 12.2.0`)
+and run output. Headline result: 10 of 10 test functions (27 checks) pass,
+and two of them show that `pi/common/mock_hardware.py`'s model of the
+dead-man timer's boundary direction and arming-command set disagree with
+the real firmware it is meant to emulate -- a gap the mock-based tests in
+Sections 3-6 above could not have found, because they test the mock, not
+the firmware.
 
 Sections 4, 5, 6 and 8 of `docs/TEST_REPORT.md` were not executed in this
 task by design: they require operating the physical robot, its motors, its

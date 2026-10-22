@@ -1,0 +1,26 @@
+=== build command ===
+g++ -std=gnu++17 -Wall -Wextra -Wno-unused-parameter \
+  -I research-analysis/native/fake_arduino -I arduino -I research-analysis/native/tests \
+  research-analysis/native/fake_arduino/Arduino.cpp arduino/protocol.cpp arduino/utils.cpp \
+  arduino/robot_state.cpp arduino/motors.cpp arduino/servos.cpp arduino/telemetry.cpp \
+  arduino/command_parser.cpp research-analysis/native/tests/test_main.cpp \
+  -o research-analysis/native/build/deadman_native_tests
+
+=== compiler ===
+g++ (Debian 12.2.0-14+deb12u1) 12.2.0
+
+=== run, 2026-10-22T17:25:46Z ===
+Native firmware dead-man test harness
+Compiled from unmodified arduino/*.cpp against a host Arduino stub.
+
+  INFO test_at_exactly_boundary: real firmware is TRIPPED at elapsed == DEADMAN_TIMEOUT_MS (2000 ms)
+  INFO test_pan_command_rearm_behaviour_on_real_firmware: real firmware WAS re-armed by repeated P90 commands (fault=NONE, mode=ACTIVE)
+  INFO test_tilt_and_status_rearm_behaviour_on_real_firmware: real firmware WAS re-armed by T45/'?' sent at t=1950 (fault=NONE)
+  INFO test_recovery_first_command_after_trip: first post-trip F120 -> NACK F REJECTED
+
+  INFO test_recovery_first_command_after_trip: after next safety pass, fault=NONE mode=READY event="EVT DEADMAN_CLEARED
+"
+
+27 passed, 0 failed
+
+exit code: 0
