@@ -1,0 +1,112 @@
+# Scope Restriction: E6 Only — Wi-Fi Communication Range and Signal Strength
+
+I am working in the existing `~/robot` project. My current task is exclusively E6, the Wi-Fi communication range and link-degradation experiment for Section 5 of my rescue robot research paper.
+
+Repository: https://github.com/baiust999/robort-code-from-pi
+
+## 1. Strict Scope
+
+Work only on files directly required for E6, including:
+
+- `tools/eval/netsweep.py`
+- `tools/eval/common.py`, only if an E6-related bug exists there
+- E6 network measurement CSV files
+- E6-specific analysis scripts, figures, and tables
+- The E6 subsection of the research paper and its directly related test-status documentation
+
+Do not modify E2, E3, E4, E5, E8, E10, E11, E13, E14, E15, F9, or any unrelated project component.
+
+Do not refactor the overall architecture, change robot firmware, modify the dashboard, or change deployment and network configuration unless an identified E6 measurement bug requires it.
+
+## 2. Safe File Editing
+
+Before editing:
+
+1. Inspect `git status` and preserve existing user changes.
+2. Read the E6 scripts, result CSV, and related methodology.
+3. Back up any original E6 measurement file before modifying it.
+4. Make only small, necessary changes.
+5. Never delete original experimental observations.
+6. Do not run destructive Git commands.
+7. Do not commit or push changes.
+
+If a file contains both E6 and unrelated results, preserve the unrelated data.
+
+## 3. Verify Existing E6 Measurements
+
+The latest terminal session reported:
+
+| Station | Distance | Packet loss | Average RTT | RSSI |
+|---|---:|---:|---:|---:|
+| N1 | 5 m | 0% | 3.37 ms | -41 dBm |
+| N2 | 10 m | 0% | 5.34 ms | -39 dBm |
+| N3 | 15 m | 0% | 5.74 ms | -41 dBm |
+| N4 | 20 m | 0% | 5.28 ms | -40 dBm |
+
+Verify these observations against the actual CSV and available logs before treating them as confirmed experimental results.
+
+Inspect the E6 measurement implementation for:
+- Correct RSSI parsing from `/proc/net/wireless`.
+- Correct Wi-Fi interface selection.
+- Actual Wi-Fi operating channel.
+- Correct ping target and packet counts.
+- Packet-loss and RTT calculations.
+- RSSI sampling time and recorded values.
+- Consistent test conditions.
+- CSV schema and data integrity.
+
+Fix genuine software bugs and validate the corrections. Do not assume the RSSI readings are wrong simply because they remain nearly constant.
+
+## 4. Fabricated and Synthetic Data Rules
+
+For this Q1 journal paper, do not fabricate physical E6 measurements.
+
+If synthetic data is needed to test analysis code, save it separately with an unmistakable `synthetic` or `simulation` label.
+
+Never insert invented measurements into the real E6 CSV.
+
+Never invent N5 or later station results, packet-loss percentages, RSSI values, latency, channel information, or video/control observations.
+
+If a measurement is missing, leave it missing and explain how to collect it.
+
+## 5. Continue the Physical E6 Experiment
+
+The next station is N5 at 25 metres, with no obstacles, provided the existing setup remains unchanged.
+
+Inspect the actual script and provide the exact command using the correct target IP and interface. Do not guess the target address.
+
+The test must record real measurements, including packet loss, RTT, RSSI, and negotiated transmit bitrate where available.
+
+Record video quality and control responsiveness separately if they can be observed during the physical test.
+
+Continue the physical sweep until a repeatable link-degradation or disconnection point is observed. Do not invent the endpoint or claim a maximum range prematurely.
+
+## 6. E6 Completion Criteria
+
+Update the E6 CSV, analysis, table, and documentation only where supported by evidence.
+
+The final E6 report must distinguish:
+
+- Maximum distance actually tested.
+- Maximum tested distance meeting the defined link-quality criteria.
+- Actual maximum communication range, if established by the experiment.
+- Physical measurements versus synthetic or simulated data.
+- Completed tests versus missing repetitions or untested conditions.
+
+Run the relevant E6 software checks and inspect the final Git diff.
+
+## 7. Final Report
+
+Report only E6 work:
+
+1. Files inspected and modified.
+2. Bugs found and corrected.
+3. Original measurements verified.
+4. Automated checks run and their actual outcomes.
+5. Physical measurements still required.
+6. Exact command for the next physical test.
+7. Current E6 status and remaining limitations.
+
+Do not modify unrelated experiments. Do not claim that E6 is complete until the required measurements and verification are complete.
+
+**Execution instruction:** Finish all E6 software work that can be verified now. Do not stop after providing recommendations, but do not pretend that physical measurements have been collected when they have not.
