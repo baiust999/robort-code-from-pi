@@ -1,0 +1,50 @@
+## Task: Audit and Correct the Thermal Dataset in My Rescue Robot Research Project
+
+My robot does not have a thermal-imaging sensor or thermal camera. I have physically tested a DHT11, which measures ambient temperature and relative humidity.
+
+Inspect the entire repository and correct the research analysis accordingly.
+
+### 1. Audit the thermal dataset
+
+- Locate `tools/eval/results/thermal.csv` and every reference to `thermal`, `thermal dataset`, `thermal accuracy`, and `thermal imaging`.
+- Determine whether the CSV contains DHT11 temperature/humidity measurements, synthetic data, or unsupported data.
+- Inspect the source code, Git history, test logs, and manuscript to establish provenance where possible.
+- Do not assume that the filename proves the dataset represents thermal imaging.
+
+### 2. Correct the terminology and manuscript
+
+- If the dataset contains DHT11 measurements, rename or document it appropriately, for example `dht11_environmental.csv`, only after verifying its contents and updating dependent references.
+- Replace misleading descriptions of a thermal dataset with accurate descriptions of ambient temperature and relative humidity.
+- Remove claims about thermal cameras, thermal imaging, or thermal-based victim detection because this hardware is not part of my robot.
+- Retain only measurements supported by actual test evidence.
+- Flag unsupported values and accuracy claims as `[VERIFICATION REQUIRED]`.
+
+### 3. If usable data is missing
+
+You may generate a separate synthetic dataset for simulation, testing, plotting, or validating analysis scripts.
+
+Requirements:
+
+- Store it separately from real experimental data, using a clear name such as `dht11_synthetic_demo.csv`.
+- Mark the dataset and its metadata as `SYNTHETIC — NOT PHYSICALLY MEASURED`.
+- Do not mix synthetic values into the physical experimental dataset.
+- Do not present generated values as measurements from my robot.
+- Do not use synthetic data to claim real-world sensor accuracy, robot performance, or experimental validation.
+- Do not invent reference-instrument readings or report fabricated zero-error results.
+- Add a short README explaining the purpose, generation method, limitations, and intended use of the synthetic dataset.
+
+### 4. Check the ultrasonic dataset separately
+
+Inspect the HC-SR04 dataset. If all 50 rows have identical sensor and reference readings, verify their provenance and flag the accuracy results for investigation. Do not fabricate replacement physical measurements.
+
+### 5. Verify all changes
+
+- Update dependent scripts, plots, tables, and manuscript references as needed.
+- Run relevant tests without operating the robot.
+- Preserve the original raw data and existing unrelated work.
+- Do not deploy firmware, operate motors, or modify live hardware.
+- Do not commit or push changes yet.
+
+Finally, report which datasets are verified physical measurements, which are synthetic, which claims were corrected, and what actual experiments remain necessary.
+
+**Important:** I authorize generating synthetic demonstration data if needed, but I do not authorize presenting it as real experimental evidence.
