@@ -1,0 +1,18 @@
+The robot is securely elevated on a support, and its wheels are not touching the floor. Therefore, the robot cannot travel across the floor during this test, although its wheels can spin.
+
+I want you to automate the motor-control experiment yourself using the terminal in `/home/pi/robot`.
+
+1. Inspect the existing motor-control protocol and `tools/eval/estop_assist.py`.
+2. Create a separate automated bench-test script and separate CSV output. Do not overwrite the existing E3 data.
+3. Allow configurable directions (forward, reverse, left, right), PWM values, motor-run durations, and stop commands.
+4. Require an explicit operator confirmation before starting. Begin with a non-moving dry run.
+5. For each approved test, log command-send time, stop-command time, PWM, direction, response events, and available telemetry using timestamps.
+6. Test multiple durations and PWM values in a controlled sequence, with a maximum run duration and a guaranteed stop command when the test exits or encounters an error.
+7. Inspect the existing dead-man timer and emergency-stop behavior. Do not disable, bypass, or weaken any safety mechanism.
+8. Execute terminal checks and automated software tests yourself. If your terminal supports interactive input, run the script and pause only when physical confirmation is necessary.
+9. If the robot is securely supported and the wheels spin freely, you may run the approved bench tests without requiring floor-distance measurements. Stop immediately if the support becomes unstable, a wheel binds, or any component overheats.
+10. Clearly distinguish measured software command timing from actual motor stopping time. Do not claim a measured physical stopping time unless it is independently observed or instrumented.
+
+Important: This is an elevated-wheel bench test, not a floor-based stopping-distance experiment. Do not modify Table 5.4 or present these results as floor stopping-distance measurements. Preserve all original CSV files and do not commit or push.
+
+Start by inspecting the source code and proposing the safest test sequence. Then execute the non-moving checks yourself.
