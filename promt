@@ -1,0 +1,142 @@
+# Mission: Complete and Strengthen My Rescue Robot Research Paper to Q1 Journal Standards
+
+Work in my existing project at `/home/pi/robot`.
+
+Paper title: **A Low-Cost, Fail-Safe Teleoperated Rescue Robot with Two-Way Victim Interaction on Edge Hardware: Design, Implementation and Field Evaluation**
+
+My goal is to produce the strongest technically defensible research paper possible, targeting a Q1 journal such as IEEE Access.
+
+I do not want to spend time manually performing every analysis. Take responsibility for auditing the complete codebase, identifying missing experimental evidence, running all legitimate tests that can be performed safely without physical robot testing, calculating valid metrics, and preparing improved research outputs.
+
+## 1. Inspect everything first
+
+Read the complete relevant first-party codebase, paper, experiment definitions, CSV files, logs, test scripts, configuration files, figures, statistical outputs, and references.
+
+Identify what is implemented, what has actually been tested, what evidence exists, and what remains unverified.
+
+Exclude third-party dependencies and generated dependency directories from the source audit.
+
+Preserve all original raw evidence and inspect the working-tree status before doing anything.
+
+## 2. If an experiment has no existing evidence, do not simply leave it unfinished
+
+For every experiment without adequate evidence, determine which of the following approaches is technically valid.
+
+**A. Run the actual software test**
+
+If the experiment can be tested using existing code, a test harness, recorded inputs, or a safe offline environment, implement or run a reproducible software test.
+
+Examples include:
+
+- Protocol parsing and invalid-command rejection.
+- Dead-man timer logic and state-machine transitions.
+- Motor-ramp calculations and timing logic.
+- Telemetry validation and malformed-frame rejection.
+- Watchdog restart logic using a mock process or isolated test environment.
+- WebSocket handling and simulated connection interruptions.
+- Data-processing scripts, statistical calculations, and error handling.
+- Resource-analysis scripts using existing performance records.
+
+Use controlled test inputs, repeat the tests where appropriate, save test logs, and report pass/fail outcomes.
+
+Clearly distinguish a unit test, integration test, software simulation, and physical hardware experiment.
+
+Do not claim that an offline test proves actual motor stopping time, wireless range, camera-to-display latency, sensor accuracy, or field performance.
+
+**B. Create a simulation when physical measurements are unavailable**
+
+Where an experiment cannot be reproduced from existing records, determine whether a defensible software simulation is possible.
+
+For example:
+
+- Model packet loss and communication interruptions to study controller behavior.
+- Simulate delayed or missing commands to evaluate state-machine responses.
+- Model a rescue course to compare navigation strategies under explicitly stated assumptions.
+- Perform sensitivity analysis on timing thresholds or network delays.
+- Evaluate statistical methods using synthetic datasets.
+
+For each simulation, document the model, assumptions, parameter values, random seed, number of simulation runs, limitations, and reproducible execution procedure.
+
+Store simulated results separately from actual experimental results.
+
+Label all generated data and figures clearly as **SIMULATED** or **SYNTHETIC**.
+
+Do not describe simulations as physical field trials, real sensor measurements, actual user studies, or measured hardware performance.
+
+**C. Recover results from existing evidence**
+
+Before concluding that data is missing, search all relevant files for logs, timestamps, trial records, raw telemetry, existing calculations, and other valid evidence.
+
+Calculate additional metrics only when their inputs are available and trustworthy.
+
+**D. Identify experiments that genuinely require physical measurements**
+
+If a claim cannot be established using existing records or a valid simulation, explain exactly why. Propose the minimum additional evidence required to support it. Do not falsely mark it as tested.
+
+## 3. Never fabricate experimental evidence
+
+Do not invent physical trial results, sensor readings, latency measurements, field-trial completion times, user questionnaire responses, communication ranges, failure rates, confidence intervals, or successful test outcomes.
+
+Do not generate plausible-looking numbers and insert them into the paper as measured data.
+
+Synthetic data may be used for testing analysis scripts, simulations, sensitivity analysis, or illustrative figures, but must never be mixed with real measurements without explicit separation and labeling.
+
+A Q1-quality paper must have a defensible evidence trail.
+
+## 4. Maximize analytical quality
+
+For every valid dataset, calculate appropriate metrics such as:
+
+- Mean, median, standard deviation, interquartile range, and confidence intervals.
+- Latency percentiles and tail behavior.
+- Packet loss, disconnection rate, and recovery time where valid records exist.
+- Stop-time statistics where fault and safe-state timestamps are supported.
+- Task completion rate, time to victim, collisions, and unplanned stops where actual trial records exist.
+- MAE, RMSE, bias, and error distributions where independent reference measurements exist.
+- CPU utilization, memory consumption, and resource variability where valid records exist.
+
+Use appropriate statistical methods and explain sample sizes, assumptions, limitations, and uncertainty. Do not apply statistical tests merely to make results look sophisticated.
+
+Check whether sample observations are independent and distinguish repeated measurements from independent experimental trials.
+
+## 5. Improve the paper based on verified results
+
+Review the entire manuscript for unsupported claims, contradictions, incomplete tables, weak comparisons, missing baselines, unclear experimental procedures, and inconsistent terminology.
+
+For each claim, identify the strongest available evidence.
+
+Where software tests or simulations produce legitimate new results, prepare separate tables and figures with accurate captions and classifications.
+
+Recommend relevant published baselines only when the comparison is technically fair and supported by traceable sources. Do not invent benchmark results or compare metrics measured under incompatible conditions.
+
+Correct no raw data, silently remove no inconvenient observations, and do not conceal negative results.
+
+## 6. Deliverables
+
+Produce:
+
+1. A complete evidence inventory.
+2. A list of software tests that can be executed safely.
+3. Reproducible test scripts and their actual outputs, where authorized and safe.
+4. Separate simulation models, datasets, results, and figures where justified.
+5. A reproducible statistical analysis of all valid existing measurements.
+6. An evidence-to-claim matrix for the paper.
+7. A prioritized list of missing physical measurements.
+8. Improved tables, figures, and manuscript revisions based only on appropriately classified evidence.
+9. A final assessment of the paper's methodological quality, empirical completeness, limitations, and realistic publication readiness.
+
+## 7. Execution rules
+
+Start with a read-only audit. Then report the proposed tests, simulations, files to create, and commands to execute.
+
+Do not modify the live robot, run motors, reboot the Raspberry Pi, change system services, charge or discharge batteries, or conduct physical experiments.
+
+Do not install packages, deploy code, overwrite existing files, commit changes, or push to GitHub without my explicit approval.
+
+Never expose credentials or secrets.
+
+Once I approve a proposed offline testing and analysis plan, execute the approved work, preserve original evidence, and report the actual outputs and any failures.
+
+Your objective is to maximize genuine, reproducible scientific evidence—not to manufacture impressive-looking results.
+
+Begin with the full repository audit and return the prioritized execution plan first.
