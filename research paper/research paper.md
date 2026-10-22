@@ -19,7 +19,10 @@
   - C3: two-way victim audio/video under CPU, power and bandwidth limits
   - C4: affordability as a deployment constraint, not a marketing claim
 - 1.3 Contributions
-  - RQ1-RQ3 stated here, each mapped to a contribution and answered in Section 7.1
+  - RQ1-RQ4 stated here (reconciled 2026-10-22 with actual usage in Sections 3
+    and 5, which cite RQ4 for both the two-way victim path and GPS/mapping;
+    the figure was previously given as RQ1-RQ3), each mapped to a contribution
+    and answered in Section 7.1
   - Contributions mapped to C1-C4 and to the evaluation in Section 5, summarised
     in Section 7.2
   - (unnumbered closing paragraph: organization of the paper)
@@ -138,9 +141,8 @@
   - One subsection-level answer per research question, each stating the claim,
     the measured evidence from Section 5 that supports it, and the bound within
     which the claim holds
-  - RQ labels and their count must match Section 1.3
-    [VERIFY: Section 1.3 states RQ1-RQ3, Section 3 maps design pillars to
-    RQ1-RQ4; reconcile before writing this subsection]
+  - RQ labels and their count: RQ1-RQ4, matching Section 1.3 as reconciled
+    above and the mapping already used in Sections 3 and 5
 - 7.2 Summary of Contributions
   - Each contribution restated and mapped back to the challenge it addresses
     (C1-C4, Section 1.2) and to the subsection of Section 5 that evaluates it
