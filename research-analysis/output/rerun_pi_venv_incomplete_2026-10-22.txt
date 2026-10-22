@@ -1,0 +1,234 @@
+................................EEEE.................................... [ 80%]
+..................                                                       [100%]
+==================================== ERRORS ====================================
+________________ ERROR collecting tests/test_resilient_audio.py ________________
+ImportError while importing test module '/home/pi/robot/pi/tests/test_resilient_audio.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/usr/lib/python3.11/importlib/__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_resilient_audio.py:5: in <module>
+    import av
+E   ModuleNotFoundError: No module named 'av'
+________________ ERROR collecting tests/test_shared_capture.py _________________
+ImportError while importing test module '/home/pi/robot/pi/tests/test_shared_capture.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/usr/lib/python3.11/importlib/__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_shared_capture.py:6: in <module>
+    from aiortc.mediastreams import MediaStreamTrack
+E   ModuleNotFoundError: No module named 'aiortc'
+___________________ ERROR collecting tests/test_talkback.py ____________________
+ImportError while importing test module '/home/pi/robot/pi/tests/test_talkback.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/usr/lib/python3.11/importlib/__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_talkback.py:8: in <module>
+    import av
+E   ModuleNotFoundError: No module named 'av'
+____________ ERROR at setup of test_p2_offer_with_key_is_controller ____________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f946e9450>
+tmp_path = PosixPath('/tmp/pytest-of-pi/pytest-4/test_p2_offer_with_key_is_cont0')
+
+    @pytest.fixture
+    def media(monkeypatch, tmp_path):
+        from common.config import P2Config
+>       from p2_media.main import MediaServer, create_app
+
+tests/test_controller_access.py:251: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """P2 entrypoint: WebRTC media server, Section 8.8.2.
+    
+    Exposes ``POST /webrtc/offer`` (SDP offer in, SDP answer out) and
+    ``GET /health``. Unlike P1, P2 does not own an exclusive hardware lock:
+    multiple simultaneous viewers are permitted, each with its own
+    PeerConnection and encoder, all fed from one shared camera and mic
+    (``SharedCapture``) since the devices themselves can only be opened once.
+    
+    It also serves the Robot Screen (Section 16): ``GET /screen`` is the kiosk
+    page shown on the robot's own display, and ``POST /webrtc/screen-offer``
+    connects it — localhost only — so the operator's voice, video and messages
+    reach the victim. ``GET /screen/mode`` reports whether the display shows
+    the kiosk or the Pi desktop (for VNC); the kiosk launcher polls it, and the
+    kiosk page and desktop shortcut switch it with ``POST /screen/mode``
+    (localhost only; dashboards switch it over their data channel).
+    """
+    
+    from __future__ import annotations
+    
+    import asyncio
+    import contextlib
+    import faulthandler
+    import itertools
+    import json
+    import sys
+    import urllib.request
+    from contextlib import asynccontextmanager
+    from pathlib import Path
+    from typing import Any
+    
+    import uvicorn
+>   from aiortc import RTCPeerConnection, RTCSessionDescription
+E   ModuleNotFoundError: No module named 'aiortc'
+
+p2_media/main.py:32: ModuleNotFoundError
+________ ERROR at setup of test_p2_offer_without_key_is_view_only[None] ________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f94701d50>
+tmp_path = PosixPath('/tmp/pytest-of-pi/pytest-4/test_p2_offer_without_key_is_v0')
+
+    @pytest.fixture
+    def media(monkeypatch, tmp_path):
+        from common.config import P2Config
+>       from p2_media.main import MediaServer, create_app
+
+tests/test_controller_access.py:251: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """P2 entrypoint: WebRTC media server, Section 8.8.2.
+    
+    Exposes ``POST /webrtc/offer`` (SDP offer in, SDP answer out) and
+    ``GET /health``. Unlike P1, P2 does not own an exclusive hardware lock:
+    multiple simultaneous viewers are permitted, each with its own
+    PeerConnection and encoder, all fed from one shared camera and mic
+    (``SharedCapture``) since the devices themselves can only be opened once.
+    
+    It also serves the Robot Screen (Section 16): ``GET /screen`` is the kiosk
+    page shown on the robot's own display, and ``POST /webrtc/screen-offer``
+    connects it — localhost only — so the operator's voice, video and messages
+    reach the victim. ``GET /screen/mode`` reports whether the display shows
+    the kiosk or the Pi desktop (for VNC); the kiosk launcher polls it, and the
+    kiosk page and desktop shortcut switch it with ``POST /screen/mode``
+    (localhost only; dashboards switch it over their data channel).
+    """
+    
+    from __future__ import annotations
+    
+    import asyncio
+    import contextlib
+    import faulthandler
+    import itertools
+    import json
+    import sys
+    import urllib.request
+    from contextlib import asynccontextmanager
+    from pathlib import Path
+    from typing import Any
+    
+    import uvicorn
+>   from aiortc import RTCPeerConnection, RTCSessionDescription
+E   ModuleNotFoundError: No module named 'aiortc'
+
+p2_media/main.py:32: ModuleNotFoundError
+________ ERROR at setup of test_p2_offer_without_key_is_view_only[123] _________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f947a9250>
+tmp_path = PosixPath('/tmp/pytest-of-pi/pytest-4/test_p2_offer_without_key_is_v1')
+
+    @pytest.fixture
+    def media(monkeypatch, tmp_path):
+        from common.config import P2Config
+>       from p2_media.main import MediaServer, create_app
+
+tests/test_controller_access.py:251: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """P2 entrypoint: WebRTC media server, Section 8.8.2.
+    
+    Exposes ``POST /webrtc/offer`` (SDP offer in, SDP answer out) and
+    ``GET /health``. Unlike P1, P2 does not own an exclusive hardware lock:
+    multiple simultaneous viewers are permitted, each with its own
+    PeerConnection and encoder, all fed from one shared camera and mic
+    (``SharedCapture``) since the devices themselves can only be opened once.
+    
+    It also serves the Robot Screen (Section 16): ``GET /screen`` is the kiosk
+    page shown on the robot's own display, and ``POST /webrtc/screen-offer``
+    connects it — localhost only — so the operator's voice, video and messages
+    reach the victim. ``GET /screen/mode`` reports whether the display shows
+    the kiosk or the Pi desktop (for VNC); the kiosk launcher polls it, and the
+    kiosk page and desktop shortcut switch it with ``POST /screen/mode``
+    (localhost only; dashboards switch it over their data channel).
+    """
+    
+    from __future__ import annotations
+    
+    import asyncio
+    import contextlib
+    import faulthandler
+    import itertools
+    import json
+    import sys
+    import urllib.request
+    from contextlib import asynccontextmanager
+    from pathlib import Path
+    from typing import Any
+    
+    import uvicorn
+>   from aiortc import RTCPeerConnection, RTCSessionDescription
+E   ModuleNotFoundError: No module named 'aiortc'
+
+p2_media/main.py:32: ModuleNotFoundError
+___________________ ERROR at setup of test_p2_offer_lockout ____________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f94634590>
+tmp_path = PosixPath('/tmp/pytest-of-pi/pytest-4/test_p2_offer_lockout0')
+
+    @pytest.fixture
+    def media(monkeypatch, tmp_path):
+        from common.config import P2Config
+>       from p2_media.main import MediaServer, create_app
+
+tests/test_controller_access.py:251: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """P2 entrypoint: WebRTC media server, Section 8.8.2.
+    
+    Exposes ``POST /webrtc/offer`` (SDP offer in, SDP answer out) and
+    ``GET /health``. Unlike P1, P2 does not own an exclusive hardware lock:
+    multiple simultaneous viewers are permitted, each with its own
+    PeerConnection and encoder, all fed from one shared camera and mic
+    (``SharedCapture``) since the devices themselves can only be opened once.
+    
+    It also serves the Robot Screen (Section 16): ``GET /screen`` is the kiosk
+    page shown on the robot's own display, and ``POST /webrtc/screen-offer``
+    connects it — localhost only — so the operator's voice, video and messages
+    reach the victim. ``GET /screen/mode`` reports whether the display shows
+    the kiosk or the Pi desktop (for VNC); the kiosk launcher polls it, and the
+    kiosk page and desktop shortcut switch it with ``POST /screen/mode``
+    (localhost only; dashboards switch it over their data channel).
+    """
+    
+    from __future__ import annotations
+    
+    import asyncio
+    import contextlib
+    import faulthandler
+    import itertools
+    import json
+    import sys
+    import urllib.request
+    from contextlib import asynccontextmanager
+    from pathlib import Path
+    from typing import Any
+    
+    import uvicorn
+>   from aiortc import RTCPeerConnection, RTCSessionDescription
+E   ModuleNotFoundError: No module named 'aiortc'
+
+p2_media/main.py:32: ModuleNotFoundError
+=========================== short test summary info ============================
+ERROR tests/test_resilient_audio.py
+ERROR tests/test_shared_capture.py
+ERROR tests/test_talkback.py
+ERROR tests/test_controller_access.py::test_p2_offer_with_key_is_controller
+ERROR tests/test_controller_access.py::test_p2_offer_without_key_is_view_only[None]
+ERROR tests/test_controller_access.py::test_p2_offer_without_key_is_view_only[123]
+ERROR tests/test_controller_access.py::test_p2_offer_lockout - ModuleNotFound...
+86 passed, 7 errors in 2.54s

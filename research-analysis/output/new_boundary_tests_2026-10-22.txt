@@ -1,0 +1,27 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.2, pytest-9.1.1, pluggy-1.6.0 -- /home/pi/robot/venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/pi/robot
+plugins: asyncio-1.4.0, anyio-4.15.1
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 17 items
+
+research-analysis/tests/test_command_framing_boundaries.py::test_line_at_exactly_max_command_chars_is_accepted PASSED [  5%]
+research-analysis/tests/test_command_framing_boundaries.py::test_line_one_char_past_max_command_chars_is_rejected PASSED [ 11%]
+research-analysis/tests/test_command_validator_boundaries.py::test_speed_at_max_pwm_is_not_flagged_as_clamped PASSED [ 17%]
+research-analysis/tests/test_command_validator_boundaries.py::test_speed_one_above_max_pwm_is_clamped PASSED [ 23%]
+research-analysis/tests/test_command_validator_boundaries.py::test_speed_at_min_pwm_is_not_flagged_as_clamped PASSED [ 29%]
+research-analysis/tests/test_command_validator_boundaries.py::test_speed_one_below_min_pwm_is_clamped PASSED [ 35%]
+research-analysis/tests/test_command_validator_boundaries.py::test_servo_angle_boundaries_not_flagged PASSED [ 41%]
+research-analysis/tests/test_command_validator_boundaries.py::test_servo_angle_one_past_each_boundary_is_clamped PASSED [ 47%]
+research-analysis/tests/test_command_validator_boundaries.py::test_sequence_exactly_one_less_than_last_is_stale PASSED [ 52%]
+research-analysis/tests/test_command_validator_boundaries.py::test_sequence_exactly_one_more_than_last_is_accepted PASSED [ 58%]
+research-analysis/tests/test_command_validator_boundaries.py::test_sequence_zero_then_negative_is_rejected PASSED [ 64%]
+research-analysis/tests/test_deadman_boundaries.py::test_deadman_alive_at_exactly_deadman_ms PASSED [ 70%]
+research-analysis/tests/test_deadman_boundaries.py::test_deadman_trips_one_ms_past_boundary PASSED [ 76%]
+research-analysis/tests/test_deadman_boundaries.py::test_deadman_still_alive_one_ms_before_boundary PASSED [ 82%]
+research-analysis/tests/test_deadman_boundaries.py::test_pan_command_does_not_rearm_deadman PASSED [ 88%]
+research-analysis/tests/test_deadman_boundaries.py::test_tilt_and_status_also_do_not_rearm_deadman PASSED [ 94%]
+research-analysis/tests/test_deadman_boundaries.py::test_heartbeat_at_exact_boundary_rearms PASSED [100%]
+
+============================== 17 passed in 0.15s ==============================
