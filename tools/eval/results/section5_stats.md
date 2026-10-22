@@ -62,6 +62,13 @@ Logger runs are grouped by inferred start time (iso_ts - t_s, 2 s tolerance).
 | driving+media | 299 | 196 | 20:14:56 (103), 20:16:30 (196) | 0.838 |
 | driving+media-16kbps | 299 | 298 | 20:26:54 (299) | 1.000 |
 
+Per logger run, for conditions written by more than one run:
+
+| condition | logger start | rows | total CPU mean | P2 CPU mean | P2 CPU SD | P2 RSS mean |
+|---|---|---|---|---|---|---|
+| driving+media | 20:14:56 | 103 | 21.06 | 63.01 | 4.10 | 453.4 |
+| driving+media | 20:16:30 | 196 | 20.60 | 62.87 | 3.81 | 453.9 |
+
 Means with 95% CI from 10 non-overlapping batch means; lag-1 autocorrelation r1 of the raw series.
 
 | condition | metric | n | mean | 95% CI (batch means) | r1 | median | IQR |
@@ -110,4 +117,59 @@ Logged coordinates carry 4 decimals (p1_control/telemetry_log.py); lat step coun
 | F9-indoor | 7 | 0 | 7 |
 
 First gps_fix 0 -> 1 in F9-gps-loss at t = 1306.57 s after the watch started (2026-10-22T12:23:46.192+00:00).
+
+## F6, F7 manual faults timed from P1's event log (2026-10-21)
+
+| event | time (UTC) | interval (s) |
+|---|---|---|
+| F6 first SERIAL_READ_FAIL | 19:41:58.363 | - |
+| F6 harness sees serial_connected 1 -> 0 | 19:41:58.475 | 0.112 |
+| F7 last heartbeat sent to Arduino | 19:52:48.530 | - |
+| F7 PANIC DEADMAN received | 19:52:50.550 | 2.020 after last heartbeat |
+| F7 WebSocket closed | 19:53:11.686 | 23.156 after last heartbeat |
+| F7 dashboard reconnected | 19:53:13.592 | 1.906 after close |
+
+## Heartbeat gaps >= 1.9 s and dead-man trips, 2026-10-22 12:00-14:02
+
+| gap start | gap end | gap (s) | PANIC DEADMAN during or at end of gap |
+|---|---|---|---|
+| 12:03:04.453 | 12:03:06.355 | 1.902 | none |
+| 14:01:06.488 | 14:01:08.476 | 1.988 | none |
+| 14:01:15.516 | 14:01:17.596 | 2.080 | 14:01:17.616 |
+
+## E3 forward drive commands in P1's event logs (wire=F<pwm>)
+
+Sources: p1_events.log, p1_events.log.1, p1_events.log.2.gz; entries from 2026-09-25 to 2026-10-22.
+
+| date | PWM | commands |
+|---|---|---|
+| 2026-09-25 | 120 | 127 |
+| 2026-09-26 | 120 | 30 |
+| 2026-09-26 | 180 | 9 |
+| 2026-09-27 | 120 | 21 |
+| 2026-09-28 | 120 | 9 |
+| 2026-09-29 | 120 | 7 |
+| 2026-09-30 | 120 | 3 |
+| 2026-09-30 | 180 | 22 |
+| 2026-10-02 | 120 | 25 |
+| 2026-10-21 | 120 | 27 |
+| 2026-10-21 | 180 | 12 |
+| 2026-10-22 | 120 | 3 |
+| any | 60 | 0 |
+
+## E10-E12 cross-check against telemetry.log (2026-10-21)
+
+E10: range_cm values logged 18:30-19:05 (value: samples): {10: 827, 11: 15, 13: 1, 18: 96, 19: 301, 20: 4, 30: 238, 31: 534, 32: 1, 33: 1, 42: 1}
+E10: entered readings [20, 75, 150, 284, 389]; present in that window: [20]; absent: [75, 150, 284, 389]
+
+E11: (temperature_c, humidity_pct) logged 19:10-19:22: {('31', '78'): 462, ('31', '77'): 221}
+
+E12: clean-air gas_ppm 19:25-19:30: min 50, max 55
+E12: tabulated baseline/peak values found in logged order: [(216, True), (935, True), (272, True), (930, True), (180, True), (864, True), (117, True), (733, True), (101, True), (910, True)]
+E12: local peaks >= 250 in the session: [403, 280, 463, 930, 935, 930, 864, 733, 910, 920, 875, 927]
+
+## GPS track held by P1 (gps_track_live_2026-10-22.geojson)
+
+Points: 130; path length 1609 m; step min 10.0 m, median 10.7 m, max 51.9 m; distance of points from their centroid: median 26.2 m, max 91.6 m.
+Fixed telemetry samples 2026-10-22: 2431, 2026-10-22T12:23:46.452+00:00 to 2026-10-22T13:14:04.264+00:00; fw_state counts {'1': 2431}.
 

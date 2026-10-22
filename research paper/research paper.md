@@ -80,7 +80,7 @@
 
 **4. Experimental Setup**
 
-- Scope rule: only what is shared across all nine experiments appears here
+- Scope rule: only what is shared across all fifteen experiments appears here
   (test conditions, metric definitions, baselines). Procedure specific to one
   experiment opens the matching Section 5 subsection, so nothing is described
   twice. Hardware, network and software are specified in Sections 3.2-3.4 and
@@ -93,7 +93,8 @@
 - 4.2 Experiments, Metrics and Validity Rules
   - Table 3 (the only table in this section): experiment | site | trials (N) |
     tool under tools/eval/ | metric, start point to end point, unit | reported in
-  - Nine rows, one per Section 5 subsection (5.1-5.9); tools are wslatency.py,
+  - Fifteen rows (E1-E15) in nine groups, one per Section 5 subsection
+    (5.1-5.9); tools are wslatency.py,
     faultinject.py, netsweep.py, reslog.py, gpsdrift.py, record.py and
     summarize.py, raw output under tools/eval/results/
   - Pass/fail thresholds from Section 3, stated in one sentence: 2000 ms

@@ -16,7 +16,7 @@ Three test sites are used:
 
 ## 4.2 Experiments, Metrics and Validity Rules
 
-Table 3 maps the nine experiments to the tools in `tools/eval/`, the metric each one produces, the number of trials and the Section 5 subsection that reports the result. Every CSV is stored under `tools/eval/results/` and is cited in the Data and Code Availability statement.
+Table 3 maps the fifteen experiments (E1 to E15) to the tools in `tools/eval/`, the metric each one produces, the number of trials and the Section 5 subsection that reports the result. The experiments are grouped into nine evaluation areas, one per Section 5 subsection: control latency and stopping (E1 to E4, Section 5.1), media streaming (E5, 5.2), communication range (E6, 5.3), fault injection (E7, 5.4), resource use (E8, 5.5), sensor accuracy (E9 to E12, 5.6), the field trial (E13, 5.7), usability (E14, 5.8) and cost (E15, 5.9). Every CSV is stored under `tools/eval/results/` and is cited in the Data and Code Availability statement.
 
 **Table 3.** Experiment matrix.
 
