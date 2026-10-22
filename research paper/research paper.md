@@ -29,31 +29,73 @@
 
 **2. Related Work**
 
-- 2.1 Positioning Within the SAR Robotics Literature \cite{avi2026review,kareem2026}
+- 2.1 Prior Reviews and the Autonomy/HRI Taxonomy
+  \cite{kareem2026,sinha2026,bakzadeh2026,liu2013,tong2024,avi2026review}
+  - How prior reviews organise the field: a five-layer system architecture
+    \cite{kareem2026}, research-method type for UGVs \cite{sinha2026},
+    physical design requirements for mine rescue \cite{bakzadeh2026}, the
+    control perspective \cite{liu2013}, UAV and UGV software approaches
+    \cite{tong2024}
   - The four-way autonomy/HRI taxonomy (Teleoperation, Supervisory Control,
     Shared-Collaborative Control, Fully Autonomous); this work is Teleoperation
+    \cite{avi2026review}
   - Teleoperation is 12.8% of the 2025-2026 corpus (5 of 39 papers), yet
-    Teleoperation and Supervisory Control are real-world field-validated
-    60-75% of the time versus 7.4% for Fully Autonomous systems
-- 2.2 Teleoperated Rescue Platforms and Their Reported Contributions
-  \cite{casper2003,liu2013,daun2023,megalingam2022}
-  - Contribution in existing teleoperated systems concentrates on mechanical
-    capability or perception accuracy; control safety and victim-facing
-    interaction are deferred or absent \cite{avi2026review}
-  - Mine- and tunnel-rescue robotics outside this corpus remains predominantly
-    teleoperation-oriented \cite{bakzadeh2026}
+    Teleoperation and Supervisory Control are real-world field-validated in
+    60-75% of papers versus 7.4% (2 of 27) for Fully Autonomous systems
+    \cite{avi2026review}
+- 2.2 Teleoperated Rescue Platforms and Their Cost
+  \cite{casper2003,daun2023,megalingam2022,verano2022}
+  - Field evidence for keeping a human operator in the loop in confined-space
+    search \cite{casper2003}; operator requirements for autonomy and
+    assistance functions in ground rescue robots \cite{daun2023}
+  - The five 2025-2026 teleoperated systems: locomotion is human-driven in
+    all five, and the contribution lies in mechanical capability
+    \cite{cafolla2026,jia2025,liu2026hexapod} or perception accuracy
+    \cite{raghavan2026,khattab2025}; navigation autonomy is deferred to
+    future work in three of the five \cite{khattab2025,jia2025,liu2026hexapod}
+  - Mine and tunnel rescue robotics outside the corpus remains predominantly
+    teleoperated \cite{bakzadeh2026}
+  - Low-cost teleoperated platforms and how they report cost (C4)
+    \cite{megalingam2022,verano2022}
 - 2.3 Fail-Safe and Fault-Tolerant Architectures for Low-Cost Mobile Robots
-  \cite{pont2001,schrick2025,koczi2025,verano2022}
-- 2.4 Human-Robot Interaction with Trapped Victims \cite{akgun2023,chitikena2023}
-  - Across the screened 2025-2026 corpus, victims appear only as detection
-    targets; no system provides two-way victim communication \cite{avi2026review}
-- 2.5 Real-Time Media Streaming on Constrained Edge Hardware
-  \cite{shi2025webrtc,valin2012}
+  \cite{pont2001,schrick2025,koczi2025}
+  - Time-triggered embedded scheduling as the basis for a bounded stop time
+    (C1) \cite{pont2001}
+  - Microservice isolation in safety-critical mobile-robot control (C2)
+    \cite{schrick2025}; safety-engineering practice for robots operating
+    near people \cite{koczi2025}
+- 2.4 Human-Robot Interaction: Operator and Victim
+  - Operator side: interface design, latency and situational awareness in
+    teleoperation \cite{chen2007,bakzadeh2025,ruan2025}
+  - Robot to rescue team: affect as an added communication channel to rescue
+    workers \cite{akgun2023}; ethics and design in the response phase
+    \cite{chitikena2023}
+  - Victim side (C3): victims are detection targets; the one teleoperated
+    system that provisions victim audio reports it as pending implementation
+    \cite{khattab2025} [VERIFICATION REQUIRED: extending this from the five
+    teleoperated systems to all 39 corpus papers needs the extraction table
+    of \cite{avi2026review}]
+- 2.5 Real-Time Media and Computing on Edge Hardware
+  \cite{shi2025webrtc,valin2012,bachhuber2016}
+  - Latency of a WebRTC-based teleoperated robot (remote dental surgery)
+    \cite{shi2025webrtc}; local signalling here, no cloud dependence
+  - Opus frame-size trade-off \cite{valin2012}; measuring glass-to-glass
+    video delay \cite{bachhuber2016}
+  - Where computing runs in current systems: PC/offline 38.5%, onboard/edge
+    33.3%, runtime-hybrid 25.6%, cloud 2.6% of the corpus \cite{avi2026review}
 - 2.6 Research Gap
-  - Table 1: qualitative comparison of representative teleoperated rescue
-    platforms (cost, bounded stop-time guarantee, process supervision,
-    two-way victim audio, real-world field validation)
-  - The gap is evidenced from a PRISMA-screened corpus, not asserted
+  - Table 2.1 (numbered by section, as in Section 5, because Section 3
+    already has a Table 1): seven representative teleoperated rescue
+    platforms plus this work, one column per challenge: bounded stop-time
+    guarantee (C1), process supervision (C2), two-way victim audio/video (C3),
+    reported cost (C4), plus validation reported
+  - Field study, requirements study and survey \cite{casper2003,daun2023,liu2013}
+    are cited in 2.1-2.2 but not tabulated, since they are not single platforms
+  - Every Table 2.1 cell is sourced from the cited paper; a property a paper
+    does not report is entered as "NR", never inferred
+  - Full text: section2_related_work.md
+  - The gap is evidenced from a PRISMA-screened corpus and the primary papers
+    it contains, not asserted
 
 **3. Methodology**
 
