@@ -1,0 +1,43 @@
+## Task: Execute the Real E3 Stopping-Distance Experiment
+
+I want you to proceed with the real E3 experiment for my rescue robot. The robot is on the floor, and I am monitoring it. The room is large and less no obstacles.
+
+### 1. Inspect before execution
+- Inspect the existing E3 script, firmware stop logic, controller protocol, and CSV schema.
+- Identify the correct script path and exact command-line arguments. Do not assume a filename.
+- Preserve all existing data. Do not overwrite or delete the original `tools/eval/results/estop.csv` rows.
+- Check how the script sends `stop_all`, measures stopping distance, handles timeouts, and aborts on errors.
+
+### 2. Automate the experiment
+I do not want to press Enter for every trial. Automate the trial sequence and data recording as far as the hardware permits.
+
+- Start with the lowest safe PWM setting and a short, controlled drive interval.
+- Send the actual stop command automatically at the configured trigger point.
+- Record timestamps, PWM, trial ID, command events, firmware state transitions, and measured stopping distance wherever a valid measurement is available.
+- Run repeated trials only after verifying that the previous trial stopped and the robot remains within the designated test area.
+- Increase PWM gradually only if the lower-speed trials are behaving safely.
+- Stop immediately if the robot behaves unexpectedly, loses control, encounters an obstacle, or fails to confirm the stop.
+
+### 3. Measurement requirements
+Do not fabricate stopping-distance values. Do not substitute ultrasonic range readings or telemetry-state latency for physical stopping distance.
+
+If the current setup requires a person to mark the actual stopping point and measure it with a tape measure, explain that limitation and implement automation only for the portions that can be measured reliably. If available sensors cannot measure stopping distance accurately, leave that measurement pending rather than guessing.
+
+### 4. Safety and abort handling
+- Use the existing safety mechanisms; do not disable the dead-man timer or emergency stop.
+- Use a conservative starting speed and duration.
+- Ensure every trial has a reliable stop path and that an exception or connection loss triggers the safest available response.
+- Do not automatically resume movement after an error.
+- Do not run all high-PWM trials blindly without checking the lower-PWM results first.
+- Do not modify firmware, restart services, or deploy code unless necessary and explicitly approved.
+
+### 5. Reporting
+After execution, report:
+- The exact script and configuration used.
+- How many trials actually ran and how many were valid.
+- Which values were directly measured versus inferred.
+- Any failed, aborted, or incomplete trials.
+- The raw CSV and corresponding event-log paths.
+- Whether E3 is genuinely complete and whether its results can support Table 5.4 in the paper.
+
+Do not label E3 complete unless the physical stopping-distance measurements are valid and traceable to the corresponding trials. Start by inspecting the implementation, then proceed with the safest automation the existing hardware genuinely supports.
