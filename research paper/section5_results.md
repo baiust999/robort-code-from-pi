@@ -2,13 +2,15 @@
 
 This section reports the measurements that validate the design of Section 3, following the experiment matrix of Table 3 (Section 4.2). Each subsection gives the procedure specific to that experiment, the metric definitions, the results with sample size and uncertainty, an interpretation limited to what the data support, and the remaining gaps. Hardware emulation was disabled for every run (Section 4.1), so all measured figures are from the assembled robot.
 
-**Evidence classes.** Every number in this section belongs to one of six classes, and the class is stated wherever it is not obvious from the table caption:
+**Evidence classes.** Every number in this section belongs to one of eight classes, and the class is stated wherever it is not obvious from the table caption:
 
 - MEASURED: directly observed in an experiment on this robot and stored in `tools/eval/results/` or in the robot's own logs under `var/log/`.
 - CALCULATED: derived from measured values or from documented design parameters by a stated formula.
 - PUBLISHED REFERENCE: taken from a verified external source and never presented as a measurement of this robot.
 - ESTIMATE: an explicitly qualified approximation resting on stated assumptions.
 - PREDICTED: produced by a documented model and not an experimental observation.
+- SOFTWARE-TEST: the result of a passing automated unit test exercising software logic, in most cases against a hardware mock; it establishes that the code behaves as documented for the inputs tested and is not a measurement of the physical robot.
+- SIMULATED: the output of a software model with no physical measurement behind it; never presented as a measurement of real Wi-Fi behaviour, physical stopping time, or any other hardware quantity.
 - [PENDING MEASUREMENT]: the required evidence does not exist; the protocol and an empty table are given instead.
 
 **Uncertainty.** Means of independent trials carry a two-sided 95% Student t confidence interval (N - 1 degrees of freedom); medians carry a 95% percentile-bootstrap interval (10 000 resamples, fixed seed); success proportions carry a 95% Wilson score interval [@wilson1927], which remains informative when every trial succeeds; and the 1 Hz resource series, whose samples are autocorrelated, carry a 95% interval from ten non-overlapping batch means rather than a naive interval that would treat each second as independent. No hypothesis test is reported, and no difference between conditions is described as statistically significant. All of these figures are reproduced by `tools/eval/section5_stats.py`, whose output is stored in `tools/eval/results/section5_stats.md`; the per-CSV descriptive statistics are those of `tools/eval/results/summary.md`.
@@ -30,7 +32,7 @@ This section reports the measurements that validate the design of Section 3, fol
 | E8 | Resource utilisation | MEASURED | `resources.csv`, 3608 rows | Machine-logged; one condition contains two overlapping logger runs (Table 5.10a) |
 | E9 | GPS static precision and track | MEASURED, resolution-limited | `gps_static.csv` (1 summary row); `gps_track_live_2026-10-22.geojson` | Recomputed exactly from `telemetry.log` (Table 5.13a); track read from P1 |
 | E10 | Ultrasonic range | [VERIFICATION REQUIRED] | `ultrasonic.csv`, 50 rows | Contradicted by `telemetry.log` (Section 5.6) |
-| E11 | Temperature and humidity | MEASURED (transcribed) | `thermal.csv`, 5 rows | Sensor values agree with `telemetry.log` |
+| E11 | Temperature and humidity | MEASURED (transcribed) for sensor values; [VERIFICATION REQUIRED] for the error figures | `thermal.csv`, 5 rows | Sensor values agree with `telemetry.log`; `error_c` is exactly 0.0 on every trial (Section 5.6.3) |
 | E12 | Gas sensor response | MEASURED (transcribed) | `gas.csv`, 5 rows | Peaks and baselines visible in `telemetry.log` |
 | E13 | Field trial | [PENDING MEASUREMENT] | No `field.csv` | No per-run record exists (Section 5.7) |
 | E14 | Operator usability (SUS) | [PENDING MEASUREMENT] | No `sus.csv` | - |
@@ -129,6 +131,60 @@ This leaves three distinct questions, which this audit answers separately rather
 [PENDING MEASUREMENT: E4 analysis to be filled when deadman_physical.csv data is collected; the filmed wheel-stop time will be compared with the approximately 2060 ms bound of Section 3.5.2 and with the firmware-side interval of Table 5.2b.]
 
 **Limitations.** No E1 figure includes the Wi-Fi link. The latency metrics other than `hello_rtt` and the log-timed dead-man intervals are upper bounds. The log-timed method resolves the firmware stop to about 15 ms and does not observe the wheels. E3 is unverified.
+
+### 5.1a Software Verification: Automated Unit Tests
+
+The timing guarantees analysed in Section 3.5.2 and measured in Table 5.2b rest on firmware-facing and server-side logic whose correctness is checked separately by automated unit tests against `pi/common/mock_hardware.py`'s `MockArduino` model and the Pi-side validation code, under `MOCK_HARDWARE` semantics. This is SOFTWARE-TEST evidence: it establishes that the code behaves as documented at the inputs tested, and it does not operate the physical Arduino firmware, the motors, or the radio link.
+
+`docs/TEST_REPORT.md` reports 116 passed, 0 failed, run on a Raspberry Pi 4 on 2026-10-08; that figure is quoted here, not rerun, and `docs/TEST_REPORT.md` is unchanged by this revision. Five further tests in `pi/tests/test_ice_config.py` (STUN-optional ICE configuration, no TURN relay in local mode under two parametrisations, and per-client ICE rate limiting) were committed about 1 h 40 min after the 116-count, the same morning, and were never folded into that report's test-file table; the 116-test figure is correct for what existed when it was recorded and is kept dated and intact rather than silently combined with a later count.
+
+A fresh rerun of the full existing suite on 2026-10-22, in the same Python environment the live `robot-watchdog.service` uses, passed 121 of 121 tests with 0 failures: the 116 historical tests plus the five `test_ice_config.py` tests. This is a separately dated, independently executed result reported alongside, not in place of, the historical figure.
+
+A further 17 boundary-condition tests, written for this verification pass and kept outside `pi/tests/` under `research-analysis/tests/` (not merged into either count above), passed 17 of 17 on 2026-10-22. They target exact boundary values that the existing 121 tests do not probe: the dead-man timer's alive/tripped boundary at exactly `DEADMAN_MS` (2000 ms) and one ms either side of it, including confirmation that pan, tilt and status-request commands do not re-arm the timer while a drive command is left to expire; the server-side command validator's PWM (0-180) and servo-angle (0-180) clamps at their exact limits and its sequence-number monotonicity check at the exact boundary; and the command-framing length cutoff (`MAX_COMMAND_CHARS = 8`) at exactly 8 and 9 characters.
+
+**Table 5.5a.** Automated unit tests: historical record, fresh rerun and supplementary boundary tests. SOFTWARE-TEST.
+
+| Test set | Scope | Count | Result | Date |
+|---|---|---|---|---|
+| Historical suite | `pi/tests/` as it stood on 2026-10-08 | 116 | 116 passed, 0 failed | 2026-10-08 (`docs/TEST_REPORT.md`, quoted, not rerun) |
+| Fresh rerun, same suite | `pi/tests/`, full dependency environment, including the 5 `test_ice_config.py` tests added after the historical count | 121 | 121 passed, 0 failed | 2026-10-22 |
+| Supplementary boundary tests | `research-analysis/tests/`: dead-man boundary, command-validator boundary, command-framing boundary | 17 | 17 passed, 0 failed | 2026-10-22 |
+
+These results establish that the dead-man alive/tripped boundary, the non-arming behaviour of pan/tilt/status commands, the PWM and servo-angle clamps, the sequence check and the command-length cutoff behave exactly as documented in `pi/common/mock_hardware.py`, `pi/p1_control/safety.py` and `pi/common/protocol.py`, for the inputs exercised. None of the 138 tests summarised in Table 5.5a operates the physical Arduino firmware, the motors, or a real radio link, and none of them substitutes for the dead-man wheel-stop measurement of Table 5.5 (E4), which remains [PENDING MEASUREMENT]: 138 is a count of software-logic tests against mocks, not of trials on the assembled robot, and it does not establish measured motor-stop performance.
+
+### 5.1b Dead-Man Heartbeat-Loss Robustness (SIMULATED)
+
+All figures in this subsection are SIMULATED: they come from a software model (`research-analysis/sim/deadman_robustness_sim.py`) built from two literal, verified source constants, not from any measurement of the robot's Wi-Fi link. They do not estimate the real link's loss rate, which remains [PENDING MEASUREMENT] under E6 (Section 5.3), and they do not model physical stopping distance.
+
+Table 5.2b measures how long the dead-man takes to trip once commands stop arriving, on a link that was not itself dropping packets during the trial. It does not by itself show how many consecutive lost heartbeats the 2000 ms dead-man window (`DEADMAN_MS`, `pi/common/protocol.py:67`) can tolerate at the dashboard's actual 500 ms heartbeat period (`HEARTBEAT_PERIOD_MS`, `dashboard/src/lib/protocol.ts:11`), nor how mission-level trip probability scales with an assumed per-heartbeat loss rate. This subsection reports that as a software model: a deterministic boundary analysis for the tolerated-loss margin, and a Monte Carlo sweep (300 s simulated missions, 50 000 trials per assumed loss probability, fixed seed 20261022) over an assumed per-heartbeat loss probability.
+
+At the real 500 ms heartbeat period, the model's deterministic boundary analysis shows that 3 consecutive lost heartbeats can occur without a trip, and that a 4th in a row guarantees one, an instant after the 4th heartbeat's scheduled time (2000 ms of silence).
+
+**Table 5.5b.** Consecutive-loss margin by heartbeat period. SIMULATED; CALCULATED from the verified constants `DEADMAN_MS = 2000` ms and the heartbeat period.
+
+| Heartbeat period (ms) | Consecutive losses tolerated | Losses that guarantee a trip |
+|---|---|---|
+| 200 | 9 | 10 |
+| 500 (actual system) | 3 | 4 |
+| 1000 | 1 | 2 |
+| 2000 | 0 | 1 |
+
+**Table 5.5c.** Mission-level trip probability vs. an assumed per-heartbeat loss probability. SIMULATED. 300 s missions, 50 000 trials per value, seed 20261022.
+
+| Assumed per-heartbeat loss probability | Trip rate | 95% CI half-width |
+|---|---|---|
+| 0.01 | 0.00% | +/- 0.00 pp |
+| 0.02 | 0.01% | +/- 0.01 pp |
+| 0.05 | 0.32% | +/- 0.05 pp |
+| 0.10 | 5.42% | +/- 0.20 pp |
+| 0.15 | 22.86% | +/- 0.37 pp |
+| 0.20 | 53.74% | +/- 0.44 pp |
+| 0.30 | 96.73% | +/- 0.16 pp |
+| 0.50 | 100.00% | +/- 0.00 pp |
+
+**Reading this result.** The curve is steep because requiring 4 independent consecutive losses makes the trip probability scale roughly with the fourth power of the per-heartbeat loss probability at small values: an assumed 10% per-heartbeat loss already produces a simulated mission-level trip probability around 5% over 5 minutes, and by 20% the simulated mission is more likely to trip than not. This is a direct, correctly-functioning consequence of the chosen 500 ms/2000 ms ratio, not evidence of a flaw, and it shows that an increase in the effective heartbeat period (for example from added processing delay) would shrink the tolerated-loss margin quickly (Table 5.5b).
+
+**Limitations.** The per-heartbeat loss probability swept here is an assumed input, not fitted to any measurement; it exists to show the shape of the sensitivity curve, not to claim the real link's loss rate. Loss is modelled as independent per heartbeat with no burst correlation; real Wi-Fi loss is typically bursty, which would trip the dead-man sooner at the same mean loss rate than this model predicts, so the model's trip probabilities at a given mean loss rate are a lower bound relative to a burst-loss model. No jitter or transit delay is modelled, only binary loss per heartbeat slot, and a single 300 s mission length was swept. This subsection is not a measurement of the robot's actual wireless packet loss, physical stopping time, or real-world communication reliability; Section 5.3 (communication range) remains [PENDING MEASUREMENT].
 
 ## 5.2 Video and Audio Streaming Performance
 
@@ -401,7 +457,7 @@ A second, independent irregularity in the entered data itself, not only in its a
 
 **Procedure.** On 2026-10-21 the DHT11 reading was compared with a co-located reference thermometer-hygrometer at indoor ambient conditions; five trials were entered at one set-point. The error is sensor minus reference. The reference instrument's model and its own accuracy were not recorded.
 
-**Table 5.15.** Temperature and humidity error (E11), `tools/eval/results/thermal.csv`. MEASURED (transcribed; sensor values corroborated by `telemetry.log`). Single ambient set-point, 5 trials.
+**Table 5.15.** Temperature and humidity error (E11), `tools/eval/results/thermal.csv`. MEASURED (transcribed; sensor values corroborated by `telemetry.log`); [VERIFICATION REQUIRED] for the `error_c` column (see below). Single ambient set-point, 5 trials.
 
 | trial | ref_c | sensor_c | ref_rh | sensor_rh | error_c | error_rh |
 |---|---|---|---|---|---|---|
@@ -413,6 +469,8 @@ A second, independent irregularity in the entered data itself, not only in its a
 | **All** | | | | | **Mean 0.0** | **Mean +0.4** |
 
 **Analysis.** The robot's telemetry log over the same period (19:10 to 19:22 UTC) shows the DHT11 at 31 deg C throughout and alternating between 77% and 78% RH, which matches the transcribed sensor values. The temperature agreed with the reference on all five trials and the humidity differed by 0 or +1% RH (mean +0.4% RH, SD 0.55), at the one-unit resolution of both instruments. With one set-point, five readings and an uncharacterised reference, this shows only that the DHT11 agreed with the reference to within one unit at about 31 deg C and 77% RH; it does not characterise the sensor across its operating range, and the five readings, taken within minutes, are not independent. The tolerance usually quoted for the DHT11, 0 to 50 deg C at +/-2 deg C and 20 to 80% RH at 5% accuracy with a sampling rate of at most 1 Hz [@adafruit_dht11], matches the figures given here, but the source is a distributor-hosted spec sheet rather than a page reachable on the manufacturer's (Aosong) own site, and it is not relied on in the analysis above, which uses only the paired reference reading. The DHT11 feeds an advisory dashboard card and triggers no motor action (Section 3.5.3, Table 7).
+
+**Verification caveat on the error figures.** `error_c` is exactly 0.0 deg C on all five trials, with no variance. The robot's telemetry log corroborates the sensor *values* that produced that figure (31 deg C and 77-78% RH), which is the agreement checked above, but a zero-error, zero-variance result on every trial of a hand-entered reference-minus-sensor difference is the same reading-equals-reference pattern independently found in `ultrasonic.csv` (Section 5.6.2), where the entered reading and the entered reference were shown to be typed to the same value rather than read independently 50 times. No record of the reference thermometer-hygrometer's readings independent of the entered `ref_c`/`ref_rh` values exists for this session, so the same explanation cannot be ruled out here. Telemetry corroboration of the sensor *values* is not evidence about the *error* column, since the error column compares the sensor to a hand-entered reference that telemetry cannot check. [VERIFICATION REQUIRED: the `error_c` figure, and by the same reasoning the `error_rh` figure, not the corroborated sensor values.] The +/-0 deg C figure in this table must not be cited as measured sensor accuracy; it is retained because the sensor values themselves are corroborated by telemetry, but a defensible accuracy claim requires a repeat in which the reference instrument is read and entered independently per trial, the way `gas.csv` already was.
 
 [PENDING MEASUREMENT: E11 additional set-points.] Protocol: repeat at four further set-points spanning the DHT11 operating range (for example near 20, 25, 35 and 40 deg C, and at low and high humidity) against a reference of stated accuracy, 5 readings per set-point, as planned in Table 3.
 
@@ -566,4 +624,4 @@ This subsection compares the build cost of the robot with the cost reported by t
 
 ## 5.10 Summary of Evidence
 
-The strongest findings supported by the existing data are: (i) the firmware removes motor drive within 2042 ms of the last command in all 30 logged dead-man trials (mean 2022.5 ms on P1's clock), below the approximately 2060 ms analytical bound, and the dead-man also tripped 2.02 s into an injected Wi-Fi outage, more than 20 s before the control socket closed, and on an unplanned 2.080 s heartbeat gap while a 1.988 s gap did not trip it (Tables 5.2b, 5.9a and 5.9c); (ii) the watchdog restored service with a new PID in 30 of 30 SIGKILL trials, with the P1 recovery time of 16.03 s (95% CI 15.93 to 16.13 s) inside the 14.6 to 19.6 s model window (Table 5.8); (iii) on an adequate supply the control process stays below about 4% of one core while one operator media session costs about 63% of one core on the media process, with no throttling and SoC temperatures at or below 52.6 deg C (Tables 5.10 and 5.10b); and (iv) the original power bank could not sustain driving with media without under-voltage. The thermal and gas sensor results are corroborated by the robot's own logs but are single-session, single-condition checks. The control-plane latencies are robot-internal upper bounds. GPS precision is resolution-limited by the logging format, and the one available track shows the 10 m filter admitting drift from a robot that was not driven (Table 5.13b). The emergency-stop distances and the ultrasonic accuracy table are not supported by the robot's logs and require verification or repetition. Streaming (E5), range (E6), true control latency (E2), physical stop time (E4), the field trial (E13) and the usability study (E14) have no data, and the cost is an estimate.
+The strongest findings supported by the existing data are: (i) the firmware removes motor drive within 2042 ms of the last command in all 30 logged dead-man trials (mean 2022.5 ms on P1's clock), below the approximately 2060 ms analytical bound, and the dead-man also tripped 2.02 s into an injected Wi-Fi outage, more than 20 s before the control socket closed, and on an unplanned 2.080 s heartbeat gap while a 1.988 s gap did not trip it (Tables 5.2b, 5.9a and 5.9c); (ii) the watchdog restored service with a new PID in 30 of 30 SIGKILL trials, with the P1 recovery time of 16.03 s (95% CI 15.93 to 16.13 s) inside the 14.6 to 19.6 s model window (Table 5.8); (iii) on an adequate supply the control process stays below about 4% of one core while one operator media session costs about 63% of one core on the media process, with no throttling and SoC temperatures at or below 52.6 deg C (Tables 5.10 and 5.10b); and (iv) the original power bank could not sustain driving with media without under-voltage. The thermal and gas sensor *values* are corroborated by the robot's own logs but are single-session, single-condition checks; the thermal *error* figures of Table 5.15 carry the same [VERIFICATION REQUIRED] caveat as the ultrasonic table, for the same reading-equals-reference reason (Sections 5.6.2, 5.6.3). Software verification of the dead-man, command-validation and command-framing logic (138 unit tests across the historical, fresh-rerun and supplementary boundary sets, Table 5.5a) and a SIMULATED heartbeat-loss sensitivity analysis (Tables 5.5b, 5.5c) add software-logic and analytical evidence to the dead-man argument; neither class of evidence substitutes for the pending physical measurements of E2, E4, E6, E13 and E14. The control-plane latencies are robot-internal upper bounds. GPS precision is resolution-limited by the logging format, and the one available track shows the 10 m filter admitting drift from a robot that was not driven (Table 5.13b). The emergency-stop distances and the ultrasonic accuracy table are not supported by the robot's logs and require verification or repetition. Streaming (E5), range (E6), true control latency (E2), physical stop time (E4), the field trial (E13) and the usability study (E14) have no data, and the cost is an estimate.
