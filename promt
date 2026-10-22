@@ -1,0 +1,9 @@
+Proceed with the mock-hardware correction, but keep the physical robot and deployed services untouched.
+
+Before applying anything, verify that the working tree has no unrelated changes that would be overwritten. Apply only the two reviewed behavioral changes in `pi/common/mock_hardware.py` and `pi/common/protocol.py`, plus the corresponding test updates in `research-analysis/tests/test_deadman_boundaries.py`.
+
+Do not change Arduino firmware, P1/P3 watchdog logic, deployment configuration, or any CSV data. Do not restart services, operate hardware, commit, or push.
+
+Run the relevant software-only tests and report the exact results. If the patch or tests require changes beyond the reviewed diff, stop and show me the additional diff before proceeding.
+
+Finally, update the documentation to explain that pan, tilt, and status commands refresh the firmware's dead-man timer, so the timeout is measured from the last valid command—not necessarily the last drive command. Keep all experimental accuracy claims marked unverified where their evidence is insufficient.
