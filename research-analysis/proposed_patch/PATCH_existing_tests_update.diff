@@ -1,0 +1,86 @@
+diff --git a/research-analysis/tests/test_deadman_boundaries.py b/research-analysis/tests/test_deadman_boundaries.py
+--- a/research-analysis/tests/test_deadman_boundaries.py
++++ b/research-analysis/tests/test_deadman_boundaries.py
+@@ -47,8 +47,12 @@
+     return board, clock
+ 
+ 
+-def test_deadman_alive_at_exactly_deadman_ms(monkeypatch):
+-    """_check_deadman uses `<=`, so elapsed == DEADMAN_MS must still be alive."""
++def test_deadman_trips_at_exactly_deadman_ms(monkeypatch):
++    """PATCHED: _check_deadman now uses `<`, matching arduino.ino taskSafety()'s
++    `elapsed >= DEADMAN_TIMEOUT_MS` trip condition, so elapsed == DEADMAN_MS
++    must now trip (previously, with `<=`, this case stayed alive -- see the
++    discrepancy recorded in research-analysis/software_verification_results.md).
++    """
+     board, clock = _board_with_fake_clock(monkeypatch)
+     board.write(b"F120\n")
+     assert board._deadman_tripped is False  # noqa: SLF001
+@@ -56,8 +60,8 @@
+     clock.advance_ms(protocol.DEADMAN_MS)  # elapsed == DEADMAN_MS exactly
+     board.tick()
+ 
+-    assert board._deadman_tripped is False  # noqa: SLF001
+-    assert board._motors.speed == 120  # noqa: SLF001
++    assert board._deadman_tripped is True  # noqa: SLF001
++    assert board._motors.speed == 0  # noqa: SLF001
+ 
+ 
+ def test_deadman_trips_one_ms_past_boundary(monkeypatch):
+@@ -82,21 +86,19 @@
+     assert board._motors.speed == 120  # noqa: SLF001
+ 
+ 
+-def test_pan_command_does_not_rearm_deadman(monkeypatch):
+-    """CMD_PAN is in ALL_COMMANDS but deliberately excluded from
+-    DEADMAN_ARMING_COMMANDS (protocol.py line 45-46). Continuously panning
+-    the camera must NOT mask an expired drive command: the motors still
+-    have to stop on schedule.
++def test_pan_command_rearms_deadman(monkeypatch):
++    """PATCHED: CMD_PAN is now in DEADMAN_ARMING_COMMANDS (== ALL_COMMANDS),
++    matching command_parser.cpp's handleLine(), which calls
++    noteCommandReceived() for any opcode that passes validateArg(), pan
++    included. Continuously panning the camera now DOES mask an expired
++    drive command, matching the real firmware (previously this was
++    asserted as NOT re-arming -- see test_deadman_patch_isolated.py for the
++    isolated proof this was run against before this file was updated).
+     """
+     board, clock = _board_with_fake_clock(monkeypatch)
+     board.write(b"F120\n")
+     assert board._deadman_tripped is False  # noqa: SLF001
+ 
+-    # Walk the clock forward in small steps, sending a pan command at each
+-    # step, right up to the original drive command's deadline, then step
+-    # one more ms past it so the elapsed time strictly exceeds DEADMAN_MS
+-    # (the boundary itself is inclusive/alive, per
+-    # test_deadman_alive_at_exactly_deadman_ms).
+     for _ in range(5):
+         clock.advance_ms(protocol.DEADMAN_MS / 5)
+         board.write(b"P90\n")
+@@ -104,11 +106,12 @@
+ 
+     board.tick()
+ 
+-    assert board._deadman_tripped is True  # noqa: SLF001
+-    assert board._motors.speed == 0  # noqa: SLF001
++    assert board._deadman_tripped is False  # noqa: SLF001
++    assert board._motors.speed == 120  # noqa: SLF001
+ 
+ 
+-def test_tilt_and_status_also_do_not_rearm_deadman(monkeypatch):
++def test_tilt_and_status_also_rearm_deadman(monkeypatch):
++    """PATCHED: see test_pan_command_rearms_deadman above."""
+     board, clock = _board_with_fake_clock(monkeypatch)
+     board.write(b"F120\n")
+ 
+@@ -118,8 +121,8 @@
+     clock.advance_ms(60)  # now DEADMAN_MS + 10 since the original F120
+     board.tick()
+ 
+-    assert board._deadman_tripped is True  # noqa: SLF001
+-    assert board._motors.speed == 0  # noqa: SLF001
++    assert board._deadman_tripped is False  # noqa: SLF001
++    assert board._motors.speed == 120  # noqa: SLF001
+ 
+ 
+ def test_heartbeat_at_exact_boundary_rearms(monkeypatch):
