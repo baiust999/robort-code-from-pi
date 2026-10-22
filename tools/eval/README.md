@@ -221,6 +221,25 @@ Reading these:
   `--jitter` existed: `motor_stop` read 403 +/- 20 ms, a distribution tight
   enough to look precise and be wrong. Useful as a methodology example.
 
+## Data caveat, 2026-10-22: bench_motor.csv
+
+The 60 rows in `results/bench_motor.csv` (`bench_motor.py`, PWM 60/120/180 x
+F/R/L/G, 5 reps each) were run on the stated premise that the robot was
+securely elevated with every wheel clear of the ground, so the drive
+commands could not move it. That premise was wrong: the robot was actually
+on the floor for all 60 trials. No collision or damage resulted (operator
+confirmed after the fact), but the trials were real, undocumented floor
+travel with no clear-path check, run under the belief that none was needed.
+
+This does not make the data usable as E3 (Table 5.4, stopping distance):
+no tape measurement was taken, trial duration was a fixed 1 s rather than
+"drive until operator marks the line", and no surface/traction condition was
+recorded. The rows remain only firmware-timing data (`cmd_to_driving_s_*`,
+`stop_to_ready_s_*`), as `bench_motor.py`'s docstring already says, and nothing
+here changes that -- it just removes the "never left the ground" framing the
+rows were originally logged under. Re-confirm wheel contact visually (not by
+asking "is it elevated") before trusting that premise again.
+
 ## Known starting points
 
 - `arduino/command_parser.cpp:195` returns ACTIVE to **READY (fw_state 1)** on
