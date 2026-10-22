@@ -1,0 +1,159 @@
+# Task: Complete Section 5 of the Rescue Robot Research Paper
+
+Project: `/home/pi/robot/`
+
+Manuscript: `research paper/`
+
+Research memory: `/home/pi/.claude/projects/-home-pi-robot/memory/research-paper-q1-project.md`
+
+Paper title: "A Low-Cost, Fail-Safe Teleoperated Rescue Robot with Two-Way Victim Interaction on Edge Hardware: Design, Implementation and Field Evaluation"
+
+## Primary objective
+
+Complete and strengthen Section 5, Results, using all available experimental evidence, existing logs, source code, verified technical specifications, and relevant published research.
+
+I do not currently plan to conduct additional experiments. Therefore, make as much progress as possible using existing evidence. Do not repeatedly stop to ask me to run tests when the existing files can be analyzed or the section can be prepared honestly without them.
+
+Do not delete, overwrite, or discard any existing manuscript content, experiment logs, measurements, source code, references, or project memory. Preserve the current work and make focused, reviewable changes.
+
+## Step 1: Audit all existing evidence
+
+Before editing, inspect:
+
+- The current manuscript and all Section 5 drafts.
+- `tools/eval/results/summary.md`.
+- Every available CSV, JSON, log, and other experiment output under `tools/eval/results/`.
+- The evaluation scripts, including `wslatency.py`, `faultinject.py`, `netsweep.py`, `reslog.py`, `gpsdrift.py`, `record.py`, and `summarize.py`, where present.
+- The methodology, hardware specifications, metric definitions, and validity rules.
+- The bibliography and all existing verified references.
+- The research-paper memory files and current project plan.
+
+Determine which measurements are genuinely available. Trace every reported experimental number to its source file and row, or to a reproducible calculation from verified measurements.
+
+Do not assume that an experiment exists merely because it appears in the table of contents or a script exists for it.
+
+## Step 2: Analyze the real data thoroughly
+
+For each available experiment:
+
+- Calculate the relevant descriptive statistics.
+- Report the sample size and units.
+- Calculate confidence intervals or other uncertainty estimates when statistically appropriate.
+- Calculate latency percentiles when the underlying observations support them.
+- Analyze faults, recovery times, resource utilization, GPS observations, and other available metrics.
+- Identify unusual values, missing records, invalid trials, and possible confounding factors.
+- Compare conditions only when the comparison is methodologically justified.
+- Preserve the original data and document all transformations.
+
+Use Python or existing project tools when helpful. Verify calculations and make sure tables agree with the underlying records.
+
+Do not claim that a small sample proves general reliability. Do not claim statistical significance without an appropriate analysis.
+
+## Step 3: Complete Sections 5.1 through 5.9
+
+### 5.1 Control Latency and Emergency-Stop Response
+
+Use the actual available latency and emergency-stop evidence. Distinguish measured control latency from calculated timing bounds and from stopping-distance measurements. Do not treat a software timer guarantee as a measured physical stopping distance.
+
+### 5.2 Video and Audio Streaming Performance
+
+Inspect all available streaming and media logs. If there are no valid streaming measurements, write the procedure, metric definitions, limitations, and a well-structured results table marked `[PENDING MEASUREMENT]`. Do not invent latency, frame rate, packet loss, audio quality, or bandwidth results.
+
+### 5.3 Communication Range and Link Degradation
+
+Inspect the actual network-sweep records. Report measured distances and link metrics only when available. Otherwise, complete the protocol, expected analysis method, and empty results table marked `[PENDING MEASUREMENT]`.
+
+### 5.4 Fault Injection and Recovery Time
+
+Analyze the real fault-injection observations. Report which failures were actually injected, what the system did, how recovery was measured, and the observed results. Clearly distinguish design-derived bounds from measured recovery times.
+
+### 5.5 Resource Utilization on the Edge Device
+
+Analyze all available resource logs and existing ablation conditions, including idle, idle-partial-10min, driving, driving-plus-media, and 16 kbps Opus ablation where the corresponding files exist.
+
+Verify the actual sample counts and throttling observations from the source files. Calculate appropriate CPU, memory, temperature, throttling, and other resource metrics supported by the logs. Do not infer a causal effect from an uncontrolled comparison.
+
+### 5.6 Sensor Accuracy and GPS Track Quality
+
+Inspect the actual GPS and sensor records. Separate startup time, static position variation, positional accuracy, and track quality because they are different metrics.
+
+Use verified manufacturer specifications as external reference values, not as measurements of this robot. If the available GPS dataset contains only two observations, report the exact observations and the limitation of the small sample. Do not manufacture additional GPS trials.
+
+### 5.7 Field Trial: End-to-End Rescue Scenario
+
+If no valid field-trial records exist, prepare the procedure, success criteria, metrics, and empty results table. Mark the unmeasured results `[PENDING MEASUREMENT]`. Do not invent rescue times, collisions, victim-detection success, or field-trial outcomes.
+
+### 5.8 Operator Usability Evaluation
+
+If there are no actual participant responses, prepare the study protocol, participant reporting requirements, SUS scoring procedure, and empty results table marked `[PENDING MEASUREMENT]`. Never invent participants, questionnaires, or usability scores.
+
+### 5.9 Cost Analysis and Comparison with Existing Systems
+
+Calculate the robot's cost from verified component prices and the actual bill of materials where available. Record the currency, price date, and included components. Compare against published platforms only when the source supports the comparison. Distinguish verified prices, historical prices, estimates, and missing costs.
+
+## Step 4: Use external research effectively
+
+Search relevant scholarly literature, official hardware datasheets, technical standards, and reliable primary sources.
+
+Verify each source before citing it. Preserve the existing Pandoc citation format `[@key]` and the bibliography at `research paper/references.bib`.
+
+Do not add unverified references or invent DOIs. Use published benchmarks as external context, not as if they were measurements from our robot.
+
+## Step 5: Improve the quality of every results subsection
+
+For each Section 5 subsection, use this structure where applicable:
+
+1. Short experiment procedure.
+2. Metric definitions and units.
+3. Results table with sample size.
+4. Statistical analysis and uncertainty.
+5. Interpretation limited to what the evidence supports.
+6. Relevant comparison with verified literature.
+7. Limitations and remaining evidence gaps.
+
+Avoid repeating Section 4. Do not introduce new metrics in Section 5 without defining them in the experimental methodology or clearly explaining their established definition.
+
+Keep claims precise, concise, reproducible, and suitable for a rigorous engineering research paper.
+
+## Step 6: Handle missing data correctly
+
+Preserve the research-integrity rules in `research-paper-q1-project.md`.
+
+Use these categories consistently:
+
+- MEASURED: directly observed in a real experiment.
+- CALCULATED: derived from verified measurements or documented parameters.
+- PUBLISHED REFERENCE: obtained from a verified external source.
+- ESTIMATE: an explicitly qualified approximation based on stated assumptions.
+- PREDICTED: generated by a documented model and not an experimental observation.
+- [PENDING MEASUREMENT]: the required experimental evidence does not exist.
+
+Never present estimates, predictions, simulations, synthetic data, or published benchmark values as measurements from this robot.
+
+If a result cannot be established from the available evidence, preserve the section and its empty table, document the protocol, and state exactly what is missing.
+
+## Step 7: Preserve the existing project
+
+Do not delete existing content or replace the manuscript wholesale. Read before editing and make incremental changes.
+
+Follow the ASCII-only requirement and Mermaid figure rules. Preserve the existing hardware architecture, completed experiments, citations, and technical decisions.
+
+Do not reboot the Raspberry Pi, switch branches, alter the live robot service, overwrite deployed dashboard files, or change hardware configuration as part of this task.
+
+## Step 8: Verify and report completion
+
+After editing:
+
+- Check every reported number against its source.
+- Recalculate the summary statistics independently where practical.
+- Verify that tables and prose agree.
+- Check citations and bibliography entries.
+- Check that the edited research-paper files contain only ASCII characters where required.
+- Check that no original measurements or previous manuscript content have been lost.
+- List every modified file and explain the changes.
+- Identify remaining `[PENDING MEASUREMENT]` items.
+- Report the strongest findings supported by the existing evidence and the limitations that remain.
+
+Begin with the evidence audit, then proceed directly with the safe, evidence-supported edits. Do not stop after writing a plan.
+
+The goal is a complete, technically rigorous, transparent, reproducible Results section that gives the paper its strongest defensible chance at publication in IEEE Access. Do not guarantee acceptance or overstate the evidence.
