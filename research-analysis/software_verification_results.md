@@ -155,6 +155,30 @@ the mock (including the "17 new tests" and the "138 tests" total above, and
 the manuscript text that cited them) was characterising the mock, not the
 robot, for these two specific properties.
 
+**Addendum, 2026-10-22 (later same day): mock corrected.** Both discrepancies
+above have since been fixed with a minimal, reviewed two-line patch:
+`_check_deadman`'s comparison changed from `<=` to `<` (now trips at
+`elapsed >= DEADMAN_MS`, matching `taskSafety()`), and
+`DEADMAN_ARMING_COMMANDS` expanded from 6 opcodes to all 9 in `ALL_COMMANDS`
+(now re-arms on pan/tilt/status too, matching `handleLine()`/`noteCommandReceived()`).
+The proposed diff, an isolated proof-of-concept subclass, and an in-memory
+regression check against the full `pi/tests/` suite were produced and
+reviewed *before* either production file was edited; see
+`research-analysis/proposed_patch/` for all of it, including
+`PATCH_production.diff` (the diff as applied) and
+`PATCH_existing_tests_update.diff` (the matching update to the three
+`research-analysis/tests/test_deadman_boundaries.py` tests below that
+previously asserted the pre-patch behaviour). After applying both files:
+`pi/tests/` -- **121/121 still pass** (no historical test asserted either of
+the two specific behaviours that changed); `research-analysis/tests/` --
+**25/25 pass**, including the now-renamed, now-flipped
+`test_deadman_trips_at_exactly_deadman_ms`, `test_pan_command_rearms_deadman`
+and `test_tilt_and_status_also_rearm_deadman`. `MockArduino` now agrees with
+the native-firmware findings on both properties; only the GPIO-level
+safe-state and post-trip-recovery findings above remain mock-less
+(no pin model, no `MODE_PANIC` gate) and still [PENDING MEASUREMENT] at the
+hardware level, same as before.
+
 **New coverage with no prior test, mock or native:**
 
 - **Motor safe-state at the GPIO level.** `test_motor_enable_line_and_pwm_go_safe_on_trip`

@@ -184,21 +184,31 @@ installed by this pass.
    but worth noting if that specific row is ever quoted with a "generated
    on" date (Section 2.3, `calculation_report.md`).
 5. **(2026-10-22, later pass) `pi/common/mock_hardware.py` and
-   `pi/common/protocol.py`'s `DEADMAN_ARMING_COMMANDS` do not match the
+   `pi/common/protocol.py`'s `DEADMAN_ARMING_COMMANDS` did not match the
    real firmware's dead-man semantics on two points**, confirmed by native
    compilation of `arduino/*.cpp` (Section 5, "Native firmware tests" row;
    full writeup in `software_verification_results.md`'s addendum): the
-   mock treats elapsed `== DEADMAN_MS` as alive where the firmware treats
-   it as tripped, and the mock excludes pan/tilt/status from re-arming the
-   timer where the firmware includes them. Not fixed here: this task's
-   safety rules forbid changing `pi/` source (it ships with the live
-   service, even though `MOCK_HARDWARE` defaults off on the Pi), so the
-   correction was made only in the manuscript and these analysis documents,
-   not in the mock itself. Whoever next touches `mock_hardware.py` should
-   decide whether to bring it in line with the firmware or to document the
-   divergence in its own docstring (it currently claims to model the
-   firmware "closely enough... for driving and telemetry purposes," which
-   is true for its original purpose but not for dead-man re-arming).
+   mock treated elapsed `== DEADMAN_MS` as alive where the firmware treats
+   it as tripped, and the mock excluded pan/tilt/status from re-arming the
+   timer where the firmware includes them. At the time, this was not fixed
+   because that pass's safety rules forbade changing `pi/` source without
+   explicit review and approval. **Status update, same day, later pass:**
+   the fix was reviewed as an explicit diff first (shown in full, explained
+   line by line, with its effect on `robot-watchdog` and the
+   dev-only/deployed-disabled status of `MOCK_HARDWARE` confirmed), then
+   applied on explicit instruction. `pi/common/protocol.py`'s
+   `DEADMAN_ARMING_COMMANDS` now includes all 9 opcodes and
+   `pi/common/mock_hardware.py`'s `_check_deadman` now uses `<` instead of
+   `<=`. Verified post-patch: 121/121 `pi/tests/` pass, 25/25
+   `research-analysis/tests/` pass (including the 3 tests in
+   `test_deadman_boundaries.py` that were renamed and had their expected
+   outcomes flipped to match, per the reviewed
+   `PATCH_existing_tests_update.diff`). No file under `arduino/`,
+   `pi/p1_control/`, `pi/p2_media/`, `pi/p3_watchdog/`, `dashboard/`, or
+   `deploy/` was touched; the live `robot-watchdog` unit's
+   `Environment=MOCK_HARDWARE=0` means this change has no effect on the
+   deployed robot. See `research-analysis/proposed_patch/` for the applied
+   diff and the verification evidence.
 
 ## 8. Explicitly not claimed
 

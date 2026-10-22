@@ -83,7 +83,11 @@ class MockArduino:
             self._emit_telemetry(now)
 
     def _check_deadman(self, now: float) -> None:
-        if now - self._last_command_ms <= protocol.DEADMAN_MS:
+        # arduino/arduino.ino taskSafety(): trips when
+        # elapsed >= DEADMAN_TIMEOUT_MS, i.e. alive only while
+        # elapsed < DEADMAN_MS (previously <=, which disagreed with the
+        # firmware's own inclusive-boundary trip condition).
+        if now - self._last_command_ms < protocol.DEADMAN_MS:
             return
         if self._deadman_tripped:
             return

@@ -38,13 +38,17 @@ CMD_PAN = "P"
 CMD_TILT = "T"
 CMD_STATUS = "?"
 
-# Commands that re-arm the Arduino dead-man timer.
+# Commands that re-arm the Arduino dead-man timer. Matches
+# arduino/command_parser.cpp:87-89 ("Any well-formed command counts as comms
+# activity for the dead-man timer, even a query or heartbeat"): the firmware
+# calls noteCommandReceived() for every opcode that passes validateArg(),
+# i.e. every opcode below -- not only the motion/stop/heartbeat subset this
+# constant previously named.
 DEADMAN_ARMING_COMMANDS = frozenset(
-    {CMD_FORWARD, CMD_REVERSE, CMD_LEFT, CMD_RIGHT, CMD_STOP, CMD_HEARTBEAT}
+    {CMD_FORWARD, CMD_REVERSE, CMD_LEFT, CMD_RIGHT, CMD_STOP, CMD_HEARTBEAT,
+     CMD_PAN, CMD_TILT, CMD_STATUS}
 )
-ALL_COMMANDS = frozenset(
-    DEADMAN_ARMING_COMMANDS | {CMD_PAN, CMD_TILT, CMD_STATUS}
-)
+ALL_COMMANDS = DEADMAN_ARMING_COMMANDS
 
 # Dashboard direction token -> Arduino opcode. The dashboard speaks "F/R/L/G"
 # already, but routing it through a map keeps the two vocabularies separable.

@@ -23,8 +23,15 @@ word SIMULATED when it is copied anywhere outside this directory.
 Two independent methods are run and cross-checked against each other
 (Phase 5 "statistical-pipeline validation"):
   1. Monte Carlo: explicit per-heartbeat Bernoulli loss trials, continuous
-     time semantics identical to the real check -- elapsed_ms <= DEADMAN_MS
-     is alive, matching MockArduino._check_deadman's `<=` exactly.
+     time semantics using elapsed_ms <= DEADMAN_MS as alive. This script is
+     self-contained and does not import pi/common, so it is unaffected by,
+     and does not track, any later change there: as of 2026-10-22,
+     pi/common/mock_hardware.py's MockArduino._check_deadman was corrected
+     to `<` (matching the firmware's own `>=` trip condition), so this
+     script's `<=` convention no longer matches MockArduino. See
+     research paper/section5_results.md Section 5.1b's Limitations
+     paragraph for why this does not change any figure in Table 5.5c at
+     this sweep's 500 ms heartbeat-period granularity.
   2. A closed-form recursion for P(a run of >= k consecutive losses occurs
      in n iid Bernoulli(p) trials), which needs no randomness at all.
 
