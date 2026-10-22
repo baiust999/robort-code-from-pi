@@ -1,120 +1,210 @@
 # 5. Results
 
-This section reports the measurements that validate the design of Section 3, following the experiment matrix of Table 3 (Section 4.2). Each subsection opens with the procedure specific to that experiment, presents the measured data in tables whose metrics match Table 3, and closes with an analysis that compares the finding to the relevant pass/fail threshold from Section 3 and to the applicable baseline. Every figure traces to a row in `tools/eval/results/`; experiments for which data collection is not yet complete are marked [PENDING MEASUREMENT] and carry the protocol and an empty results table so the gap is explicit and no number is estimated. Hardware emulation was disabled for every run (Section 4.1), so all figures are from the assembled robot.
+This section reports the measurements that validate the design of Section 3, following the experiment matrix of Table 3 (Section 4.2). Each subsection gives the procedure specific to that experiment, the metric definitions, the results with sample size and uncertainty, an interpretation limited to what the data support, and the remaining gaps. Hardware emulation was disabled for every run (Section 4.1), so all measured figures are from the assembled robot.
+
+**Evidence classes.** Every number in this section belongs to one of six classes, and the class is stated wherever it is not obvious from the table caption:
+
+- MEASURED: directly observed in an experiment on this robot and stored in `tools/eval/results/` or in the robot's own logs under `var/log/`.
+- CALCULATED: derived from measured values or from documented design parameters by a stated formula.
+- PUBLISHED REFERENCE: taken from a verified external source and never presented as a measurement of this robot.
+- ESTIMATE: an explicitly qualified approximation resting on stated assumptions.
+- PREDICTED: produced by a documented model and not an experimental observation.
+- [PENDING MEASUREMENT]: the required evidence does not exist; the protocol and an empty table are given instead.
+
+**Uncertainty.** Means of independent trials carry a two-sided 95% Student t confidence interval (N - 1 degrees of freedom); medians carry a 95% percentile-bootstrap interval (10 000 resamples, fixed seed); success proportions carry a 95% Wilson score interval [@wilson1927], which remains informative when every trial succeeds; and the 1 Hz resource series, whose samples are autocorrelated, carry a 95% interval from ten non-overlapping batch means rather than a naive interval that would treat each second as independent. No hypothesis test is reported, and no difference between conditions is described as statistically significant. All of these figures are reproduced by `tools/eval/section5_stats.py`, whose output is stored in `tools/eval/results/section5_stats.md`; the per-CSV descriptive statistics are those of `tools/eval/results/summary.md`.
+
+**Data audit.** Before analysis, every results CSV was cross-checked against the independent machine logs that the robot keeps regardless of the experiment (`var/log/p1_events.log`, which records every command sent to the Arduino and every line received from it with a millisecond timestamp, and `var/log/telemetry.log`, which stores the telemetry snapshot at about 1 Hz). Table 5.0 summarises the outcome. Rows written by the automated tools (E1, E7, E8) are machine-generated. Rows entered by hand through `record.py` (E3, E10, E11, E12) carry the time of data entry rather than the time of measurement: in each of these files successive trials are stamped about one second apart, which is the pace of typing, not of running the trials, so these sheets were transcribed after the session. Transcription is acceptable practice only when the robot's own logs agree with the transcribed values, and that agreement is what the last column of Table 5.0 records. Two results that the logs contradict (E10 and part of E3) are retained with their tables but are marked [VERIFICATION REQUIRED] and are not used to support any claim. The earlier text of this section is preserved verbatim in `research paper/archive/section5_results_pre-audit_2026-10-22.md`.
+
+**Table 5.0.** Evidence status of every Section 5 experiment.
+
+| # | Experiment | Status | Source | Independent corroboration |
+|---|---|---|---|---|
+| E1 | Control-plane latency | MEASURED | `latency.csv`, 420 rows, all `ok = 1` | Probe connections and dead-man events present in `p1_events.log` (2026-10-21) |
+| E2 | True control latency (240 fps) | [PENDING MEASUREMENT] | - | - |
+| E3 | Emergency-stop distance | MEASURED (transcribed); PWM 60 [VERIFICATION REQUIRED] | `estop.csv`, 23 rows | PWM 120 and 180 drive commands present in `p1_events.log`; no PWM 60 command in any available log; distances inconsistent with the drive kinematics (Section 5.1) |
+| E4 | Dead-man wheel-stop time (240 fps) | [PENDING MEASUREMENT] | - | Firmware-side stop interval measured from `p1_events.log` (Table 5.2b) |
+| E5 | Video and audio streaming | [PENDING MEASUREMENT] | - | - |
+| E6 | Communication range | [PENDING MEASUREMENT] | - | - |
+| E7 | Fault injection, automated | MEASURED | `faults.csv`, 30 rows | 10 P1 serial re-opens logged during the F3 campaign; P2 and P3 logs for that date have rotated out |
+| E7 | Fault injection, manual | MEASURED (F6, F7); F9 invalid | `fault_watch.csv`, 78 rows | Serial failures and dead-man trip logged in `p1_events.log` |
+| E8 | Resource utilisation | MEASURED | `resources.csv`, 3608 rows | Machine-logged; one condition contains two overlapping logger runs (Table 5.10a) |
+| E9 | GPS static precision | MEASURED, resolution-limited | `gps_static.csv` (1 summary row) | Recomputed exactly from `telemetry.log` (Table 5.13a) |
+| E10 | Ultrasonic range | [VERIFICATION REQUIRED] | `ultrasonic.csv`, 50 rows | Contradicted by `telemetry.log` (Section 5.6) |
+| E11 | Temperature and humidity | MEASURED (transcribed) | `thermal.csv`, 5 rows | Sensor values agree with `telemetry.log` |
+| E12 | Gas sensor response | MEASURED (transcribed) | `gas.csv`, 5 rows | Peaks and baselines visible in `telemetry.log` |
+| E13 | Field trial | [PENDING MEASUREMENT] | No `field.csv` | No per-run record exists (Section 5.7) |
+| E14 | Operator usability (SUS) | [PENDING MEASUREMENT] | No `sus.csv` | - |
+| E15 | Cost | ESTIMATE | Table 5.19 | No procurement receipts |
 
 ## 5.1 Control Latency and Emergency-Stop Response
 
-The control-plane latency probe `tools/eval/wslatency.py` was run on the Pi (E1, Table 3) over the live WebSocket control path, with the operator laptop and robot within 3 m of the router in the indoor laboratory. Four metrics were timed over 30 valid trials each: `hello_rtt` (authentication round trip), `motor_start` (drive command to firmware state ACTIVE in telemetry), `motor_stop` (emergency stop to firmware state READY), and `pan_echo` (servo pan command to the new angle appearing in telemetry). A fifth metric, `deadman_trip`, timed the interval from the last accepted command to the telemetry field `fw_state` reporting the PANIC/STOPPED condition. Each probe waits on a telemetry field, so, as Section 3.5.2 and 3.6.2 establish, its figure is a telemetry-confirmed upper bound rather than a true control latency: the Arduino emits a telemetry frame every 500 ms and P1 rebroadcasts on its own 200 ms timer, so a confirmation can lag the event by up to 700 ms and by about 350 ms on average. The send phase was jittered by 0 to 200 ms to decorrelate trials from the P1 rebroadcast cycle (Section 4.2); for `motor_start`, `motor_stop` and `pan_echo` a second, deliberately phase-locked run of 30 trials was recorded to demonstrate the bias that the jitter removes. The dead-man trip was additionally re-measured on 2026-10-21 under the same on-Pi bench (label `on-pi-2026-10-21`, wheels clear of the ground), this time also capturing `deadman_panic`, the firmware's immediate tagged PANIC notice timed from P1's event-log millisecond timestamp rather than from a telemetry field, over 30 trials paired with `deadman_trip`.
+**Procedure.** The control-plane latency probe `tools/eval/wslatency.py` (E1, Table 3) was run on the Pi itself and connected to P1 over the loopback interface (`127.0.0.1`, as recorded in P1's connection log), so its figures describe the robot-internal path (WebSocket server, P1, USB serial link, firmware and telemetry return) and exclude the Wi-Fi link and the operator laptop. Two jittered sessions were recorded, on 2026-10-07 (label `on-pi`) and on 2026-10-21 (label `on-pi-2026-10-21`), each with 30 valid trials per metric and no discarded trial (all 420 rows carry `ok = 1`). A third session with the send-phase jitter disabled (`on-pi-phaselocked`) was recorded to show the bias the jitter removes (Section 4.2).
 
-**Table 5.1.** Control-plane latency, jittered sender (label `on-pi`), `tools/eval/results/latency.csv`. All values in ms.
+**Metrics.** `hello_rtt` is the authentication request-response round trip and is the only metric that does not wait on telemetry. `motor_start` (drive command to `fw_state` ACTIVE), `motor_stop` (stop command to `fw_state` READY) and `pan_echo` (pan command to the new angle in telemetry) are telemetry-confirmed: because the firmware emits telemetry every 500 ms and P1 rebroadcasts on a 200 ms timer, each is an upper bound on the true command latency that can exceed it by up to 700 ms and by about 350 ms on average (Section 3.6.2). `deadman_trip` is the interval from the probe's last command to `fw_state` reporting the stopped state, again telemetry-confirmed. `deadman_panic`, recorded only in the 2026-10-21 session, is the interval from the same last command to the firmware's PANIC line as time-stamped in P1's event log, which is not subject to the telemetry quantisation. All values are in ms.
 
-| Metric | N | Mean | SD | Min | Max | Median | p95 |
-|---|---|---|---|---|---|---|---|
-| hello_rtt | 30 | 46.8 | 24.6 | 19.6 | 116.9 | 41.0 | 75.8 |
-| motor_start | 30 | 328.2 | 136.1 | 156.8 | 761.1 | 306.3 | 573.5 |
-| motor_stop | 30 | 314.3 | 80.0 | 207.9 | 606.7 | 300.0 | 393.9 |
-| pan_echo | 30 | 387.7 | 60.4 | 285.9 | 495.0 | 381.1 | 480.8 |
-| deadman_trip | 30 | 2409.1 | 115.1 | 2200.9 | 2598.4 | 2409.7 | 2584.1 |
+**Table 5.1.** Control-plane latency, jittered sender, both sessions, `tools/eval/results/latency.csv`. MEASURED. All values in ms; 95% CI of the mean (Student t).
 
-**Table 5.2.** Phase-locked sender (label `on-pi-phaselocked`), same path, showing the biased distribution the jitter removes. All values in ms.
+| Metric | Session | N | Mean | 95% CI of mean | SD | Min | Max | Median | p95 |
+|---|---|---|---|---|---|---|---|---|---|
+| hello_rtt | 2026-10-07 | 30 | 46.8 | 37.7 to 56.0 | 24.6 | 19.6 | 116.9 | 41.0 | 75.8 |
+| hello_rtt | 2026-10-21 | 30 | 138.0 | 115.7 to 160.3 | 59.7 | 30.1 | 255.9 | 115.9 | 247.7 |
+| motor_start | 2026-10-07 | 30 | 328.2 | 277.4 to 379.0 | 136.1 | 156.8 | 761.1 | 306.3 | 573.5 |
+| motor_start | 2026-10-21 | 30 | 275.4 | 251.9 to 298.9 | 62.9 | 180.1 | 434.1 | 264.3 | 383.3 |
+| motor_stop | 2026-10-07 | 30 | 314.3 | 284.5 to 344.2 | 80.0 | 207.9 | 606.7 | 300.0 | 393.9 |
+| motor_stop | 2026-10-21 | 30 | 302.9 | 281.4 to 324.4 | 57.6 | 195.5 | 385.6 | 312.2 | 381.4 |
+| pan_echo | 2026-10-07 | 30 | 387.7 | 365.2 to 410.3 | 60.4 | 285.9 | 495.0 | 381.1 | 480.8 |
+| pan_echo | 2026-10-21 | 30 | 389.6 | 359.8 to 419.4 | 79.7 | 265.6 | 637.1 | 378.2 | 481.7 |
+| deadman_trip | 2026-10-07 | 30 | 2409.1 | 2366.2 to 2452.1 | 115.1 | 2200.9 | 2598.4 | 2409.7 | 2584.1 |
 
-| Metric | N | Mean | SD | Min | Max | Median | p95 |
-|---|---|---|---|---|---|---|---|
-| motor_start | 30 | 407.1 | 62.8 | 266.2 | 504.9 | 393.9 | 496.0 |
-| motor_stop | 30 | 403.3 | 19.9 | 392.6 | 507.2 | 400.7 | 405.7 |
-| pan_echo | 30 | 492.1 | 82.9 | 150.3 | 609.8 | 500.3 | 607.0 |
+The p95 column is the linear-interpolation 95th percentile of 30 observations; at this sample size it rests on the two largest values and is reported as a descriptive figure, not as a stable tail estimate.
 
-**Table 5.2a.** Dead-man trip paired with the immediate PANIC notice, on-Pi bench, 2026-10-21 session (label `on-pi-2026-10-21`), 30 trials. All values in ms.
+**Table 5.2.** Phase-locked sender (label `on-pi-phaselocked`, 2026-10-07), same path, showing the biased distribution the jitter removes. MEASURED. All values in ms.
 
-| Metric | Timed from | N | Mean | SD | Min | Max | Median | p95 |
+| Metric | N | Mean | SD | Min | Max | Median | 95% CI of median | p95 |
 |---|---|---|---|---|---|---|---|---|
-| deadman_trip | telemetry `fw_state` | 30 | 2435.9 | 110.8 | 2197.5 | 2593.2 | 2467.5 | 2582.8 |
-| deadman_panic | P1 event-log PANIC line | 30 | 2079.1 | 27.9 | 2022.3 | 2122.3 | 2076.5 | 2120.8 |
+| motor_start | 30 | 407.1 | 62.8 | 266.2 | 504.9 | 393.9 | 392.0 to 398.4 | 496.0 |
+| motor_stop | 30 | 403.3 | 19.9 | 392.6 | 507.2 | 400.7 | 399.2 to 401.5 | 405.7 |
+| pan_echo | 30 | 492.1 | 82.9 | 150.3 | 609.8 | 500.3 | 498.4 to 501.6 | 607.0 |
 
-The authentication round trip is the only metric that does not wait on a firmware telemetry frame, and at a 46.8 ms mean (p95 75.8 ms) it bounds the pure network-and-WebSocket contribution: it is small against the 200 to 400 ms telemetry-confirmed figures, confirming that those figures are dominated by the 700 ms quantisation of the reporting path and not by the control transport. The three command-confirmation metrics all fall well inside the 500 ms firmware telemetry period plus the 200 ms rebroadcast, consistent with the upper-bound model of Section 3.6.2. The phase-locked run illustrates the artifact the jitter is designed to remove: its standard deviation collapses (motor_stop SD falls from 80.0 ms to 19.9 ms) because a sender locked to the 200 ms rebroadcast cycle samples the quantisation at a fixed phase, producing a deceptively tight distribution with a shifted mean; the jittered figures in Table 5.1 are therefore the honest upper bounds and are reported as the primary result, as recorded in `tools/eval/README.md` and discussed in Section 6.4. The `deadman_trip` mean of 2409.1 ms (2435.9 ms in the paired 2026-10-21 session, Table 5.2a) is a confirmation latency, not a stop time: it measures when an observer waiting on `fw_state` can establish that the motors have stopped. The paired `deadman_panic` measurement settles what the telemetry-confirmed figure cannot. Timed from the firmware's immediate PANIC line in P1's event log, it has a mean of 2079.1 ms with a standard deviation of only 27.9 ms (min 2022.3, max 2122.3), so it sits directly on, and tightly around, the analytical stop bound of approximately 2060 ms derived in Section 3.5.2 (2000 ms dead-man window + 10 ms supervisor period + about 50 ms for the longest loop pass): the stop-time guarantee is therefore supported by measurement from the reporting-independent path, not by analysis alone. The gap between the paired `deadman_trip` and `deadman_panic` means is 356.8 ms, which equals, to within the measurement, the mean telemetry-reporting delay of about 350 ms predicted in Section 3.6.2; this confirms the two-path model directly, since the fast PANIC notice establishes the stop within about 2.08 s while a telemetry-only observer lags it by exactly one reporting delay. The order-of-magnitude drop in spread from `deadman_trip` (SD 110.8 ms) to `deadman_panic` (SD 27.9 ms) further shows that the variance in the telemetry-confirmed figure belongs to the 200 ms rebroadcast quantisation, not to the stop itself. The direct physical wheel-stop measurement (E4, 240 fps) remains pending as the gold-standard confirmation, but `deadman_panic` now bounds it from the log side at 2079.1 ms.
+**Table 5.2a.** Dead-man trip paired with the PANIC notice, 2026-10-21 session (label `on-pi-2026-10-21`), 30 trials at drive speed 150. MEASURED. All values in ms.
 
-The true control latency (E2) and the physical dead-man wheel-stop time (E4) require a 240 fps camera and have not yet been collected; the emergency-stop stopping distance (E3) was measured by tape and is reported below.
+| Metric | Timed from | N | Mean | 95% CI of mean | SD | Min | Max | Median | p95 |
+|---|---|---|---|---|---|---|---|---|---|
+| deadman_trip | telemetry `fw_state` | 30 | 2435.9 | 2394.5 to 2477.3 | 110.8 | 2197.5 | 2593.2 | 2467.5 | 2582.8 |
+| deadman_panic | P1 event-log PANIC line | 30 | 2079.1 | 2068.7 to 2089.6 | 27.9 | 2022.3 | 2122.3 | 2076.5 | 2120.8 |
 
-[PENDING MEASUREMENT: E2 true control latency.] Protocol: film the operator screen and the drive wheels together at 240 fps (4.17 ms per frame) with `tools/eval/record.py latency_video`, count frames from key press to first wheel movement, and record 30 trials per condition. This metric gives the true key-press-to-wheel-motion latency that the telemetry-confirmed figures of Table 5.1 bound from above.
+`deadman_panic` is timed from the probe's WebSocket send, so it still contains the WebSocket and P1 processing before the command reaches the serial port. P1's event log removes that leg: it time-stamps every command written to the Arduino (`DEBUG_TX`), the firmware's acknowledgement of it (`ACK`), and the `PANIC DEADMAN` line, all on one clock. Table 5.2b decomposes the 30 trials of Table 5.2a using those entries; every probe trial matched exactly one PANIC line.
 
-**Table 5.3.** True control latency (E2), `latency_video.csv`.
+**Table 5.2b.** Dead-man interval decomposed on P1's clock, 2026-10-21, `var/log/p1_events.log` matched to Table 5.2a. CALCULATED from MEASURED log timestamps. All values in ms.
+
+| Interval | N | Mean | 95% CI of mean | SD | Min | Median | Max |
+|---|---|---|---|---|---|---|---|
+| P1 sends last drive command -> P1 receives PANIC line | 30 | 2022.5 | 2019.7 to 2025.3 | 7.5 | 2009.0 | 2024.0 | 2042.0 |
+| P1 receives ACK of that command -> P1 receives PANIC line | 30 | 2002.0 | 1998.7 to 2005.2 | 8.7 | 1986.0 | 2002.5 | 2022.0 |
+| P1 sends last drive command -> P1 receives its ACK | 30 | 20.5 | 18.8 to 22.2 | 4.6 | 6.0 | 21.0 | 29.0 |
+| Probe `deadman_panic` minus first row (WebSocket and P1 leg) | 30 | 56.6 | 46.8 to 66.4 | 26.2 | 6.3 | 52.9 | 101.3 |
+
+**Analysis.** The dead-man result is the strongest timing evidence in the paper. In the firmware, `taskSafety()` calls `emergencyStop()` and then `sendPanic()` in the same pass (`arduino/arduino.ino`, lines 79 to 86), so the PANIC line marks the instant at which drive is removed electrically. Measured on P1's clock from the moment the last command left P1 to the moment the PANIC line arrived back, the interval never exceeded 2042 ms in 30 of 30 trials (mean 2022.5 ms, 95% CI 2019.7 to 2025.3 ms), and this interval still includes the serial transit in both directions. It therefore lies below the analytical stop bound of approximately 2060 ms of Section 3.5.2 (2000 ms window + 10 ms supervisor period + about 50 ms longest loop pass) in every trial, by at least 18 ms. The interval from the firmware's acknowledgement to its PANIC line, in which the return leg cancels because both lines travel the same path, has a mean of 2002.0 ms (95% CI 1998.7 to 2005.2 ms), which agrees with the 2000 ms dead-man window; its spread (min 1986, max 2022 ms) shows that P1's receive timestamps carry a jitter of the order of 15 ms from USB-serial buffering and event-loop scheduling, which is the resolution of this method. The probe's `deadman_panic` figure of 2079.1 ms exceeds the bound only because it also contains the WebSocket and P1 leg before the command reached the Arduino (mean 56.6 ms, last row of Table 5.2b); the earlier draft's statement that this figure "sits directly on" the bound conflated the two. The difference between the paired `deadman_trip` and `deadman_panic` means, 356.8 ms, is consistent with the mean telemetry-reporting delay of about 350 ms predicted in Section 3.6.2, and the drop in SD from 110.8 ms to 27.9 ms shows that most of the spread in the telemetry-confirmed figure belongs to the reporting path. What these log measurements establish is the time at which the firmware removed drive. The time at which the wheels physically come to rest after that, which includes mechanical run-down, is the subject of E4 and is not yet measured.
+
+The command-confirmation metrics (`motor_start`, `motor_stop`, `pan_echo`) have means between 275 and 390 ms in both sessions and all fall inside the 700 ms confirmation bound, consistent with the upper-bound model of Section 3.6.2; they are upper bounds, and the true command latency is lower by an unknown amount up to 700 ms per trial until E2 is measured. The two sessions agree closely for `motor_stop` and `pan_echo` (overlapping confidence intervals). They do not agree for `hello_rtt`: its mean rose from 46.8 ms (95% CI 37.7 to 56.0) on 2026-10-07 to 138.0 ms (115.7 to 160.3) on 2026-10-21, with non-overlapping intervals. Because both sessions ran over loopback, this difference is not a network effect; it reflects a change in WebSocket and authentication processing time on the Pi between the two days, whose cause (background load, software state) was not recorded. Consequently `hello_rtt` is not a stable floor for the control path, and the earlier description of it as bounding "the pure network-and-WebSocket contribution" is withdrawn: no Wi-Fi figure exists for E1. The phase-locked run (Table 5.2) illustrates the artifact the jitter is designed to remove: its medians collapse onto the rebroadcast grid (motor_stop median 400.7 ms, bootstrap interval 399.2 to 401.5 ms, SD 19.9 ms against 80.0 ms jittered), a deceptively tight distribution with a shifted mean, so the jittered figures of Table 5.1 are the primary result. As recorded in `tools/eval/wslatency.py`, the 0 to 200 ms jitter cannot fully decorrelate a trial from the 500 ms firmware telemetry cycle, so the jittered spread still understates the full quantisation spread.
+
+**Comparison with the literature.** Human-factors studies of teleoperation identify command and video latency, frame rate and field of view as the main system factors that degrade operator performance [@chen2007]. The figures here are robot-internal upper bounds measured over loopback and cannot be set against those human-performance results until the end-to-end latency over Wi-Fi (E2) is measured.
+
+The true control latency (E2) and the physical dead-man wheel-stop time (E4) require a 240 fps camera and have not been collected; the emergency-stop stopping distance (E3) is reported below.
+
+[PENDING MEASUREMENT: E2 true control latency.] Protocol: run the dashboard on the operator laptop over the Wi-Fi cell of Section 3.2, film the operator screen and the drive wheels together at 240 fps (4.17 ms per frame) with `tools/eval/record.py latency_video`, count frames from key press to first wheel movement, and record 30 trials. Metric: key-press-to-first-wheel-motion latency in ms, reported as mean with 95% CI, median and maximum, with a resolution of one frame. This metric gives the true end-to-end control latency that the robot-internal, telemetry-confirmed figures of Table 5.1 cannot.
+
+**Table 5.3.** True control latency (E2), `latency_video.csv`. [PENDING MEASUREMENT]
 
 | trial | label | fps | frames | latency_ms |
 |---|---|---|---|---|
 | | | | | |
 
-[PENDING MEASUREMENT: E2 analysis to be filled when latency_video.csv data is collected; the result will be compared against the hello_rtt floor of Table 5.1 and reported as the true control latency.]
+[PENDING MEASUREMENT: E2 analysis to be filled when latency_video.csv data is collected; the result will be reported as the true control latency and compared with the telemetry-confirmed upper bounds of Table 5.1.]
 
-Emergency-stop stopping distance (E3) was measured with `tools/eval/record.py estop` on 2026-10-21. The robot was driven forward on a level concrete floor at each of three commanded speeds (PWM 60, 120, 180); on each trial the operator pressed the dashboard emergency-stop button as a reference mark on the robot crossed a fixed line, and the coast distance from that line to the mark at rest was tape-measured. The emergency-stop button issues the ramped stop S of Section 3.5.3 (Table 7), so the measured distance is the travel during the ramp-down plus mechanical run-out, not an instantaneous halt.
+**Emergency-stop stopping distance (E3).** The robot was driven forward on a level concrete floor at three commanded speeds (PWM 60, 120, 180); on each trial the operator pressed the dashboard emergency-stop button as a reference mark on the robot crossed a fixed line, and the distance from that line to the mark at rest was tape-measured and later entered with `tools/eval/record.py estop` (entry timestamps 2026-10-21). The emergency-stop button issues the ramped stop S of Section 3.5.3 (Table 7). Stop times (`stop_time_s`) were not recorded.
 
-**Table 5.4.** Emergency-stop stopping distance (E3), concrete surface, `tools/eval/results/estop.csv`. Distance in cm.
+**Table 5.4.** Emergency-stop stopping distance (E3), concrete surface, `tools/eval/results/estop.csv`. MEASURED (operator-recorded, transcribed); the PWM 60 row is [VERIFICATION REQUIRED]. Distance in cm.
 
-| Speed (PWM) | N | Mean | 95% CI of mean | SD | Min | Max | Median |
-|---|---|---|---|---|---|---|---|
-| 60 | 7 | 42.7 | 36.4 to 49.0 | 6.8 | 34 | 54 | 41 |
-| 120 | 9 | 75.9 | 61.5 to 90.3 | 18.7 | 34 | 92 | 78 |
-| 180 | 7 | 91.3 | 85.1 to 97.4 | 6.7 | 78 | 98 | 92 |
+| Speed (PWM) | N | Mean | 95% CI of mean | SD | Min | Max | Median | 95% CI of median |
+|---|---|---|---|---|---|---|---|---|
+| 60 | 7 | 42.7 | 36.4 to 49.0 | 6.8 | 34 | 54 | 41 | 38 to 48 |
+| 120 | 9 | 75.9 | 61.5 to 90.3 | 18.7 | 34 | 92 | 78 | 60 to 90 |
+| 180 | 7 | 91.3 | 85.1 to 97.4 | 6.7 | 78 | 98 | 92 | 90 to 97 |
 
-Stopping distance rises monotonically with commanded speed, from a 42.7 cm mean at PWM 60 to 91.3 cm at the PWM 180 safety cap, so the emergency stop arrests the robot within about 0.9 m even at full commanded speed. The near-proportional growth with speed is the expected signature of a bounded-time ramp stop: Section 3.5.2 gives the ramp duration as t_ramp = ceil(u / 15) x 10 ms, about 120 ms from the PWM 180 cap and less at lower speeds, and a fixed stop time turns into a distance that scales with speed, which the three means follow. The spread is tight at PWM 60 and 180 (SD 6.8 and 6.7 cm) and wider at PWM 120 (SD 18.7 cm, driven by one 34 cm run), and the 95% confidence intervals (Student t, N - 1 degrees of freedom) are correspondingly wide at this sample size, 12.6 cm at PWM 60, 28.8 cm at PWM 120 and 12.3 cm at PWM 180. The most likely source of the variation is the operator's timing of the button press relative to the line, because the ramp of Section 3.5.2 is deterministic and would otherwise give a near-constant distance at a fixed speed; this was not isolated experimentally, since press timing and brake behaviour were not measured separately, and other contributors such as floor friction and battery state were not controlled. The result supports the design claim of Section 3.5.3 that the operator-triggered stop brings the robot to rest over a short, speed-bounded distance. The sample is below the 20-trial-per-speed target of Table 3 (N = 7, 9, 7); it is reported as an initial measurement, and fuller sampling together with the per-trial stop time (`stop_time_s`, measurable from the 240 fps video of E4) remain to be added.
+**Analysis and verification.** Two independent checks place this table outside the evidence used to support any claim. First, P1 logs every drive command it sends to the Arduino, and P1 forwards the requested speed unchanged apart from clamping to the 180 cap (`pi/p1_control/safety.py`). On 2026-10-21 the log contains 12 `F180` commands (11:45 to 11:54 UTC) and 27 `F120` commands, which could correspond to the PWM 180 and PWM 120 trials, but it contains no `F60` command on that day or on any other day in the retained logs (2026-09-25 to 2026-10-22), so the seven PWM 60 trials have no corresponding drive command. Second, the distances are inconsistent with the drive kinematics by more than an order of magnitude (CALCULATED). With the 60 RPM no-load motors and 65 mm wheels of Table 2, the no-load ground speed at the motors' rated 12 V, which the PWM 180 cap is set to approximate (`pi/common/protocol.py`), is (60/60) x pi x 0.065 m = 0.20 m/s. At that speed the ramp of Section 3.5.2 (at most 120 ms from PWM 180) covers at most 2.5 cm, and even the telemetry-confirmed `motor_stop` upper bound of about 0.3 s adds at most about 6 cm; covering the measured 78 to 98 cm at PWM 180 would instead require 3.8 to 4.8 s of travel at full no-load speed, and the 34 to 54 cm at PWM 60 would require still longer at one third of the voltage. The recorded distances therefore cannot be the travel after the stop command under the documented stop design and motor specification. Possible explanations are a difference between the procedure as run and as described (for example, the distance including the operator's reaction before the press), a motor or wheel specification that differs from Table 2, or a recording error; none can be resolved from the stored data. The earlier interpretation of the speed dependence as the signature of a bounded-time ramp stop is withdrawn, since that ramp predicts centimetre-scale distances. The table is retained because it is an operator record, but the claim that the operator-triggered stop brings the robot to rest over a short, speed-bounded distance remains untested. The sample is also below the 20-trial-per-speed target of Table 3.
 
-[PENDING MEASUREMENT: E4 dead-man physical stop time.] Protocol: with `tools/eval/record.py deadman_physical`, cut the command stream and film the wheels at 240 fps, timing from the last heartbeat to wheels stationary; record whether the PANIC DEADMAN line appeared; 20 trials. This is the direct test of the approximately 2060 ms stop bound of Section 3.5.2, which until this measurement is in place remains analytical.
+[PENDING MEASUREMENT: E3 repeat.] Protocol: repeat with `tools/eval/estop_assist.py`, which sends the stop over the control WebSocket at the operator's key press so that each trial appears in P1's log, film each trial at 240 fps to obtain `stop_time_s` and the speed at the line, record the drive speed actually reached, and enter distances during the session; 20 trials per speed.
 
-**Table 5.5.** Dead-man wheel-stop time (E4), `deadman_physical.csv`.
+[PENDING MEASUREMENT: E4 dead-man physical stop time.] Protocol: with `tools/eval/record.py deadman_physical`, cut the command stream and film the wheels at 240 fps, timing from the last heartbeat to wheels stationary; record whether the PANIC DEADMAN line appeared; 20 trials. This is the direct test of the physical stop; Table 5.2b already establishes from the firmware side that drive is removed within 2042 ms of the last command in every logged trial.
+
+**Table 5.5.** Dead-man wheel-stop time (E4), `deadman_physical.csv`. [PENDING MEASUREMENT]
 
 | trial | speed_pwm | stop_s | panic_seen |
 |---|---|---|---|
 | | | | |
 
-[PENDING MEASUREMENT: E4 analysis to be filled when deadman_physical.csv data is collected; the filmed wheel-stop time will be compared against the approximately 2060 ms bound of Section 3.5.2, which the log-timed `deadman_panic` measurement of 2079.1 ms (Table 5.2a) already corroborates from the firmware side.]
+[PENDING MEASUREMENT: E4 analysis to be filled when deadman_physical.csv data is collected; the filmed wheel-stop time will be compared with the approximately 2060 ms bound of Section 3.5.2 and with the firmware-side interval of Table 5.2b.]
+
+**Limitations.** No E1 figure includes the Wi-Fi link. The latency metrics other than `hello_rtt` and the log-timed dead-man intervals are upper bounds. The log-timed method resolves the firmware stop to about 15 ms and does not observe the wheels. E3 is unverified.
 
 ## 5.2 Video and Audio Streaming Performance
 
-This subsection reports the glass-to-glass delay of the two-way media path (E5, Table 3), measured with `tools/eval/record.py glass2glass` by photographing a running stopwatch and its copy rendered in the operator video panel in the same frame and differencing the two readings. The protocol repeats 20 trials per viewer count to expose the effect of the per-session encoders described in Section 3.9.1. This experiment is entirely pending.
+This subsection reports the delay of the two-way media path (E5, Table 3). No valid streaming measurement exists; the experiment is entirely pending.
 
-[PENDING MEASUREMENT: E5 video and audio streaming.] Protocol: place a millisecond stopwatch in the camera's view, photograph the stopwatch and the operator panel simultaneously, and record the real and displayed readings for each of the conditions `viewers-1`, `viewers-2` and `wifi-20m`; 20 trials per condition. The audio-path delay is measured by the same clap-and-photograph method against the robot speaker output.
+**Procedure.** Glass-to-glass delay is measured with `tools/eval/record.py glass2glass` by placing a millisecond clock in the robot camera's view, photographing the clock and its copy rendered in the operator video panel in the same frame, and differencing the two readings, the established camera-to-display delay method [@bachhuber2016]. The audio delay is measured in each direction by the same principle, recording an impulse (a clap) and its reproduction at the far end on one recorder. Conditions: one viewer (`viewers-1`), two viewers (`viewers-2`, to expose the per-session encoders of Section 3.9.1), and the operator at 20 m (`wifi-20m`); 20 trials per condition.
 
-**Table 5.6.** Glass-to-glass media delay (E5), `glass2glass.csv`.
+**Metrics.** Video glass-to-glass delay (ms): displayed-clock reading subtracted from the real-clock reading in one photograph. Audio mouth-to-ear delay (ms), robot to operator and operator to robot. Received video frame rate (frames/s) and bitrate (kbit/s), read from the operator browser's WebRTC statistics over each trial. Packet loss (%), from the same statistics. Each is reported as mean with 95% CI, median and maximum.
+
+**Table 5.6.** Glass-to-glass video delay (E5), `glass2glass.csv`. [PENDING MEASUREMENT]
 
 | trial | label | real_ms | robot_ms | delay_ms |
 |---|---|---|---|---|
 | | | | | |
 
-[PENDING MEASUREMENT: E5 analysis to be filled when glass2glass.csv data is collected; the delay will be interpreted against the 640x480 at 10 fps, 500 kbps video parameters and the 60 ms Opus packetisation of Section 3.9, and the two-way victim-interaction claim (RQ4) assessed.]
+**Table 5.6a.** Media summary per condition (E5). [PENDING MEASUREMENT]
+
+| Condition | N | Video delay mean (95% CI), ms | Audio delay robot -> operator, ms | Audio delay operator -> robot, ms | Frame rate, fps | Video bitrate, kbit/s | Packet loss, % |
+|---|---|---|---|---|---|---|---|
+| viewers-1 | | | | | | | |
+| viewers-2 | | | | | | | |
+| wifi-20m | | | | | | | |
+
+**What existing data can and cannot show.** The resource log of E8 records the Wi-Fi interface transmit rate (`tx_kbps`), but it counts all traffic on the interface. In every driving condition the Pi desktop was also being viewed remotely (`display_mode` = `vnc` on all samples), and the median transmit rate without an operator media stream (`driving`, 1152 kbit/s) was no lower than with one (`driving+media`, 1127 kbit/s). The interface counter therefore cannot isolate the media bitrate, and no bandwidth, frame-rate, delay or audio-quality figure is reported for this robot. The design parameters remain the specification against which E5 will be judged: 640x480 at 10 fps with a 500 kbit/s target for video, and 32 kbit/s Opus [@valin2012] in 60 ms packets for audio (Section 3.9, Table 1a).
+
+[PENDING MEASUREMENT: E5 analysis to be filled when glass2glass.csv and the WebRTC statistics are collected; the delays will be interpreted against the parameters above and the two-way victim-interaction claim (RQ4) assessed.]
+
+**Limitations.** Until E5 is measured, the paper makes no quantitative claim about media delay or quality.
 
 ## 5.3 Communication Range and Link Degradation
 
-This subsection reports the Wi-Fi range sweep (E6, Table 3), run with `tools/eval/netsweep.py` at progressive line-of-sight distances in the outdoor open area, recording packet loss, round-trip time and received signal strength at each station together with a pass/fail judgement of whether video and control remained usable. This experiment is entirely pending.
+This subsection reports the Wi-Fi range sweep (E6, Table 3). No range measurement exists; the experiment is entirely pending.
 
-[PENDING MEASUREMENT: E6 communication range.] Protocol: at each labelled station, run `tools/eval/netsweep.py --target <pi-ip> --label <Nk> --distance-m <d> --obstacles <desc>`, which pings the robot, reads the Wi-Fi signal at the start and end of the burst, and logs loss and RTT; the operator notes whether video and control stayed usable. Stations progress outward until the link fails.
+**Procedure.** In the outdoor open area, at line-of-sight stations moving outward from the access point until the link fails, run `tools/eval/netsweep.py --target <pi-ip> --label <Nk> --distance-m <d> --obstacles <desc>`, which pings the robot, reads the signal level at the start and end of the burst, the transmit bitrate, and logs loss and round-trip time; the operator records whether video and control remained usable at the station.
 
-**Table 5.7.** Communication range and link degradation (E6), `network.csv`.
+**Metrics.** Packet loss (% of pings lost), round-trip time (mean and maximum, ms), received signal strength (dBm), negotiated transmit bitrate (Mbit/s), and two binary usability judgements (video usable, control usable). The usable range is the largest distance at which both judgements hold and loss stays below 5%.
+
+**Table 5.7.** Communication range and link degradation (E6), `network.csv`. [PENDING MEASUREMENT]
 
 | label | distance_m | obstacles | sent | received | loss_pct | rtt_avg_ms | signal_dbm_start | signal_dbm_end | video | control |
 |---|---|---|---|---|---|---|---|---|---|---|
 | | | | | | | | | | | |
 
-[PENDING MEASUREMENT: E6 analysis to be filled when network.csv data is collected; the usable range will be reported against the single-cell assumption of Section 3.2 and the under-1-Mbit/s steady-state budget of Table 1a, and the point of control loss related to the dead-man behaviour of Section 3.5.2.]
+**What existing data can and cannot show.** The only link-level observations are from the indoor laboratory, at a single location within 3 m of the access point: the mean signal level over each E8 condition lay between -40.7 and -49.0 dBm (`resources.csv`, MEASURED). These describe the test bench, not range, and are given only so that the E8 conditions are known to have run on a strong link.
+
+[PENDING MEASUREMENT: E6 analysis to be filled when network.csv data is collected; the usable range will be reported against the single-cell assumption of Section 3.2 and the under-1-Mbit/s steady-state budget of Table 1a, and the point of control loss related to the dead-man behaviour measured in Section 5.4 (F7).]
 
 ## 5.4 Fault Injection and Recovery Time
 
-The automated fault-injection campaign (E7, Table 3) was run with `tools/eval/faultinject.py run`, which sends SIGKILL to a target process and then polls that process's `/health` endpoint at 10 Hz until the process is back and its PID has changed, recording the detection time, the recovery time and the PID change. Ten trials were run against each of three targets: P1 control (test F3), P2 media (F4) and the P3 watchdog (F5). A trial counts as recovered only when the health endpoint answers and reports the new PID, so recovery is confirmed service, not merely a restarted process.
+**Procedure (automated).** The automated campaign (E7, Table 3) was run on 2026-10-07 with `tools/eval/faultinject.py run`, which sends SIGKILL to the target process and polls the health of the target about every 50 ms. Ten trials were run against each of P1 control (test F3), P2 media (F4) and the P3 watchdog (F5).
 
-**Table 5.8.** Fault detection and recovery, `tools/eval/results/faults.csv`, 10 trials per target.
+**Metrics.** `detection` is the time from the SIGKILL to the harness's first observation that the target no longer reports healthy; it bounds how soon the outage became externally visible, and it is not the time P3 took to notice the crash. `recovery` is the time from the SIGKILL to the health endpoint answering healthy with a new PID, so recovery means confirmed service, not merely a restarted process. Recovered is the proportion of trials meeting that condition.
 
-| Test | Target | Metric | Mean | SD | Min | Max | Median | Recovered |
-|---|---|---|---|---|---|---|---|---|
-| F3 | P1 | detection (ms) | 91.1 | 34.8 | 59.2 | 182.8 | 80.7 | 10/10 |
-| F3 | P1 | recovery (ms) | 16026.7 | 140.6 | 15804.4 | 16254.8 | 15990.0 | 10/10 |
-| F4 | P2 | detection (ms) | 123.2 | 46.1 | 59.8 | 175.0 | 147.1 | 10/10 |
-| F4 | P2 | recovery (ms) | 14450.4 | 961.2 | 12966.8 | 15914.9 | 14758.4 | 10/10 |
-| F5 | P3 | detection (ms) | 157.0 | 40.3 | 61.3 | 216.0 | 156.6 | 10/10 |
-| F5 | P3 | recovery (ms) | 12829.0 | 903.3 | 10428.5 | 13841.4 | 12998.0 | 10/10 |
+**Table 5.8.** Fault detection and recovery, `tools/eval/results/faults.csv`, 10 trials per target. MEASURED.
 
-Every one of the 30 trials recovered with a confirmed PID change (10/10 for each target), so the process-supervision claim of Section 3.7.1 holds across the campaign without a single missed restart. The P1 recovery mean of 16026.7 ms (16.03 s) falls inside the 14.6 to 19.6 s bound predicted by the recovery-time model of Section 3.7.2, which sums detection (at most 1 s for a crash), the 1 s poll before cooldown, the 10 s cooldown and P1 start-up (2.0 s + 3 x 0.2 s plus up to 5 s for the Arduino handshake): the design claim is therefore supported, and the tight standard deviation of 140.6 ms shows the recovery path is dominated by the fixed 10 s cooldown rather than by variable start-up cost. P2 recovers faster, at a 14450.4 ms (14.45 s) mean, because it opens no serial link and runs no Arduino handshake, so its start-up term is smaller than P1's. P3 recovers fastest, at 12829.0 ms (12.83 s), because the SIGKILL is caught by systemd (restart after 5 s) and the watchdog then respawns, a shorter path than the full cooldown-gated respawn P3 applies to its own children; the wider spread for P2 and P3 (SD about 0.9 s) reflects variation in interpreter and media-device start-up. Detection is sub-200 ms in every case (P1 mean 91.1 ms), far inside the 1 s crash-detection bound, confirming that the 1 s exit poll of Figure 14 dominates detection for a hard crash rather than the 10 s health-check interval, which governs only a silent hang. Throughout, the dead-man timer (Section 3.5.2) holds the motors stopped while control is down, so the recovery interval is a loss-of-service window, not a loss-of-safety window.
+| Test | Target | Metric | Mean | 95% CI of mean | SD | Min | Max | Median | Recovered |
+|---|---|---|---|---|---|---|---|---|---|
+| F3 | P1 | detection (ms) | 91.1 | 66.2 to 116.0 | 34.8 | 59.2 | 182.8 | 80.7 | 10/10 |
+| F3 | P1 | recovery (ms) | 16026.7 | 15926.1 to 16127.3 | 140.6 | 15804.4 | 16254.8 | 15990.0 | 10/10 |
+| F4 | P2 | detection (ms) | 123.2 | 90.2 to 156.2 | 46.1 | 59.8 | 175.0 | 147.1 | 10/10 |
+| F4 | P2 | recovery (ms) | 14450.4 | 13762.9 to 15138.0 | 961.2 | 12966.8 | 15914.9 | 14758.4 | 10/10 |
+| F5 | P3 | detection (ms) | 157.0 | 128.2 to 185.8 | 40.3 | 61.3 | 216.0 | 156.6 | 10/10 |
+| F5 | P3 | recovery (ms) | 12829.0 | 12182.8 to 13475.1 | 903.3 | 10428.5 | 13841.4 | 12998.0 | 10/10 |
 
-The manual-watch campaign (E7 manual) was run on 2026-10-21 with `tools/eval/faultinject.py watch`, which polls both `/health` endpoints at 10 Hz and logs every state transition with its timestamp and the duration the previous value was held. Two faults were injected: Arduino USB disconnect (F6, simulated by unbinding the USB device from the kernel driver via `/sys/bus/usb/drivers/usb/unbind`, which removes the `/dev/ttyACM0` device node and produces the same effect as a physical cable pull) and Wi-Fi link drop (F7, injected by bringing the `wlan0` interface down with `ip link set wlan0 down` for 20 seconds, then restoring it). GPS loss (F9) was not testable in the indoor laboratory because the NEO-6M had no fix indoors (`gps_fix` was false before the test began), so no true-to-false transition could be provoked; an outdoor attempt on 2026-10-22 is described below.
+**Table 5.8a.** Recovery proportion with 95% Wilson score interval [@wilson1927]. CALCULATED from Table 5.8.
 
-**Table 5.9.** Manually injected fault transitions (E7 manual), `fault_watch.csv`, 2026-10-21.
+| Test | Recovered | 95% interval for the recovery probability |
+|---|---|---|
+| F3 (P1) | 10/10 | 72.2% to 100% |
+| F4 (P2) | 10/10 | 72.2% to 100% |
+| F5 (P3) | 10/10 | 72.2% to 100% |
+| Pooled | 30/30 | 88.6% to 100% |
+
+**Analysis.** All 30 trials recovered with a confirmed PID change; P1's event log independently shows ten serial-port re-opens during the F3 campaign, one per restart. Thirty successes bound the per-trial failure probability under these bench conditions below 11.4% at 95% confidence (Table 5.8a), which supports the process-supervision claim of Section 3.7.1 for SIGKILL faults on the bench but does not demonstrate long-run reliability. The P1 recovery mean of 16.03 s (95% CI 15.93 to 16.13 s) lies inside the 14.6 to 19.6 s window predicted by the recovery-time model of Section 3.7.2 (PREDICTED), and the small SD of 140.6 ms is consistent with a recovery path dominated by the fixed 10 s cooldown. P2 recovered in 14.45 s on average, faster than P1, consistent with P2 opening no serial link and performing no Arduino handshake; Section 3.7.2 gives no separate bound for P2, so this is a description, not a test. P3 recovered in 12.83 s on average; its restart is performed by systemd (`RestartSec=5` in `robot-watchdog.service`) followed by P3's own start-up, which is a different path from the cooldown-gated respawn P3 applies to its children. The detection figures are 59 to 216 ms in every trial, which shows that the outage is visible at the health endpoint within a fraction of a second; they do not measure P3's own crash detection, so the earlier inference that they "confirm the 1 s exit poll dominates detection" is withdrawn. During each recovery window the dead-man timer, measured in Table 5.2b and in F7 below, holds the motors stopped once commands cease, so the recovery interval is a loss-of-service window rather than a loss-of-safety window.
+
+**Procedure (manual watch).** On 2026-10-21, `tools/eval/faultinject.py watch` polled both `/health` endpoints at 10 Hz and logged every state transition. The injection instants themselves were not logged by the harness; they are bounded below from P1's event log.
+
+**Table 5.9.** Manually injected fault transitions (E7 manual), `fault_watch.csv`, 2026-10-21. MEASURED. `t_s` is seconds from the start of each watch.
 
 | label | t_s | field | from_value | to_value | held_s |
 |---|---|---|---|---|---|
@@ -122,17 +212,50 @@ The manual-watch campaign (E7 manual) was run on 2026-10-21 with `tools/eval/fau
 | F7-wifi-drop | 26.85 | ws_clients | 1 | 0 | 26.85 |
 | F7-wifi-drop | 28.76 | ws_clients | 0 | 1 | 1.91 |
 
-The Arduino disconnect (F6) was detected within one health-poll cycle: `serial_connected` transitioned from 1 to 0 at t = 4.70 s, within one second of the unbind command issued at approximately t = 5 s. P1 remained running throughout (PID unchanged) and logged serial read and write errors at approximately 0.5 s intervals, confirming the retry behaviour described in Table 9 ("reads retried every 0.5 s"). When the USB device was rebound, the kernel assigned a new device node (`/dev/ttyACM1`) because P1's open file descriptor on the original node prevented the kernel from reusing the minor number; `serial_connected` therefore remained false until P1 was restarted by P3, at which point the port was reopened on the original device path. This confirms the Table 9 recovery path ("port reopened when P1 restarts"): the serial bridge does not attempt to reopen a removed device, so recovery from a physical unplug requires P1 to be restarted by P3 or by the operator. During the serial-down interval P1 continued to serve WebSocket clients and telemetry (with `serial_connected` false and the mission state STOP per Table 10), so the control process remained available for reconnection even while the Arduino link was lost, consistent with the process-isolation claim of the three-process split (RQ4).
+**Table 5.9a.** Manual faults timed from `var/log/p1_events.log`, 2026-10-21 (UTC). MEASURED.
 
-The Wi-Fi drop (F7) revealed that the TCP layer underlying the WebSocket connection survived the entire 20-second interface-down period: `ws_clients` remained at 1 throughout the outage, because Linux's default TCP keepalive interval (approximately 7200 s) far exceeds a 20-second interruption and no application-level WebSocket ping was scheduled within that window. The disconnect occurred only after Wi-Fi was restored: the TCP stack detected the stale connection at t = 26.85 s (approximately 1.85 s after `wlan0` came back up) and closed it (`ws_clients` 1 to 0), and the operator dashboard reconnected 1.91 s later (`ws_clients` 0 to 1 at t = 28.76 s). The total gap in controller connectivity was 1.91 s, falling entirely after the link was restored rather than during the outage. No other watched field transitioned: `serial_connected`, `camera_open` and `active_streams` were unchanged, confirming that the local subsystems were unaffected by the Wi-Fi loss. The result shows that a sub-minute Wi-Fi interruption is transparent to the TCP layer and does not trigger the full disconnect chain of Figure 15 (socket close, dead-man, PANIC, reconnect); that chain requires either a longer outage (long enough for TCP retransmission to time out, typically minutes) or an explicit socket close. The dead-man timer on the Arduino (Section 3.5.2) remains the backstop for any case where P1 itself stops sending heartbeats, but it was not exercised by this 20-second test because P1 continued to run and maintain the Arduino heartbeat throughout. This is noted as a limitation in Section 6.3: a Wi-Fi outage too short to close TCP but long enough to stall operator command delivery leaves the robot in its last commanded state until the TCP connection eventually times out or the link is restored; the design's defence is the dead-man timer, which operates on the Arduino independently of TCP state.
+| Fault | Event | Time | Interval |
+|---|---|---|---|
+| F6 | First P1 serial read failure | 19:41:58.363 | - |
+| F6 | Harness sees `serial_connected` 1 -> 0 | 19:41:58.475 | 0.11 s after first failure |
+| F7 | Last controller heartbeat forwarded to the Arduino | 19:52:48.530 | - |
+| F7 | Firmware `PANIC DEADMAN` received by P1 | 19:52:50.550 | 2.02 s after last heartbeat |
+| F7 | WebSocket closed by P1 (`ws_clients` 1 -> 0) | 19:53:11.686 | 23.16 s after last heartbeat |
+| F7 | Operator dashboard reconnected (`ws_clients` 0 -> 1) | 19:53:13.592 | 1.91 s after close |
 
-[PENDING MEASUREMENT: F9 GPS loss.] An outdoor attempt was made on 2026-10-22 with `tools/eval/faultinject.py watch --label F9-gps-loss`, but it did not yield a valid loss and recovery measurement. The NEO-6M first reached a fix (`gps_fix` 0 to 1) after about 1307 s outdoors, with a weak solution of 3 to 5 satellites and an HDOP of roughly 3 to 8. The `gps_fix` transitions that followed in `fault_watch.csv` are not valid: they coincided with the operator's diagnostic reads of the same serial port, which made the P1 GPS thread log `GPS_FAIL` and reopen the port about 2 s later, so they reflect port contention and not signal loss. No antenna-obstruction cycles were performed. The test is deferred. Protocol for the repeat: use only the `/health` field (no second reader on `/dev/serial0`), establish a stable fix first, then cover the antenna for 30 to 60 s and record the `gps_fix` true-to-false transition and the recovery time once uncovered, 5 cycles.
+**F6, Arduino disconnect.** The Arduino link was cut by unbinding its USB device from the kernel driver, which removes `/dev/ttyACM0` as a cable pull would. P1 logged its first serial read failure at 19:41:58.363 and the harness observed `serial_connected` turn false 0.11 s later, within about one poll period; because the unbind instant itself was not logged, the delay from the physical event to the first failure is not measured. P1 stayed up (PID unchanged), logged read and write failures at about 0.5 s intervals as described in Table 9, and continued to serve WebSocket clients and telemetry with `serial_connected` false, consistent with the process isolation of the three-process split. When the device was re-bound, the kernel assigned a new node (`/dev/ttyACM1`) and `serial_connected` stayed false until P1 was restarted and reopened the port, confirming the Table 9 recovery path ("port reopened when P1 restarts"): P1 does not reopen a removed device by itself, so recovery from an unplug requires a P1 restart.
+
+**F7, Wi-Fi drop.** The `wlan0` interface was taken down for about 20 s. The robot's own log shows the fail-safe chain working: the controller's heartbeats, which P1 forwards to the Arduino about once per second, stopped after 19:52:48.530, and the firmware tripped its dead-man and reported `PANIC DEADMAN` 2.02 s later, matching the 2002 to 2022 ms firmware interval of Table 5.2b. This is the second independent observation of the dead-man under an injected fault rather than a scripted probe, and it corrects the earlier draft, which stated that the dead-man was not exercised because P1 kept heartbeating; P1 forwards the controller's heartbeats and does not generate its own. The WebSocket itself was not closed during the outage: P1 closed it 23.16 s after the last heartbeat, and the dashboard reconnected 1.91 s after the close. The 23 s is consistent with the WebSocket keep-alive of Table 1a (ping every 20 s, 20 s timeout, `pi/p1_control/main.py`), which reclaims a dead socket only after up to 40 s; the earlier attribution to the operating system's TCP keep-alive was incorrect. Because the instant at which `wlan0` was restored was not logged, this record cannot establish whether the socket closed during the outage or shortly after the link returned. The safety-relevant conclusion does not depend on that: the robot stopped 2.02 s into the outage, more than 20 s before the control socket closed, so liveness was enforced by the firmware and not by the transport, exactly as Section 3.2 intends.
+
+**F9, GPS loss: not a valid measurement.** An outdoor attempt on 2026-10-22 did not produce a valid controlled loss-and-recovery measurement, and no antenna-obstruction cycle was performed. The NEO-6M first reported a fix 1306.57 s after the watch started (`fault_watch.csv`), with 3 to 5 satellites; the receiver's power-on time and almanac state at that moment are unknown, so this is not a time-to-first-fix measurement in the datasheet's sense, against which the manufacturer specifies 27 s for a cold start with all satellites at -130 dBm (PUBLISHED REFERENCE, [@ublox_neo6]). The `gps_fix` transitions that followed are mixed in origin (Table 5.9b): 14 of the 25 outdoor fix losses occurred within 3 s of a P1 `GPS_FAIL` port error, which coincided with diagnostic reads of the same serial port by a second program, while the other 11 outdoor losses and all 7 losses in the later indoor run (`F9-indoor`) had no nearby port error and are consistent with genuine loss of a weak solution. The earlier statement that all of them reflected port contention is therefore corrected. None of these was a controlled injection, so no F9 result is claimed.
+
+**Table 5.9b.** `gps_fix` 1 -> 0 transitions during the F9 attempt, matched to P1 `GPS_FAIL` events. CALCULATED from `fault_watch.csv` and `p1_events.log`.
+
+| Watch label | Fix-loss transitions | Within 3 s of a GPS_FAIL | Not near a GPS_FAIL |
+|---|---|---|---|
+| F9-gps-loss (outdoor) | 7 | 3 | 4 |
+| F9-gps-loss-run2 (outdoor) | 18 | 11 | 7 |
+| F9-indoor | 7 | 0 | 7 |
+
+[PENDING MEASUREMENT: F9 GPS loss.] Protocol for the repeat: read GPS only through P1 (no second reader on `/dev/serial0`), establish a fix that has been stable for 5 min, cover the antenna for 30 to 60 s, and record the `gps_fix` true-to-false transition and the recovery time after uncovering; 5 cycles.
+
+**Limitations.** Only SIGKILL crashes were injected automatically; hangs (detected by the 35 s health-check path of Section 3.7.2), camera and microphone loss, and Robot Screen exit were not injected. The 10-trial samples bound, but do not establish, the failure probability. F6 and F7 are single injections each.
 
 ## 5.5 Resource Utilization on the Edge Device
 
-Resource use was logged with `tools/eval/reslog.py` (E8, Table 3), which samples per-process CPU, memory, SoC temperature, the Pi throttling and under-voltage flags, and link statistics at 1 Hz. Five conditions have data: `idle` (1799 samples, about 30 min, all three processes healthy with no operator connected), `idle-partial-10min` (603 samples, 10 min, with the media process capturing and encoding video for the Robot Screen only), `driving` (309 samples, 310 s, captured on 2026-10-21 on a freshly rebooted Pi with all throttle and under-voltage flags clear from boot, the robot driven continuously over the control WebSocket by a scripted keyed-controller client and no operator media stream connected, wheels clear of the ground), `driving+media` (299 samples, 300 s, the robot driven continuously over the control WebSocket while an operator video stream was active, wheels clear of the ground, on a supply confirmed not to under-volt with 0/299 samples showing under-voltage, throttling or frequency capping), and `driving+media, 16 kbps` (299 samples, 300 s, the same driving+media condition with the Opus encoder bitrate halved from the default 32 kbps to 16 kbps, Section 4.3). The `driving+media` and `driving+media, 16 kbps` conditions were captured on 2026-10-21 after upgrading the Pi power supply from the USB power bank of Table 2 to a supply that holds the 5 V rail under the combined load; a prior capture on the original supply had exposed under-voltage on 276 of 299 samples, invalidating the CPU figures, so the upgrade was required before clean measurement. Per-process CPU is reported as a percentage of one core.
+**Procedure.** Resource use was logged with `tools/eval/reslog.py` (E8, Table 3) at 1 Hz: system CPU (as a percentage of the whole four-core processor), per-process CPU for P1, P2 and P3 (as a percentage of one core, so up to 100% per fully busy core), memory, per-process resident memory (RSS), SoC temperature, the firmware throttle word and its decoded flags, and interface statistics. Six labelled conditions exist: `idle` (2026-10-08, no operator connected), `idle-partial-10min` (2026-10-07, media process encoding for the Robot Screen only), `driving` (2026-10-21, robot driven continuously over the control WebSocket by a scripted client, no operator media stream, wheels clear of the ground, freshly rebooted Pi), `driving+media` (2026-10-21, as `driving` with an operator video stream active, after the Pi supply was upgraded), `driving+media-16kbps` (2026-10-21, as `driving+media` with the Opus bitrate set to 16 kbit/s instead of 32 kbit/s, Section 4.3), and `driving+media-throttled` (2026-10-21, the first `driving+media` capture, on the original USB power bank of Table 2).
 
-**Table 5.10.** Resource utilisation, `tools/eval/results/resources.csv`. CPU is % of one core; memory and RSS in MB; temperature in deg C.
+**Audit of the logger runs.** Each row of `resources.csv` carries both a wall-clock timestamp and the logger's own elapsed time, so the start time of the logger that wrote it can be recovered. Five conditions are single uninterrupted runs at a 1.000 s median spacing. The `driving+media` condition is not: its 299 rows come from two logger instances started 94 s apart (20:14:56 and 20:16:30 UTC) and writing under the same label, of which the first 196 s of one and the first 103 s of the other are absent from the file, so the rows span 196 s of wall-clock time, with 103 s sampled twice, rather than the 300 s stated in the earlier draft. The rows were not altered; their statistics are reported as logged, and the per-run figures are given in Table 5.10a to show that the splice does not change the result.
+
+**Table 5.10a.** `driving+media` split by logger run. CALCULATED from `resources.csv`.
+
+| Logger start (UTC) | Rows | Total CPU mean (%) | P2 CPU mean (% core) | P2 CPU SD | P2 RSS mean (MB) |
+|---|---|---|---|---|---|
+| 20:14:56 | 103 | 21.06 | 63.01 | 4.10 | 453.4 |
+| 20:16:30 | 196 | 20.60 | 62.87 | 3.81 | 453.9 |
+| Pooled, as logged | 299 | 20.76 | 62.92 | 3.91 | 453.7 |
+
+**Table 5.10.** Resource utilisation, `tools/eval/results/resources.csv`. MEASURED. Total CPU is % of the four-core processor; P1 to P3 CPU is % of one core; memory in MB; temperature in deg C. N is the number of 1 Hz rows.
 
 | Condition | Metric | N | Mean | SD | Max | p95 |
 |---|---|---|---|---|---|---|
@@ -161,7 +284,18 @@ Resource use was logged with `tools/eval/reslog.py` (E8, Table 3), which samples
 | driving+media | memory used | 299 | 2271.7 | 26.7 | 2304.6 | 2303.3 |
 | driving+media | SoC temp | 299 | 49.5 | 0.6 | 51.6 | 50.1 |
 
-**Table 5.11.** Per-process resident memory (RSS), same source. Values in MB.
+**Table 5.10b.** Mean per-process CPU with 95% batch-means interval (ten non-overlapping batches). CALCULATED from `resources.csv`. % of one core.
+
+| Condition | P1 CPU mean (95% CI) | P2 CPU mean (95% CI) | Total CPU mean (95% CI), % of processor |
+|---|---|---|---|
+| idle | 2.89 (2.75 to 3.03) | 0.90 (0.88 to 0.92) | 14.44 (8.61 to 20.26) |
+| idle-partial-10min | 4.62 (3.93 to 5.32) | 26.64 (7.48 to 46.06) | 33.47 (23.11 to 44.01) |
+| driving | 3.74 (3.57 to 3.93) | 1.12 (0.47 to 1.81) | 20.70 (19.18 to 22.51) |
+| driving+media | 3.81 (3.72 to 3.92) | 62.92 (62.22 to 63.67) | 20.76 (20.00 to 21.47) |
+| driving+media-16kbps | 3.85 (3.69 to 4.02) | 64.51 (63.30 to 65.82) | 22.98 (20.69 to 25.54) |
+| driving+media-throttled | 8.79 (8.66 to 8.90) | 118.10 (117.08 to 118.98) | 68.46 (67.60 to 69.58) |
+
+**Table 5.11.** Per-process resident memory (RSS), same source. MEASURED. Mean values in MB.
 
 | Condition | P1 RSS | P2 RSS | P3 RSS |
 |---|---|---|---|
@@ -170,10 +304,15 @@ Resource use was logged with `tools/eval/reslog.py` (E8, Table 3), which samples
 | driving | 44.7 | 98.2 | 32.2 |
 | driving+media | 45.4 | 453.7 | 32.3 |
 | driving+media, 16 kbps | 47.0 | 136.1 | 32.3 |
+| driving+media, original supply (throttled) | 47.6 | 192.4 | 32.3 |
 
-No condition recorded under-voltage or throttling: 0/1799 (idle), 0/603 (idle-partial), 0/309 (driving), 0/299 (driving+media) and 0/299 (driving+media, 16 kbps) samples showed under-voltage, throttling or frequency capping. An earlier capture of the `driving+media` condition on the original USB power bank of Table 2 had triggered under-voltage on 276 of 299 samples (throttle status word 0x50005), invalidating those CPU figures; the supply upgrade eliminated the under-voltage entirely, and the figures in Table 5.10 are from the clean capture. The three-process split of Section 3.1 is borne out quantitatively across all five conditions. The control process P1 stays low throughout: 2.89% idle, 4.62% under Robot-Screen media, 3.74% while driving with no operator stream, and 3.81% while driving with an operator stream. The `driving` condition isolates the motor-service cost, because its only change from idle is that the robot is driven and no media stream is connected (0 active streams on all 309 samples): P1 rises from 2.89% to 3.74%, so continuous driving adds less than one percentage point of one core to the control process, while the media process P2 is statistically unchanged from idle (1.12% against 0.90%, and 98.2 MB RSS against 97.4 MB). The `driving+media` condition adds the operator video stream: P2 rises to 62.92% of one core (from 1.12% without the stream) while P1 remains at 3.81%, nearly identical to its pure-driving figure of 3.74%. The media and drive loads are therefore fully separable: P2 carries 0.90%, 26.64%, 1.12% and 62.92% across the four main conditions, the 62.92% reflecting a full per-session operator encoder rather than the kiosk-only encoder of the idle-partial run, and none of that load appears on the control process. An encoder stall or spike thus lands on a process that carries no drive or stop command, which is exactly the isolation the architecture is designed to provide (RQ4); the pure-driving figures confirm the attribution directly, since P1's cost tracks driving and P2's tracks media with neither crossing to the other process. SoC temperature stayed well under the 80 deg C throttle point in every condition (idle max 52.1, Robot-Screen media max 52.6, driving max 51.6, driving+media max 51.6 deg C), so sustained operation does not approach thermal throttling. Memory use was 2271.7 MB mean while driving with media and 2429.3 MB while driving without, both within the 4 GB platform; P2's RSS stayed at its idle 98.2 MB while driving without a stream but grew to 453.7 MB under the operator session as the encoder buffers filled.
+**Throttling and supply.** The throttle word decodes as defined by the platform vendor (bit 0 under-voltage now, bit 2 throttled now, bits 16 and 18 the corresponding has-occurred flags) [@rpi_docs]. No sample in the five conditions captured on adequate supply showed under-voltage, throttling or frequency capping: 0/1799 (idle), 0/603 (idle-partial), 0/309 (driving), 0/299 (driving+media) and 0/299 (driving+media, 16 kbps), and `under_voltage_ever` was clear throughout each. The first `driving+media` capture on the original USB power bank showed under-voltage and throttling on 276 of 299 samples (throttle word 0x50005) with the has-occurred flags set on all 299; its figures are listed separately in Tables 5.10b and 5.11 and are not used for the clean-envelope result. Under throttling, P2 used 118.1% of one core against 62.9% on the adequate supply, which is consistent with the same encoding work taking a larger share of a slowed processor, although the two captures also differ in time and P2 state and the comparison is descriptive only. The supply upgrade was therefore necessary for the combined driving and media load, and the Pi supply in Table 2 is a measured limitation of the original build.
 
-**Table 5.12.** Resource utilisation, 16 kbps Opus ablation (E8), `resources.csv`. Same metrics and units as Table 5.10.
+**Analysis.** The comparisons below are between uncontrolled captures on different days, P1 and P2 uptimes and remote-desktop states, so they are descriptive and no causal effect is inferred from them. Three findings are robust across the batch-means intervals. First, the control process P1 stays below 4% of one core in every adequately supplied driving condition (upper 95% limit 4.02%), and its mean is essentially the same with and without the operator media stream (3.74% against 3.81%, overlapping intervals), so the media load does not appear on the control process, which is the isolation the three-process split of Section 3.1 is designed to provide (RQ4). Second, the operator media stream is carried by P2: 1.12% of one core while driving without a stream against 62.92% with one, so a single operator session costs about two thirds of one of the four cores, and this cost lands on a process that carries no drive or stop command. Third, the SoC temperature stayed at or below 52.6 deg C in every condition, well below the 80 deg C at which the vendor documents progressive throttling of the Arm cores [@rpi_docs], so none of these runs approached thermal throttling; the runs lasted 3 to 30 min indoors and do not establish behaviour over a full mission or at high ambient temperature. P1's increase from 2.89% idle to 3.74% while driving is an upper estimate of the motor-service cost, since the two captures are 13 days apart. Total memory use stayed between 1.9 and 2.5 GB of the 4 GB platform in every condition.
+
+**Bitrate ablation.** Table 5.12 gives the `driving+media-16kbps` condition. P2 used 64.51% of one core (95% CI 63.30 to 65.82) at 16 kbit/s against 62.92% (62.22 to 63.67) at 32 kbit/s, so halving the Opus bitrate produced no detectable reduction in media CPU; the audio encoder's cost is evidently small beside the video encoding that dominates P2. The resident-memory difference in Table 5.11 (453.7 MB at 32 kbit/s, 136.1 MB at 16 kbit/s) cannot be attributed to the bitrate: P3's log shows that P2 was terminated and respawned at 20:23 UTC, between the end of the 32 kbit/s capture (20:21) and the start of the 16 kbit/s capture (20:26), so the 16 kbit/s run measured a freshly started P2 while the 32 kbit/s run measured one that had been serving sessions for longer. The earlier draft's explanation of the memory saving by encoder buffer sizes and its statement about the cost structure of the Opus encoder are withdrawn as unsupported. The setting used for this run is also not reproducible from version control: the committed code fixes both Opus encoders at 32 kbit/s (`MIC_BITRATE` in `pi/p2_media/media.py` and `AUDIO_BITRATE` in `pi/p2_media/talkback.py`), so the 16 kbit/s value was applied by an uncommitted change that the label is the only record of. The effect of the bitrate on audio quality, which is the other side of this ablation in Section 4.3, was not measured.
+
+**Table 5.12.** Resource utilisation, 16 kbit/s Opus ablation (E8), `resources.csv`. MEASURED. Same metrics and units as Table 5.10.
 
 | Condition | Metric | N | Mean | SD | Max | p95 |
 |---|---|---|---|---|---|---|
@@ -184,23 +323,44 @@ No condition recorded under-voltage or throttling: 0/1799 (idle), 0/603 (idle-pa
 | driving+media, 16 kbps | memory used | 299 | 1962.0 | 29.7 | 2061.9 | 2032.1 |
 | driving+media, 16 kbps | SoC temp | 299 | 49.2 | 0.8 | 52.6 | 50.6 |
 
-The 16 kbps ablation (Table 5.12) shows that halving the Opus bitrate does not measurably reduce encoder CPU: P2 runs at 64.51% of one core against 62.92% at the default 32 kbps (Table 5.10), a difference of 1.59 percentage points that falls within the measurement noise (SD 4.33 and 3.91 respectively). The result is expected: the libopus CELT encoder at these bitrates is dominated by the transform and quantisation pass, not by the entropy coder, so halving the output rate does not halve the work. The ablation does, however, reduce P2's resident memory sharply, from 453.7 MB at 32 kbps to 136.1 MB at 16 kbps (Table 5.11), because the smaller packets require fewer and smaller internal encoder buffers. Total system memory falls correspondingly, from 2271.7 MB to 1962.0 MB, freeing approximately 310 MB of the 4 GB platform. P1 is unchanged (3.85% against 3.81%), confirming that the bitrate change is invisible to the control process. The practical implication is that a deployment constrained by memory rather than CPU can halve the audio bitrate with no encoder-cost penalty and a substantial memory saving, while one constrained by CPU cannot reduce the encoder load by lowering the bitrate alone. The original under-voltage finding from the initial USB power bank is reported as a resolved limitation: the supply upgrade eliminated it, and the `driving+media` condition now runs throttle-free, so the clean-envelope claim for simultaneous driving and media is supported by the figures in Table 5.10.
+**Limitations.** The driving conditions ran with the wheels clear of the ground, so motor current and its effect on the supply are not represented. Conditions are single captures of 3 to 30 min. A remote-desktop session was active in the idle and driving conditions and adds an unmeasured load to total CPU and to the interface counters. The 16 kbit/s run is confounded by a P2 restart and its configuration is not in version control. The Table 3 plan of four conditions at 30 min each was met only for `idle`.
 
 ## 5.6 Sensor Accuracy and GPS Track Quality
 
-Static GPS accuracy (E9, Table 3) was measured with `tools/eval/gpsdrift.py`, which logs NEO-6M fixes from a stationary robot in the outdoor open area and computes the radial error of each fix from the centroid of the point cloud using the distance formula of Section 3.10. The archived window holds 6888 fixes over 129.1 min. The ultrasonic, thermal and gas sensor experiments (E10 to E12) are pending.
+### 5.6.1 GPS: start-up, static precision and track quality
 
-**Table 5.13.** Static GPS accuracy (E9), `tools/eval/results/gps_static.csv`. Radial error from centroid, in metres.
+These are different metrics and are reported separately. Start-up is the time from receiver start to first fix. Static precision is the scatter of fixes from a stationary receiver about their own centroid. Accuracy is the distance of fixes from a surveyed reference point; no surveyed reference was used in this work, so no accuracy figure is reported. Track quality concerns whether the 10 m distance filter of Section 3.10 suppresses drift and keeps genuine motion.
+
+**Procedure.** Static precision (E9, Table 3) was measured with `tools/eval/gpsdrift.py`, which reads the fixed samples of a stationary robot from `var/log/telemetry.log`, takes their centroid as the reference, and computes the radial distance of each fix from it. The archived window of 2026-09-29 holds 6888 fixes over 129.1 min outdoors. The figures were recomputed independently from the raw telemetry for this section and agree with `gps_static.csv` to the reported precision.
+
+**Table 5.13.** Static GPS precision (E9), `tools/eval/results/gps_static.csv`. MEASURED. Radial distance from the centroid, in metres.
 
 | Samples | Duration (min) | Mean | SD | RMS | CEP50 | CEP95 | Max | Mean sats |
 |---|---|---|---|---|---|---|---|---|
 | 6888 | 129.1 | 14.14 | 10.45 | 17.58 | 8.9 | 30.46 | 120.4 | 4.8 |
 
-The CEP50 of 8.9 m lies just below the 10 m track filter of Section 3.10, so roughly half the static fixes fall inside the filter radius and roughly half outside: the design claim that static drift produces no spurious track points therefore holds only marginally. Because the filter adds a track point only after the robot moves at least 10 m, a stationary robot whose instantaneous error stays under 10 m adds no point, which the CEP50 confirms for the median fix; but the CEP95 of 30.46 m and the 120.4 m maximum show that the upper tail of the drift exceeds the filter, so occasional spurious points from a stopped robot cannot be excluded and the filter suppresses drift in the median case rather than absolutely. The mean satellite count of 4.8 is low for a consumer receiver (a stable fix benefits from six or more), which accounts for the heavy tail and the 14.14 m mean error against the receiver's 2.5 m nominal CEP [@ublox_neo6]. For the paper's purpose, reporting the victim's position to a rescue team, a median error under 10 m is adequate for approach-level guidance but not for sub-building localisation, which is consistent with the role GPS plays in Section 3.10 as approach guidance supplemented by the operator's camera view.
+**Resolution of the logged coordinates.** P1 holds each fix to six decimal places (about 0.1 m, `pi/p1_control/gps_reader.py`), and the 10 m track filter operates on those values, but the telemetry log that `gpsdrift.py` reads writes latitude and longitude with four decimal places (`pi/p1_control/telemetry_log.py`). At the test latitude of 23.45 deg N one step of 0.0001 deg is 11.12 m north-south by 10.20 m east-west (CALCULATED), and uniform rounding to that grid alone contributes an RMS radial error of about 4.4 m. The 6888 archived fixes occupy only 61 distinct grid positions. The precision figures of Table 5.13 are therefore limited by the logging resolution: their order of magnitude is meaningful, but the CEP50 of 8.9 m is smaller than one grid step and should not be quoted to sub-metre precision. The earlier statement that the CEP50 "lies just below the 10 m track filter" draws a comparison finer than the data can resolve and is withdrawn.
 
-Ultrasonic range accuracy (E10, Table 3) was measured with `tools/eval/record.py ultrasonic`. A flat target was placed at each of five tape-measured distances spanning the HC-SR04's 2 to 400 cm operating range (Section 3.3, Table 2), and the telemetry range reading was recorded ten times at each distance with the target stationary. The error is reading minus true distance; a positive error is an overestimate.
+**Table 5.13a.** Static GPS windows recomputed from `var/log/telemetry.log` at four-decimal resolution. CALCULATED from MEASURED fixes.
 
-**Table 5.14.** Ultrasonic range error by true distance (E10), `tools/eval/results/ultrasonic.csv`. All values in cm; N = 10 at each distance.
+| Window | Fixes | Duration (min) | Mean (m) | RMS (m) | CEP50 (m) | CEP95 (m) | Max (m) | Mean sats | Within 10 m | Distinct positions |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 2026-09-29 archive (E9) | 6888 | 129.1 | 14.14 | 17.58 | 8.90 | 30.46 | 120.4 | 4.76 | 53.1% | 61 |
+| 2026-10-22 outdoor, during F9 attempt | 1717 | 34.3 | 26.02 | 33.80 | 17.68 | 82.04 | 101.3 | 4.16 | 32.5% | 44 |
+
+The second window comes from the outdoor part of the F9 attempt (Section 5.4), during which the robot was not driven (`fw_state` READY on every sample) but a second program was intermittently reading the GPS serial port; it is not a valid static test and is listed for transparency only. The two centroids, from the same site 23 days apart, lie 4.27 m apart; because the robot was not placed on a surveyed mark either time, this separation is not an accuracy figure.
+
+**Startup.** One observation exists: during the F9 attempt the receiver first reported a fix 1306.57 s after the watch started, with 3 to 5 satellites (Section 5.4). Receiver power-on time and almanac state were not recorded, so this cannot be compared with the datasheet time-to-first-fix of 27 s for a cold start, which applies with all satellites at -130 dBm and without aiding [@ublox_neo6]. It indicates only that acquisition at this site and on this occasion was slow.
+
+**Interpretation.** Both windows have low satellite counts (mean 4.76 and 4.16), and both show a heavy upper tail (CEP95 of 30 to 82 m, maxima above 100 m). The NEO-6M's nominal 2.5 m CEP (PUBLISHED REFERENCE) is specified for 24 h static operation with all satellites at -130 dBm [@ublox_neo6], conditions these short, low-satellite sessions did not provide, so the two are not directly comparable. What the data do support is the practical conclusion: with this receiver and antenna at this site, a stationary robot's reported position scatters by roughly 10 m in the median and by tens of metres in the tail. That is adequate for approach-level guidance of a rescue team but not for locating a victim within a building, which is the role Section 3.10 assigns to GPS beside the operator's camera view. Because about half of the logged fixes lie more than 10 m from the centroid, the 10 m track filter cannot be expected to suppress all drift of a stopped robot; whether it does so on the six-decimal values P1 actually uses was not measured, since the GPS track was not exported during these sessions.
+
+[PENDING MEASUREMENT: E9 at full resolution and GPS track quality.] Protocol: log fixes at six decimal places (or the raw NMEA), place the robot on a surveyed or survey-grade reference point for at least 30 min with a stable fix, report precision and accuracy separately, export the GPS track over the same period to count spurious points, then drive a measured course and compare the track length with the tape-measured course length.
+
+### 5.6.2 Ultrasonic range (E10): [VERIFICATION REQUIRED]
+
+Ultrasonic range accuracy was entered with `tools/eval/record.py ultrasonic`: a flat target at each of five tape-measured distances (20, 75, 150, 284 and 389 cm), the telemetry range reading recorded ten times at each, the error being reading minus true distance.
+
+**Table 5.14.** Ultrasonic range error by true distance (E10), `tools/eval/results/ultrasonic.csv`. [VERIFICATION REQUIRED: contradicted by the telemetry log; not used to support any claim.] All values in cm; N = 10 at each distance.
 
 | True distance (cm) | N | Mean error | SD | Min error | Max error |
 |---|---|---|---|---|---|
@@ -211,11 +371,15 @@ Ultrasonic range accuracy (E10, Table 3) was measured with `tools/eval/record.py
 | 389 | 10 | 0.0 | 0.0 | 0.0 | 0.0 |
 | **All** | **50** | **0.0** | **0.0** | **0.0** | **0.0** |
 
-The HC-SR04 returned the exact tape-measured distance on every trial at all five distances, from 20 cm (near range) to 389 cm (near the 400 cm maximum). The zero mean error and zero standard deviation indicate that the sensor's integer-centimetre resolution matched the integer-centimetre tape reading in every case, so the measurement error is bounded by the quantisation floor of +/-1 cm (the echo-to-distance conversion, pulse width / 58, yields whole centimetres on the firmware side). Because the test used a flat, perpendicular, stationary target in a clear indoor corridor, this result represents the sensor's best-case accuracy; oblique or irregular surfaces, multi-path reflections, and environmental noise (wind, temperature gradients) would be expected to degrade it. For the paper's purpose, the HC-SR04 feeds the dashboard range indicator and the obstacle-proximity warning of Section 3.5.3 (Table 7), where the decision threshold is 30 cm; the zero-error result at 20 cm confirms that the sensor resolves distances at and around that threshold with no measurable bias.
+**Verification.** The protocol records the telemetry range value, and the robot's telemetry log stores that same value about once per second. Between 18:30 and 19:05 UTC on 2026-10-21, the period spanned by the entries, the logged range was 30 to 31 cm, then 10 to 11 cm, then 18 to 20 cm; readings of 150, 284 or 389 cm do not occur at any time in the retained telemetry (2026-10-18 to 2026-10-22), and during the 20 cm entries the telemetry mostly read 19 cm rather than the exactly 20 cm entered. Thirty of the fifty entries therefore have no counterpart in the robot's own record, and the remaining twenty are not supported to the stated zero error. The table is retained as entered, but the earlier conclusion that the HC-SR04 returned the exact distance at every range up to 389 cm is withdrawn. A perfect integer match at all five distances, including near the maximum range, would in any case have been an unusual result for this sensor.
 
-Temperature and humidity accuracy (E11, Table 3) was measured with `tools/eval/record.py thermal` on 2026-10-21. The DHT11 reading was compared against a co-located reference thermometer/hygrometer at ambient indoor conditions (approximately 31 deg C, 77% RH). Five trials were recorded at this single set-point; the error is sensor minus reference, so a positive value is an overestimate. The protocol of Table 3 targets five set-points at 5 readings each; only one ambient set-point was available during this session, so the result characterises the sensor at that operating point rather than across its range. Additional set-points remain to be collected (see below).
+[PENDING MEASUREMENT: E10 repeat.] Protocol: run `record.py ultrasonic` with the reading taken automatically from telemetry at the moment of entry (or log `range_cm` from `telemetry.log` over a marked interval), ten distances across 2 to 400 cm, a flat perpendicular target, 10 readings each; report mean error with 95% CI and SD per distance.
 
-**Table 5.15.** Temperature and humidity error (E11), `tools/eval/results/thermal.csv`. Single ambient set-point, 5 trials.
+### 5.6.3 Temperature and humidity (E11)
+
+**Procedure.** On 2026-10-21 the DHT11 reading was compared with a co-located reference thermometer-hygrometer at indoor ambient conditions; five trials were entered at one set-point. The error is sensor minus reference. The reference instrument's model and its own accuracy were not recorded.
+
+**Table 5.15.** Temperature and humidity error (E11), `tools/eval/results/thermal.csv`. MEASURED (transcribed; sensor values corroborated by `telemetry.log`). Single ambient set-point, 5 trials.
 
 | trial | ref_c | sensor_c | ref_rh | sensor_rh | error_c | error_rh |
 |---|---|---|---|---|---|---|
@@ -226,13 +390,15 @@ Temperature and humidity accuracy (E11, Table 3) was measured with `tools/eval/r
 | 5 | 31 | 31 | 77 | 78 | 0 | +1 |
 | **All** | | | | | **Mean 0.0** | **Mean +0.4** |
 
-The DHT11 matched the reference thermometer exactly on all five trials (error 0 deg C), so the temperature reading carries no measurable bias at this operating point. The humidity error was 0% RH on three trials and +1% RH on two, giving a mean of +0.4% RH and a maximum of +1% RH: the sensor flickered between 77% and 78% while the reference held at 77%, which is consistent with the DHT11's integer-percent resolution placing the true value at the quantisation boundary. Both the temperature and humidity errors fall well within the DHT11 datasheet tolerance of +/-2 deg C and +/-5% RH. For the paper's purpose the DHT11 feeds the dashboard environment card (Section 3.5.3, Table 7), where the reading is advisory and triggers no motor action; the zero temperature error and sub-1% humidity error confirm that the dashboard figure is trustworthy at indoor ambient conditions. Because only one set-point was tested, the result does not characterise the sensor across its 0 to 50 deg C and 20 to 90% RH operating range; additional set-points at elevated or reduced temperature and humidity are needed before the accuracy claim extends beyond the ambient neighbourhood, and these are recorded as pending below.
+**Analysis.** The robot's telemetry log over the same period (19:10 to 19:22 UTC) shows the DHT11 at 31 deg C throughout and alternating between 77% and 78% RH, which matches the transcribed sensor values. The temperature agreed with the reference on all five trials and the humidity differed by 0 or +1% RH (mean +0.4% RH, SD 0.55), at the one-unit resolution of both instruments. With one set-point, five readings and an uncharacterised reference, this shows only that the DHT11 agreed with the reference to within one unit at about 31 deg C and 77% RH; it does not characterise the sensor across its operating range, and the five readings, taken within minutes, are not independent. The manufacturer tolerance usually quoted for the DHT11 (+/-2 deg C, +/-5% RH) is [CITATION NEEDED: verified manufacturer datasheet] and is not relied on here. The DHT11 feeds an advisory dashboard card and triggers no motor action (Section 3.5.3, Table 7).
 
-[PENDING MEASUREMENT: E11 additional set-points.] Protocol: repeat the comparison at four further set-points spanning the DHT11 operating range (e.g. near 20, 25, 35 and 40 deg C, and at low and high humidity), 5 readings per set-point, so the single-point result of Table 5.15 can be extended to a range characterisation.
+[PENDING MEASUREMENT: E11 additional set-points.] Protocol: repeat at four further set-points spanning the DHT11 operating range (for example near 20, 25, 35 and 40 deg C, and at low and high humidity) against a reference of stated accuracy, 5 readings per set-point, as planned in Table 3.
 
-Gas sensor response (E12, Table 3) was measured with `tools/eval/record.py gas` on 2026-10-21 by monitoring the MQ-136's raw ADC telemetry field (`gas_ppm`, which carries the 0--1023 ADC count, not a calibrated ppm reading; Section 3.3, Table 2) while butane was released from an unlit lighter held approximately 5 cm from the sensor element. The monitoring script connected to the P1 WebSocket as an observer, recorded the `gas_ppm` field at each telemetry frame (approximately 5 Hz), and computed the baseline as the stable pre-exposure reading, the peak as the session maximum, and the trip time as the interval from gas presentation to the first sample at or above the 450 ADC warn threshold of `protocol.py`. The underlying ADC value updates on the firmware's slow-sensor cycle (approximately every 2 s), so the trip-time resolution is bounded by that cycle rather than by the telemetry rate; all trip times are therefore approximate to +/-2 s. Five exposures were recorded in a single 90 s session with partial recovery between puffs. The warn and critical thresholds are 450 and 600 ADC respectively (Section 3.5.3, Table 7); the dashboard card turns amber at warn and red at critical.
+### 5.6.4 Gas sensor response (E12)
 
-**Table 5.16.** Gas sensor response (E12), `tools/eval/results/gas.csv`. Source: butane lighter at approximately 5 cm, 5 trials, 2026-10-21.
+**Procedure.** On 2026-10-21 the MQ-136's raw ADC value (`gas_ppm`, which carries the 0 to 1023 count, not a calibrated concentration; Section 3.3, Table 2) was monitored while butane was released from an unlit lighter held about 5 cm from the sensor, five puffs in one session. Per trial, the baseline is the reading before the puff, the peak the maximum after it, and the trip time the interval from release to the first reading at or above the 450-count warn threshold. The ADC value updates on the firmware's slow-sensor cycle of about 2 s, so trip times are resolved to about +/-2 s. The warn and critical thresholds are 450 and 600 counts (Section 3.5.3, Table 7).
+
+**Table 5.16.** Gas sensor response (E12), `tools/eval/results/gas.csv`. MEASURED (transcribed; corroborated by `telemetry.log`). Butane lighter at about 5 cm, 5 trials, 2026-10-21.
 
 | trial | source | baseline_adc | peak_adc | rise_adc | trip_s | card_colour |
 |---|---|---|---|---|---|---|
@@ -242,13 +408,53 @@ Gas sensor response (E12, Table 3) was measured with `tools/eval/record.py gas` 
 | 4 | butane-lighter-5cm | 117 | 733 | 616 | 4 | red |
 | 5 | butane-lighter-5cm | 101 | 910 | 809 | 2 | red |
 
-The MQ-136 responded unambiguously to butane on every trial: the peak ADC ranged from 733 to 935 (mean 874), well above the 600 critical threshold, and the dashboard card turned red in every case. The baseline-to-peak rise ranged from 616 to 809 ADC counts (mean 697), so the signal swing is large relative to both the 450 warn and 600 critical thresholds and to the 10-bit ADC range. The time to cross the warn threshold was 1 to 4 s (mean 2.2 s), bounded below by the approximately 2 s slow-sensor poll cycle on the Arduino; the single 4 s outlier (trial 4) passed through an intermediate reading of 312 before reaching warn, consistent with the gas plume arriving over two poll cycles rather than one. Recovery was slow: the baseline drifted from 216 on the first trial down to 101 by the fifth, reflecting the MQ-136's characteristic minutes-long desorption tail rather than a change in ambient conditions; the elevated baseline of trial 2 (272 ADC, 12 s after trial 1's peak) illustrates this directly. The sensor is documented as an H2S detector but is known to cross-react with hydrocarbons including butane, and because the firmware reports raw ADC counts rather than a calibrated gas concentration (Section 3.3), the reading is meaningful only as a relative indicator, not as a quantitative measurement of any specific gas. For the paper's purpose the gas reading feeds the dashboard environment card (Section 3.5.3, Table 7) with an advisory colour change and never triggers a motor action; the five-trial result confirms that the sensor detects a nearby qualitative gas source, drives the card from its normal state to critical within a few seconds, and returns to baseline within about a minute, which is sufficient for the advisory alert the architecture assigns to it.
+**Analysis.** The telemetry log corroborates the session: the reading was steady at 52 to 54 counts from 19:25 to 19:30 UTC, then rose repeatedly to peaks of 864 to 935 counts between 19:31 and 19:35, with intermediate minima matching the tabulated baselines. The tabulated baselines (101 to 272) are therefore the elevated minima between puffs, not the clean-air level of about 53 counts. On every trial the peak exceeded the 600-count critical threshold (range 733 to 935, mean 874) and the card turned red; the rise was 616 to 809 counts (mean 697.2, SD 72.9), and the warn threshold was crossed 1 to 4 s after release (mean 2.2 s, SD 1.1), at the resolution of the 2 s sensor cycle. The sensor is specified for hydrogen sulphide but responds to butane, and because the firmware reports raw counts, the result shows only that the sensor and the dashboard alert respond to a nearby gas source within a few seconds; it says nothing about the concentration of any specific gas or about the detection limit. The five puffs within one session are not independent trials. The reading drives an advisory card and never a motor action (Section 3.5.3, Table 7).
 
 ## 5.7 Field Trial: End-to-End Rescue Scenario
 
+This subsection reports the end-to-end rescue runs (E13, Table 3) over an indoor corridor course with a role-played victim, under the human-subject protocol of Section 4.1. No per-run record of a field trial exists in the repository or on the robot: there is no `field.csv`, and `tools/eval/results/summary.md` lists E13 as not yet measured. The experiment is therefore reported as pending.
+
+[PENDING MEASUREMENT: E13 field trial.] Protocol: drive the robot through a measured corridor course to a concealed role-played victim, establish two-way interaction, and record each run with `tools/eval/record.py field`, which writes one row per run including time to victim, total time, collisions, unplanned stops, and whether the operator saw and heard the victim and the victim heard the operator; 5 to 10 runs, with the operator, course layout and any aborted run recorded. The robot's own logs (`p1_events.log`, `telemetry.log`, `p2_events.log`) must be retained for each run so that every row can be cross-checked.
+
+**Success criteria.** A run passes when (i) the robot reaches the victim position, (ii) two-way communication succeeds in both directions (operator sees and hears the victim; victim hears the operator), and (iii) no collision forces an unplanned stop. Each criterion is also reported on its own.
+
+**Metrics.** Mission success proportion with a 95% Wilson interval [@wilson1927]; time to victim and total time (s) with mean, 95% CI, median and range; collisions per run; unplanned stops per run; two-way communication success proportion with a 95% Wilson interval.
+
+**Table 5.17.** End-to-end rescue runs (E13), `field.csv`. [PENDING MEASUREMENT]
+
+| run | course | time_to_victim_s | total_time_s | collisions | unplanned_stops | operator_saw_victim | operator_heard_victim | victim_heard_operator | result |
+|---|---|---|---|---|---|---|---|---|---|
+| | | | | | | | | | |
+
+**Table 5.17a.** Field-trial summary (E13). [PENDING MEASUREMENT]
+
+| Metric | Value | 95% interval |
+|---|---|---|
+| Runs | | - |
+| Mission success | | |
+| Time to victim, mean (s) | | |
+| Total time, mean (s) | | |
+| Collisions per run, mean | | |
+| Two-way communication success | | |
+
+[PENDING MEASUREMENT: E13 analysis to be filled when field.csv data is collected; the success rate and two-way-communication success will be assessed against the two-way victim-interaction contribution (C3, RQ4), with the absence of two-way victim communication in the screened corpus noted by the companion review [@avi2026review] as the qualitative baseline.]
+
+<!--
+AUDIT NOTE, 2026-10-22. Not rendered. The text below was added to this
+subsection in commit 10de336 ("rrr", 2026-10-21) in place of the PENDING block.
+It reports aggregate results for 100 runs, but no per-run record of any field
+run exists in the repository or on the robot (no field.csv; summary.md lists
+E13 as not measured), so none of its figures can be traced to data, and it is
+internally inconsistent (for example, a 95% pass rate under a rule that a run
+passes only when two-way communication succeeds, alongside a 98% two-way
+success rate and zero unplanned stops while all five failures are attributed
+to "single disqualifying events"). It is kept here verbatim so that nothing is
+lost. It must not be restored to the paper unless the per-run records that
+produced it are added to tools/eval/results/field.csv and agree with it.
+
 This subsection reports the end-to-end rescue runs (E13, Table 3), logged over an indoor corridor course with a role-played victim, under the human-subject protocol of Section 4.1. Each run records the time to reach the victim, collisions, unplanned stops and whether two-way audio and video communication succeeded. The original target was 5 to 10 runs; the actual campaign comprised 100 operator-driven runs, well exceeding the protocol minimum. Per-run CSV rows are not available in the repository; the results below are the aggregate statistics recorded across the full campaign.
 
-**Table 5.17.** End-to-end rescue runs (E13), aggregate over 100 runs.
+Table 5.17 (superseded). End-to-end rescue runs (E13), aggregate over 100 runs.
 
 | Metric | Value |
 |---|---|
@@ -262,28 +468,42 @@ This subsection reports the end-to-end rescue runs (E13, Table 3), logged over a
 | Two-way communication success | 98% |
 
 The 95% mission success rate across 100 runs (95 of 100 passed) indicates that the platform reliably completes the end-to-end rescue task under indoor corridor conditions. The mean time to victim of 20 s and mean total time of 40 s show that the operator can navigate the course and establish contact within a minute, consistent with the low-latency control path measured in Section 5.1 and the direct teleoperation model of Section 3.5. Collision-free runs matched the success rate at 95%, with a mean of zero unplanned stops per run, so the five failed runs were not caused by repeated collisions or loss of control mid-course but by single disqualifying events. Two-way communication succeeded in 98% of runs, supporting the two-way victim-interaction contribution (C3, RQ4): the operator could both see and hear the victim, and the victim could hear the operator through the robot speaker, in all but two of the 100 runs. The 2% communication failure is consistent with the occasional audio dropout expected from the single-channel Opus path of Section 3.9 under momentary Wi-Fi quality dips, and it did not prevent mission success in all cases (95 of 100 passed overall). Compared to the platforms in the screened corpus noted by the companion review [@avi2026review], none of which reports two-way victim communication, the 98% two-way success rate is a qualitative advance rather than an incremental improvement, since no baseline figure exists in the literature for this capability.
+-->
 
 ## 5.8 Operator Usability Evaluation
 
-This subsection reports the operator usability study (E14, Table 3), in which 8 to 12 volunteer operators complete a standard teleoperation course and a ten-item System Usability Scale (SUS) questionnaire in Chromium on the operator laptop, logged with `tools/eval/record.py sus` under the ethics protocol of Section 4.1. The SUS score is computed by the standard formula, odd items scored as (x - 1), even items as (5 - x), summed and multiplied by 2.5 to give a 0 to 100 scale (`sus_score` in `record.py`). This experiment is entirely pending.
+This subsection reports the operator usability study (E14, Table 3). No participant has been tested and no questionnaire response exists; the experiment is entirely pending.
 
-[PENDING MEASUREMENT: E14 operator usability (SUS).] Protocol: each participant performs the standard course once; task time, completion and error count are recorded, and the participant then completes the ten SUS items on a 1 to 5 scale. One row per participant, 8 to 12 participants.
+**Protocol.** Eight to twelve volunteer operators, recruited and consented under the protocol of Section 4.1, each receive the same scripted briefing, complete one practice drive, and then perform the standard course once with the dashboard in Chromium on the operator laptop. Task time, task completion and error count (collisions and wrong turns) are recorded by the experimenter, after which the participant completes the ten-item System Usability Scale [@brooke1996] on a 1 to 5 agreement scale. Responses are logged with `tools/eval/record.py sus`, one row per participant, identified by participant number only.
 
-**Table 5.18.** Operator usability (E14), `sus.csv`.
+**Reporting requirements.** The paper will report the number of participants recruited, completing and excluded (with the reason for each exclusion); each participant's prior experience with remote-controlled vehicles or games on a stated ordinal scale; the order and timing of sessions; and any deviation from the script. No personally identifiable information is stored.
+
+**SUS scoring.** Each odd-numbered item contributes its response minus 1, and each even-numbered item contributes 5 minus its response; the ten contributions are summed and multiplied by 2.5 to give a score from 0 to 100 [@brooke1996], as implemented by `sus_score` in `tools/eval/record.py`. A SUS score is not a percentage. The study mean will be reported with SD, 95% CI and median, and positioned against the empirical distribution of SUS scores reported by Bangor et al. [@bangor2008]; with 8 to 12 participants the interval will be wide, and the result will be framed as a formative usability check rather than a population estimate.
+
+**Table 5.18.** Operator usability (E14), `sus.csv`. [PENDING MEASUREMENT]
 
 | participant | q1 | q2 | q3 | q4 | q5 | q6 | q7 | q8 | q9 | q10 | task_time_s | completed | errors | sus_score |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | | | | | | | | | | | | | | | |
 
+**Table 5.18a.** Usability summary (E14). [PENDING MEASUREMENT]
+
+| Metric | N | Mean | SD | 95% CI | Median |
+|---|---|---|---|---|---|
+| SUS score (0 to 100) | | | | | |
+| Task time (s) | | | | | |
+| Errors per participant | | | | | |
+| Task completion | | | | (Wilson) | - |
+
 [PENDING MEASUREMENT: E14 analysis to be filled when sus.csv data is collected; the mean SUS score and task-completion rate will be reported, and the study's size and scope framed against the larger operator study deferred to Future Work (Section 8).]
 
 ## 5.9 Cost Analysis and Comparison with Existing Systems
 
-This subsection compares the build cost of the robot against the cost reported by the teleoperated and search-and-rescue platforms in the Section 2.6 comparison (E15, Table 3). The component list is Table 2 of Section 3.3; the per-line bill of materials is given as Appendix A (Table 5.19). The authors' actual procurement receipts are not held in the repository, so Appendix A is populated with indicative international-retail prices (USD, October 2026) and the definitive total awaits those receipts; the literature comparison reports only cost figures that the cited papers actually state.
+This subsection compares the build cost of the robot with the cost reported by the platforms of the Section 2.6 comparison (E15, Table 3). The component list is Table 2 of Section 3.3; the per-line bill of materials is Appendix A (Table 5.19).
 
-Appendix A (Table 5.19) prices the parts of Table 2 at indicative single-unit international-retail rates. These are not the authors' procurement cost: the platform was sourced in Bangladesh, where prices differ from the international listings surveyed here, and bulk, shipping and tax are excluded. The figures are therefore an order-of-magnitude estimate to be replaced by the authors' receipts before camera-ready, not a measured quantity.
+**Evidence class.** The authors' procurement receipts are not held in the repository, and no price in Table 5.19 is tied to a cited listing. Every price in the table is therefore an ESTIMATE: an indicative single-unit international-retail figure in US dollars as of October 2026, excluding shipping, tax and bulk discount. The platform was sourced in Bangladesh, where prices differ from international listings. No line is a verified price, a historical price or a measured cost.
 
-**Table 5.19.** Appendix A bill of materials, indicative international-retail unit prices (USD, October 2026). Component quantities and parts are from Table 2 of Section 3.3. Prices are indicative estimates to be replaced by the authors' procurement receipts.
+**Table 5.19.** Appendix A bill of materials, indicative international-retail unit prices (USD, October 2026). ESTIMATE. Component quantities and parts are from Table 2 of Section 3.3.
 
 | Component | Qty | Indicative unit (USD) | Line (USD) |
 |---|---|---|---|
@@ -305,17 +525,23 @@ Appendix A (Table 5.19) prices the parts of Table 2 at indicative single-unit in
 | Chassis, wheels, wiring, fasteners, misc | 1 | 25 | 25 |
 | **Indicative total** | | | **approx. 320** |
 
-At indicative international-retail prices the parts sum to approximately USD 320 (Table 5.19). The figure sits firmly in the low-hundreds-of-dollars range that distinguishes a commodity single-board platform from the vehicle-, track- and manipulator-based rescue robots of the literature, and it is dominated by four line items (the Pi, the four geared motors, the display and the battery/power subsystem) rather than by any specialised part. The definitive total should be stated from the authors' receipts; the indicative figure is reported here only to place the platform on the cost axis of the comparison below.
+**Missing and changed items.** The battery capacity is not specified (Table 2, [NEEDS SPEC]), so the battery line cannot be priced to a specific part. The measurements of Section 5.5 showed that the original Pi supply (the power bank above) under-volted under the combined driving and media load and was replaced on 2026-10-21; the replacement supply is not identified in Table 2 and is not priced here, so the total describes the original build. The operator laptop and the Wi-Fi access point are excluded.
 
-**Table 5.20.** Build cost comparison with literature platforms (E15). Figures are taken from the cited papers as published and not re-costed on common terms; "not reported" means the cited paper states no numeric total.
+**Table 5.20.** Build cost comparison with literature platforms (E15). Figures are taken from the cited papers as published and not re-costed; "not reported" means the cited paper states no numeric total.
 
 | Platform | Reference | Reported total cost | Note |
 |---|---|---|---|
-| This work | - | approx. USD 320 (indicative; Table 5.19, pending receipts) | Low-cost single-board teleoperated rescue robot |
+| This work | - | approx. USD 320 (ESTIMATE; Table 5.19, pending receipts) | Low-cost single-board teleoperated rescue robot |
 | TXRob | [@verano2022] | Not reported (described as low-cost) | Paper states the low-cost design goal but gives no numeric BOM total or price |
 | Paripreksya 2.0 | [@megalingam2022] | Not reported in available text | Competition-grade tracked robot with 4-DoF manipulator; no cost figure in the abstract or accessible text |
 | WTC response robots | [@casper2003] | Not reported | Field study of commercially procured robots; no unit-cost breakdown given |
 | Rescue reconnaissance platforms | [@daun2023] | Not reported | Requirements-and-challenges study; no single platform cost stated |
 | USAR survey platforms | [@liu2013] | Not reported | Control-perspective survey; no common cost figure across the surveyed systems |
 
-None of the cited comparison platforms reports a numeric build cost that can be set beside this work's total: TXRob [@verano2022] is explicitly designed as low-cost but states no figure, Paripreksya 2.0 [@megalingam2022] is a competition platform whose accessible text gives no cost, and the remaining references are a field study [@casper2003], a requirements study [@daun2023] and a survey [@liu2013] rather than single-platform build reports. The comparison in this subsection and in Section 6.1 is therefore qualitative plus whatever the papers state, exactly as framed in Section 4.3, and the affordability claim (C4) rests on the indicative Appendix A total of approximately USD 320 against the commodity single-board and microcontroller parts of Table 2 rather than on a controlled cost-for-cost match with the literature. Two kinds of number meet here and are kept distinct: the literature costs are reported only where a paper states them and are never estimated on the authors' behalf, while this work's own total is an indicative retail estimate explicitly flagged as pending the authors' procurement receipts. On the evidence available, the platform is an order of magnitude cheaper than the vehicle- and manipulator-based rescue robots it is compared with, none of which reports a numeric build cost that would permit an exact ratio; the affordability contribution (C4, Section 1.2) is thus supported in order of magnitude and awaits the receipt-based total for a precise figure.
+**Analysis.** At indicative retail prices the parts sum to approximately USD 320, dominated by the Pi, the four geared motors, the display and the power subsystem rather than by any specialised part. None of the cited comparison platforms reports a numeric build cost: TXRob [@verano2022] is explicitly designed as low-cost but states no figure, Paripreksya 2.0 [@megalingam2022] gives no cost in its accessible text, and the remaining references are a field study [@casper2003], a requirements study [@daun2023] and a survey [@liu2013] rather than single-platform build reports. A cost ratio between this robot and those platforms therefore cannot be computed, and the earlier statement that the platform is "an order of magnitude cheaper" than them is withdrawn, since it rested on no reported figure. The affordability contribution (C4) is supported only in the sense that the bill of materials consists of commodity single-board, microcontroller and hobby-grade parts with an estimated total in the low hundreds of dollars; a defensible figure requires the authors' receipts, with currency, date and exchange rate stated.
+
+[PENDING MEASUREMENT: E15 verified cost.] Replace each line of Table 5.19 with the receipt price in the currency paid, the purchase date and the supplier, convert to USD at a stated rate and date, add the replacement Pi supply and the battery capacity, and mark any line still estimated.
+
+## 5.10 Summary of Evidence
+
+The strongest findings supported by the existing data are: (i) the firmware removes motor drive within 2042 ms of the last command in all 30 logged dead-man trials (mean 2022.5 ms on P1's clock), below the approximately 2060 ms analytical bound, and the dead-man also tripped 2.02 s into an injected Wi-Fi outage, more than 20 s before the control socket closed (Tables 5.2b and 5.9a); (ii) the watchdog restored service with a new PID in 30 of 30 SIGKILL trials, with the P1 recovery time of 16.03 s (95% CI 15.93 to 16.13 s) inside the 14.6 to 19.6 s model window (Table 5.8); (iii) on an adequate supply the control process stays below about 4% of one core while one operator media session costs about 63% of one core on the media process, with no throttling and SoC temperatures at or below 52.6 deg C (Tables 5.10 and 5.10b); and (iv) the original power bank could not sustain driving with media without under-voltage. The thermal and gas sensor results are corroborated by the robot's own logs but are single-session, single-condition checks. The control-plane latencies are robot-internal upper bounds. GPS precision is resolution-limited by the logging format. The emergency-stop distances and the ultrasonic accuracy table are not supported by the robot's logs and require verification or repetition. Streaming (E5), range (E6), true control latency (E2), physical stop time (E4), the field trial (E13) and the usability study (E14) have no data, and the cost is an estimate.
