@@ -59,3 +59,7 @@ is a read-only check.
   text); the verification rests on the report's own recommended-citation
   block as reproduced by two independent secondary sources (PreventionWeb
   and the UCLouvain institutional repository), not a direct read of page 1.
+
+## Update 2026-10-22: avi2026review removed
+
+At the authors' request, avi2026review was deleted from references.bib, citation.md, the paper outline, Section 2 and Section 5.7. Claims that rested only on it (2025-2026 corpus statistics, the review's mode classification of individual papers) were removed; the remaining Section 2 claims are sourced to the primary papers. The entry above is kept as a historical record only.

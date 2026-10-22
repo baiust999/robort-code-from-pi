@@ -35,7 +35,6 @@ Status values: `VERIFIED` = in references.bib, safe to cite.
 | sinha2026 | 2.1 | Prior UGV reconnaissance review organised by research-method type | Sinha, Lee, Singh, Sensors, 2026 | 10.3390/s26051659 | VERIFIED |
 | tong2024 | 2.1 | Earlier UAV/UGV software review of SAR in harsh environments | Tong et al., IEEE IV, 2024 | 10.1109/IV55156.2024.10588685 | VERIFIED |
 | bakzadeh2026 | 2.1, 2.2 | Mine-rescue platform review; field predominantly teleoperated; autonomy excluded from scope | Bakzadeh et al., Front. Robot. AI, 2026 | 10.3389/frobt.2026.1857704 | VERIFIED (authors as initials, per Crossref) |
-| avi2026review | 2.1, 2.2, 2.4, 2.5 | Four-way taxonomy; 12.8% teleoperation; 60-75% vs 7.4% field validation; compute-location split | Avi, Sultana, Sarker, under review, 2026 | none yet | VERIFIED (own manuscript; update DOI before camera-ready) |
 | daun2023 | 2.2 | Requirements for autonomy and assistance functions in ground rescue robots | Daun and von Stryk, IEEE SSRR, 2023 | 10.1109/SSRR59696.2023.10499930 | VERIFIED |
 | megalingam2022 | 2.2 | Low-cost SAR robot platform evaluated at WRS 2020 | Megalingam et al., Advanced Robotics, 2022 | 10.1080/01691864.2022.2117575 | VERIFIED |
 | verano2022 | 2.2 | Low-cost teleoperated explorer robot | Verano et al., IJACSA, 2022 | 10.14569/IJACSA.2022.01307104 | VERIFIED |
@@ -71,7 +70,6 @@ master table once its entry is verified and added to references.bib.)
 | 3.9.1, 3.9 (Fig 17), Table 12 | Video "encoded ... as VP8 or H.264" | RFC 6386 (VP8); ITU-T Rec. H.264 | UNVERIFIED |
 | 3.8 | "permissive CORS" / cross-origin request handling | WHATWG Fetch Standard (CORS) | UNVERIFIED |
 | 3.10 | "equirectangular approximation ... against the haversine formula" | Standard geodesy reference (e.g. Sinnott 1984, haversine) | UNVERIFIED |
-| 2.4 | Extending "no two-way victim communication" from the 5 teleoperated systems (verified from abstracts) to all 39 corpus papers | avi2026review extraction table, or primary-paper check of all 39 | UNVERIFIED |
 | 2.6, Table 2.1 | Every "NR" cell in Table 2.1 (based on abstracts and the review summary, not full text); liu2026hexapod validation cell | Full text of each tabulated paper | UNVERIFIED |
 
 ## Software / tools (footnote or cite depending on venue policy)
