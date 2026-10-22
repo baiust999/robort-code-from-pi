@@ -34,7 +34,7 @@ The controller key the drive probes need lives in a root-only drop-in:
 | `faultinject.py run` | 5.4 | F3-F5 | Kills a supervised process and times the automatic recovery. |
 | `faultinject.py watch` | 5.4 | F1-F2, F6-F10 | Times hand-injected faults by logging health transitions at 10 Hz. |
 | `reslog.py` | 5.5 | - | CPU, memory, temperature, throttling, throughput per load condition. |
-| `record.py ultrasonic/thermal/gas` | 5.6 | H11-H13 | Sensor error against reference instruments. |
+| `record.py ultrasonic/dht11/gas` | 5.6 | H11-H13 | Sensor error against reference instruments. |
 | `gpsdrift.py` | 5.6 | H14, I17c | Static GPS scatter: mean, SD, RMS, CEP50, CEP95. |
 | `record.py field` | 5.7 | section 8 | One row per complete rescue run. |
 | `record.py sus` | 5.8 | - | Per-participant SUS items and task metrics; scores them. |
@@ -100,7 +100,7 @@ describe a throttled Pi and the condition has to be re-run.
 Sensors, against reference instruments:
 
     ./record.py ultrasonic true_cm=20 reading_cm=21      # 10 readings at each of 5 distances
-    ./record.py thermal ref_c=28.4 sensor_c=29.1 ref_rh=62 sensor_rh=58
+    ./record.py dht11 ref_c=28.4 sensor_c=29.1 ref_rh=62 sensor_rh=58
     ./record.py gas source=unlit-lighter-20cm baseline_adc=310 peak_adc=790 trip_s=4.2
 
 ### Day 2: fault injection

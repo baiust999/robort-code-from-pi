@@ -32,7 +32,7 @@ This section reports the measurements that validate the design of Section 3, fol
 | E8 | Resource utilisation | MEASURED | `resources.csv`, 3608 rows | Machine-logged; one condition contains two overlapping logger runs (Table 5.10a) |
 | E9 | GPS static precision and track | MEASURED, resolution-limited | `gps_static.csv` (1 summary row); `gps_track_live_2026-10-22.geojson` | Recomputed exactly from `telemetry.log` (Table 5.13a); track read from P1 |
 | E10 | Ultrasonic range | [VERIFICATION REQUIRED] | `ultrasonic.csv`, 50 rows | Contradicted by `telemetry.log` (Section 5.6) |
-| E11 | Temperature and humidity | MEASURED (transcribed) for sensor values; [VERIFICATION REQUIRED] for the error figures | `thermal.csv`, 5 rows | Sensor values agree with `telemetry.log`; `error_c` is exactly 0.0 on every trial (Section 5.6.3) |
+| E11 | Temperature and humidity (DHT11) | MEASURED (transcribed) for sensor values; [VERIFICATION REQUIRED] for the error figures | `dht11_environmental.csv`, 5 rows | Sensor values agree with `telemetry.log`; `error_c` is exactly 0.0 on every trial (Section 5.6.3) |
 | E12 | Gas sensor response | MEASURED (transcribed) | `gas.csv`, 5 rows | Peaks and baselines visible in `telemetry.log` |
 | E13 | Field trial | [PENDING MEASUREMENT] | No `field.csv` | No per-run record exists (Section 5.7) |
 | E14 | Operator usability (SUS) | [PENDING MEASUREMENT] | No `sus.csv` | - |
@@ -475,7 +475,7 @@ A second, independent irregularity in the entered data itself, not only in its a
 
 **Procedure.** On 2026-10-21 the DHT11 reading was compared with a co-located reference thermometer-hygrometer at indoor ambient conditions; five trials were entered at one set-point. The error is sensor minus reference. The reference instrument's model and its own accuracy were not recorded.
 
-**Table 5.15.** Temperature and humidity error (E11), `tools/eval/results/thermal.csv`. MEASURED (transcribed; sensor values corroborated by `telemetry.log`); [VERIFICATION REQUIRED] for the `error_c` column (see below). Single ambient set-point, 5 trials.
+**Table 5.15.** Temperature and humidity error (E11, DHT11 sensor), `tools/eval/results/dht11_environmental.csv`. MEASURED (transcribed; sensor values corroborated by `telemetry.log`); [VERIFICATION REQUIRED] for the `error_c` column (see below). Single ambient set-point, 5 trials.
 
 | trial | ref_c | sensor_c | ref_rh | sensor_rh | error_c | error_rh |
 |---|---|---|---|---|---|---|

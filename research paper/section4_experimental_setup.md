@@ -32,7 +32,7 @@ Table 3 maps the fifteen experiments (E1 to E15) to the tools in `tools/eval/`, 
 | E8 | Resource utilisation | Indoor lab | 4 conditions x 30 min | reslog.py | CPU (% of one core), memory (MB), SoC temperature (C), throttle flags | 5.5 |
 | E9 | Sensor accuracy: GPS | Outdoor | 30 min static | gpsdrift.py | Radial error from centroid: mean, CEP50, CEP95 (m) | 5.6 |
 | E10 | Sensor accuracy: ultrasonic | Indoor lab | 10 distances x 5 | record.py ultrasonic | True distance - reading (cm) | 5.6 |
-| E11 | Sensor accuracy: thermal | Indoor lab | 5 set-points x 5 | record.py thermal | Reference - sensor (degC, %RH) | 5.6 |
+| E11 | Sensor accuracy: temperature/humidity (DHT11) | Indoor lab | 5 set-points x 5 | record.py dht11 | Reference - sensor (degC, %RH) | 5.6 |
 | E12 | Sensor accuracy: gas | Indoor lab | Qualitative | record.py gas | Baseline vs peak ADC counts, trip time (s) | 5.6 |
 | E13 | Field trial | Indoor course | 5-10 runs | record.py field | Time to victim (s), collisions, two-way comms success | 5.7 |
 | E14 | Operator usability (SUS) | Indoor | 8-12 operators | record.py sus | SUS score (0-100), task time (s), task success | 5.8 |

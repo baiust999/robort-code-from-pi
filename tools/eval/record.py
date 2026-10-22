@@ -104,9 +104,9 @@ SHEETS: dict[str, dict] = {
         "required": ("true_cm", "reading_cm"),
         "derived": {"error_cm": difference("reading_cm", "true_cm")},
     },
-    "thermal": {
-        "file": "thermal.csv",
-        "about": "5.6 DHT vs reference thermometer/hygrometer (test H12)",
+    "dht11": {
+        "file": "dht11_environmental.csv",
+        "about": "5.6 DHT11 ambient temperature/humidity vs reference thermometer/hygrometer (test H12)",
         "index": "trial",
         "group": (),
         "fields": {"ref_c": "", "sensor_c": "", "ref_rh": "", "sensor_rh": "",

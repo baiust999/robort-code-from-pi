@@ -98,8 +98,8 @@ REPORTS: tuple[dict, ...] = (
         "metrics": [("error_cm", "error (cm)"), ("reading_cm", "reading (cm)")],
     },
     {
-        "section": "5.6", "file": "thermal.csv",
-        "title": "Temperature and humidity error vs reference instrument",
+        "section": "5.6", "file": "dht11_environmental.csv",
+        "title": "Temperature and humidity error vs reference instrument (DHT11)",
         "kind": "agg", "group": [],
         "metrics": [("error_c", "temp error (C)"), ("error_rh", "humidity error (%RH)")],
     },

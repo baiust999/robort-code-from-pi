@@ -56,13 +56,104 @@ Source: `faults.csv`, 30 raw rows.
 
 ### Manually injected faults: health transitions
 
-Source: `fault_watch.csv`, 3 raw rows.
+Source: `fault_watch.csv`, 94 raw rows.
 
 | label | t_s | field | from_value | to_value | held_s |
 |---|---|---|---|---|---|
 | F6-arduino-unplug | 4.70 | serial_connected | 1 | 0 | 4.70 |
 | F7-wifi-drop | 26.85 | ws_clients | 1 | 0 | 26.85 |
 | F7-wifi-drop | 28.76 | ws_clients | 0 | 1 | 1.91 |
+| F9-gps-loss | 65.23 | ws_clients | 1 | 0 | 65.23 |
+| F9-gps-loss | 65.23 | active_streams | 1 | 0 | 65.23 |
+| F9-gps-loss | 66.09 | ws_clients | 0 | 1 | 0.87 |
+| F9-gps-loss | 66.34 | active_streams | 0 | 1 | 1.11 |
+| F9-gps-loss | 317.58 | active_streams | 1 | 0 | 251.24 |
+| F9-gps-loss | 318.45 | active_streams | 0 | 1 | 0.87 |
+| F9-gps-loss | 478.22 | active_streams | 1 | 0 | 159.78 |
+| F9-gps-loss | 479.06 | active_streams | 0 | 1 | 0.83 |
+| F9-gps-loss | 834.42 | active_streams | 1 | 0 | 355.36 |
+| F9-gps-loss | 834.59 | active_streams | 0 | 1 | 0.17 |
+| F9-gps-loss | 1306.57 | gps_fix | 0 | 1 | 1306.57 |
+| F9-gps-loss | 1316.48 | gps_fix | 1 | 0 | 9.91 |
+| F9-gps-loss | 1322.88 | gps_fix | 0 | 1 | 6.4 |
+| F9-gps-loss | 1349.57 | gps_fix | 1 | 0 | 26.69 |
+| F9-gps-loss | 1355.59 | gps_fix | 0 | 1 | 6.02 |
+| F9-gps-loss | 1360.59 | gps_fix | 1 | 0 | 5.0 |
+| F9-gps-loss | 1368.6 | gps_fix | 0 | 1 | 8.01 |
+| F9-gps-loss | 1413.6 | gps_fix | 1 | 0 | 45.0 |
+| F9-gps-loss | 1509.55 | gps_fix | 0 | 1 | 95.95 |
+| F9-gps-loss | 1546.82 | gps_fix | 1 | 0 | 37.27 |
+| F9-gps-loss | 1551.56 | gps_fix | 0 | 1 | 4.73 |
+| F9-gps-loss | 1578.61 | gps_fix | 1 | 0 | 27.06 |
+| F9-gps-loss | 1592.64 | gps_fix | 0 | 1 | 14.03 |
+| F9-gps-loss | 1606.56 | gps_fix | 1 | 0 | 13.92 |
+| F9-gps-loss | 1610.8 | gps_fix | 0 | 1 | 4.24 |
+| F9-gps-loss-run2 | 0.39 | gps_fix | 0 | 1 | 0.39 |
+| F9-gps-loss-run2 | 1.78 | gps_fix | 1 | 0 | 1.39 |
+| F9-gps-loss-run2 | 16.43 | gps_fix | 0 | 1 | 14.65 |
+| F9-gps-loss-run2 | 21.31 | gps_fix | 1 | 0 | 4.89 |
+| F9-gps-loss-run2 | 27.45 | gps_fix | 0 | 1 | 6.13 |
+| F9-gps-loss-run2 | 42.65 | gps_fix | 1 | 0 | 15.2 |
+| F9-gps-loss-run2 | 49.39 | gps_fix | 0 | 1 | 6.74 |
+| F9-gps-loss-run2 | 90.75 | gps_fix | 1 | 0 | 41.37 |
+| F9-gps-loss-run2 | 95.39 | gps_fix | 0 | 1 | 4.64 |
+| F9-gps-loss-run2 | 120.83 | gps_fix | 1 | 0 | 25.44 |
+| F9-gps-loss-run2 | 125.46 | gps_fix | 0 | 1 | 4.63 |
+| F9-gps-loss-run2 | 148.9 | gps_fix | 1 | 0 | 23.44 |
+| F9-gps-loss-run2 | 153.66 | gps_fix | 0 | 1 | 4.75 |
+| F9-gps-loss-run2 | 185.33 | gps_fix | 1 | 0 | 31.68 |
+| F9-gps-loss-run2 | 190.34 | gps_fix | 0 | 1 | 5.01 |
+| F9-gps-loss-run2 | 191.35 | gps_fix | 1 | 0 | 1.01 |
+| F9-gps-loss-run2 | 194.35 | gps_fix | 0 | 1 | 3.01 |
+| F9-gps-loss-run2 | 233.32 | gps_fix | 1 | 0 | 38.97 |
+| F9-gps-loss-run2 | 238.34 | gps_fix | 0 | 1 | 5.01 |
+| F9-gps-loss-run2 | 249.36 | gps_fix | 1 | 0 | 11.03 |
+| F9-gps-loss-run2 | 261.39 | gps_fix | 0 | 1 | 12.03 |
+| F9-gps-loss-run2 | 307.29 | gps_fix | 1 | 0 | 45.89 |
+| F9-gps-loss-run2 | 311.54 | gps_fix | 0 | 1 | 4.25 |
+| F9-gps-loss-run2 | 327.83 | gps_fix | 1 | 0 | 16.28 |
+| F9-gps-loss-run2 | 332.46 | gps_fix | 0 | 1 | 4.63 |
+| F9-gps-loss-run2 | 351.54 | gps_fix | 1 | 0 | 19.08 |
+| F9-gps-loss-run2 | 355.52 | gps_fix | 0 | 1 | 3.98 |
+| F9-gps-loss-run2 | 465.38 | gps_fix | 1 | 0 | 109.86 |
+| F9-gps-loss-run2 | 469.53 | gps_fix | 0 | 1 | 4.16 |
+| F9-gps-loss-run2 | 488.54 | gps_fix | 1 | 0 | 19.01 |
+| F9-gps-loss-run2 | 493.43 | gps_fix | 0 | 1 | 4.89 |
+| F9-gps-loss-run2 | 512.34 | gps_fix | 1 | 0 | 18.91 |
+| F9-gps-loss-run2 | 516.51 | gps_fix | 0 | 1 | 4.17 |
+| F9-gps-loss-run2 | 1234.33 | gps_fix | 1 | 0 | 717.82 |
+| F9-gps-loss-run2 | 1244.35 | gps_fix | 0 | 1 | 10.02 |
+| F9-gps-loss-run2 | 1246.36 | gps_fix | 1 | 0 | 2.01 |
+| F9-gps-loss-run2 | 1250.37 | gps_fix | 0 | 1 | 4.01 |
+| F9-indoor | 45.84 | gps_fix | 1 | 0 | 45.84 |
+| F9-indoor | 136.81 | gps_fix | 0 | 1 | 90.97 |
+| F9-indoor | 157.76 | gps_fix | 1 | 0 | 20.95 |
+| F9-indoor | 173.79 | gps_fix | 0 | 1 | 16.03 |
+| F9-indoor | 198.97 | gps_fix | 1 | 0 | 25.18 |
+| F9-indoor | 216.88 | gps_fix | 0 | 1 | 17.91 |
+| F9-indoor | 330.76 | gps_fix | 1 | 0 | 113.88 |
+| F9-indoor | 331.89 | gps_fix | 0 | 1 | 1.13 |
+| F9-indoor | 333.77 | gps_fix | 1 | 0 | 1.88 |
+| F9-indoor | 415.86 | gps_fix | 0 | 1 | 82.09 |
+| F9-indoor | 954.76 | gps_fix | 1 | 0 | 538.89 |
+| F9-indoor | 956.88 | gps_fix | 0 | 1 | 2.13 |
+| F9-indoor | 958.77 | gps_fix | 1 | 0 | 1.88 |
+| F9-indoor | 3781.88 | p1_up | 1 | 0 | 3781.88 |
+| F9-indoor | 3781.88 | serial_connected | 1 |  | 3781.88 |
+| F9-indoor | 3781.88 | gps_fix | 0 |  | 2823.11 |
+| F9-indoor | 3781.88 | ws_clients | 1 |  | 3781.88 |
+| F9-indoor | 3782.23 | p1_up | 0 | 1 | 0.35 |
+| F9-indoor | 3782.23 | serial_connected |  | 1 | 0.35 |
+| F9-indoor | 3782.23 | gps_fix |  | 0 | 0.35 |
+| F9-indoor | 3782.23 | ws_clients |  | 1 | 0.35 |
+| F9-indoor | 3790.64 | p1_up | 1 | 0 | 8.41 |
+| F9-indoor | 3790.64 | serial_connected | 1 |  | 8.41 |
+| F9-indoor | 3790.64 | gps_fix | 0 |  | 8.41 |
+| F9-indoor | 3790.64 | ws_clients | 1 |  | 8.41 |
+| F9-indoor | 3791.42 | p1_up | 0 | 1 | 0.78 |
+| F9-indoor | 3791.42 | serial_connected |  | 1 | 0.78 |
+| F9-indoor | 3791.42 | gps_fix |  | 0 | 0.78 |
+| F9-indoor | 3791.42 | ws_clients |  | 1 | 0.78 |
 
 ## Section 5.5
 
@@ -148,9 +239,9 @@ Source: `ultrasonic.csv`, 50 raw rows.
 | 75 | error (cm) | 10 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 |
 | 75 | reading (cm) | 10 | 75.0 | 0.0 | 75.0 | 75.0 | 75.0 | 75.0 |
 
-### Temperature and humidity error vs reference instrument
+### Temperature and humidity error vs reference instrument (DHT11)
 
-Source: `thermal.csv`, 5 raw rows.
+Source: `dht11_environmental.csv`, 5 raw rows.
 
 | measure | n | mean | sd | min | max | median | p95 |
 |---|---|---|---|---|---|---|---|
