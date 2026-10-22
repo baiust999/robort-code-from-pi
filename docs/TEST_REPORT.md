@@ -63,6 +63,18 @@ turns the CSVs into the aggregate tables the paper's Section 5 needs.
 | `test_telemetry_log.py` | 5 | The telemetry CSV starts with its column header; the header is not duplicated when the log is reopened; a logrotate copytruncate (which empties the file under the open handle) causes the header to be re-emitted, so a rotated log describes its own columns; rows stay aligned with that header; a disabled log writes nothing. | PASS |
 | **Total** | **116** | | **116 / 116 PASS** |
 
+**Addendum, 2026-10-22.** `test_ice_config.py` (5 tests: ICE config with no
+STUN server, with a configured STUN server, no TURN relay in local mode x2
+parametrised, per-client ICE rate limiting) was added by a later commit the
+same morning the table above was recorded and was never added as a 13th row.
+Re-running the full suite on 2026-10-22 (`cd pi && /home/pi/robot/venv/bin/python
+-m pytest`, same hardware, full dependency environment) gives **121 passed,
+0 failed (3.5 s)**: the 116 tests above, all still passing, plus these 5.
+See `research-analysis/test_inventory.md` for the exact commands, the
+environment-dependency explanation for an earlier, incomplete-venv rerun that
+showed fewer passes, and the raw output. The 116-test, 2026-10-08 result above
+is left as originally recorded.
+
 **Limitation:** these tests use simulated hardware. They prove the software
 logic, not the real motors, sensors or radio link, which are covered in the
 sections below.
