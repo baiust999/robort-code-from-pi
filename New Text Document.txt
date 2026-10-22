@@ -1,0 +1,470 @@
+# Final Comprehensive Section 5 Audit — IEEE Access Research Paper
+
+## Project and objective
+
+My repository is located at:
+
+`/home/pi/robot`
+
+My research paper is titled:
+
+**A Low-Cost, Fail-Safe Teleoperated Rescue Robot with Two-Way Victim Interaction on Edge Hardware: Design, Implementation and Field Evaluation**
+
+The paper targets IEEE Access.
+
+Your task is to perform a final, evidence-based audit of the complete current Section 5 diff and its related bibliography changes. Determine whether the current edits are scientifically defensible, numerically consistent, properly referenced, and safe to freeze.
+
+This is a review-and-correction task, not a request to rewrite the paper.
+
+**Audit first. Make no changes if the current work is correct. If you identify a demonstrable error, make the smallest necessary correction and validate it.**
+
+I will not conduct additional physical robot experiments for this task.
+
+---
+
+## 1. Read the project instructions before starting
+
+Read the relevant project memory and instructions:
+
+- `/home/pi/.claude/projects/-home-pi-robot/memory/MEMORY.md`
+- `research-paper-q1-project.md`
+- `e8-resource-supply-blocker.md`
+- `live-service-runs-from-repo.md`
+- `research-paper-ascii-only.md`
+- `mermaid-figures-no-back-edges.md`
+
+Locate the actual files if their paths differ.
+
+Inspect the current repository state before doing anything:
+
+1. Run `git status --short`.
+2. Inspect the complete current diff.
+3. Identify all changed and untracked files.
+4. Inspect the recent commits only where necessary to understand the current changes.
+5. Preserve all existing uncommitted changes.
+
+Do not assume the previous session's reports accurately describe the current state. Confirm important findings against the actual repository.
+
+## 2. Identify the complete scope of the audit
+
+Locate and inspect the current versions of:
+
+- `section5_results.md`
+- `references.bib`
+- `research paper.md`
+- `section3_methodology.md`
+- `section4_experimental_setup.md`
+- `tools/eval/section5_stats.py`
+- `tools/eval/results/section5_stats.md`
+- `tools/eval/results/log_excerpts/`
+- Relevant CSV files, especially `ultrasonic.csv` and `fault_watch.csv`
+- `tools/eval/results/gps_track_live_2026-10-22.geojson`
+- Source files referenced by Section 5, including:
+  - `arduino/config.h`
+  - `arduino/motors.cpp`
+  - `pi/common/protocol.py`
+  - `tools/eval/record.py`
+  - `pi/p1_control/gps_reader.py`
+  - Relevant code in `main.py`
+
+Search for the real paths rather than assuming the listed paths are correct.
+
+Do not inspect every unrelated application file. Follow a claim to its source only when necessary to establish whether the claim is supported.
+
+Review the complete Section 5 diff, not just the last correction. Read surrounding unchanged paragraphs where needed to evaluate consistency.
+
+## 3. Audit every changed claim
+
+For every substantive change in Section 5, answer these questions:
+
+1. What exactly does the paper claim?
+2. What source supports that claim?
+3. Is that source authoritative and directly relevant?
+4. Can the result be reproduced from the available evidence?
+5. Does the wording go beyond what the evidence establishes?
+6. Is the result correctly classified as measured, derived, published reference, estimate, simulation, or pending measurement?
+7. Does the changed text contradict another section, table, figure, equation, or conclusion?
+8. Is the change necessary and scientifically useful?
+
+Classify each substantive diff item as:
+
+- `PASS` — supported and correctly expressed.
+- `CORRECTION REQUIRED` — a demonstrable error or unsupported claim needs correction.
+- `UNCERTAIN` — the available evidence does not establish the claim.
+
+Do not classify a claim as verified simply because it appeared in a previous report.
+
+## 4. Review the most important technical issues
+
+### 4.1 E3 — Kinematic model
+
+Inspect the kinematic equations, documented parameters, relevant source code, and existing E3 measurements.
+
+Verify the values and calculations using the actual source files, including:
+
+- `MOTOR_RAMP_STEP`
+- `MOTOR_SERVICE_PERIOD_MS`
+- `ULTRASONIC_MAX_CM`
+- `ULTRASONIC_TIMEOUT_US`
+- `MAX_PWM`
+- `Motors::rampToward`
+- Relevant motor and wheel specifications
+
+Check the reported ramp duration and speed calculation independently.
+
+Clearly distinguish three questions:
+
+1. Is the mathematical model correctly calculated from its documented assumptions and parameters?
+2. Do the existing measurements agree with the model?
+3. Has the physical behaviour been experimentally validated?
+
+Analytical verification does not prove physical performance. If E3 measurements contradict the model, preserve and explain the contradiction.
+
+Keep E4 marked `[PENDING MEASUREMENT]` if physical wheel-stop validation has not been performed.
+
+Do not modify the underlying measurements to make them agree with the model.
+
+### 4.2 E10 — Ultrasonic telemetry consistency
+
+This is a particularly important research-integrity issue.
+
+The previous audit reported:
+
+- 50 rows in `ultrasonic.csv`.
+- `reading_cm` equals `true_cm` in all 50 rows.
+- 40 entries reportedly do not match retained telemetry.
+- The evaluation script accepts explicit operator-supplied values for these fields.
+
+Independently verify these claims.
+
+Inspect:
+
+1. The actual CSV values and row count.
+2. The definitions and meaning of `reading_cm` and `true_cm`.
+3. `tools/eval/record.py`, particularly `SHEETS["ultrasonic"]`.
+4. The data-entry and logging logic.
+5. Relevant timestamps and retained telemetry.
+6. Any available history or records that clarify how the values were entered.
+
+Determine whether `true_cm` is a tape-measured reference distance, an independently recorded ground-truth measurement, or something else. Do not assume the column name alone establishes its provenance.
+
+If both columns are populated by operator-supplied arguments, explain what this proves and what it does not prove.
+
+Identical values in all 50 rows may be evidence of a data-integrity concern, but they do not independently prove fabrication, operator intent, or the exact mechanism that produced the pattern.
+
+Use appropriately qualified language, such as:
+
+- The fields match exactly across all retained rows.
+- The pattern is consistent with the same values having been entered in both fields.
+- The retained records do not independently establish the provenance of the reference values.
+
+Use stronger wording only if the evidence supports it.
+
+Do not invent a sensor accuracy figure. Do not use a generic HC-SR04 specification to explain the discrepancy unless a verified source and appropriate measurement conditions justify that explanation.
+
+Do not silently delete anomalous records or describe the issue as resolved when its cause remains unknown.
+
+Keep `[VERIFICATION REQUIRED]` if the underlying measurement provenance cannot be established.
+
+### 4.3 GPS drift and filtering
+
+Inspect:
+
+- `pi/p1_control/gps_reader.py`
+- Relevant code in `main.py`
+- The actual GPS GeoJSON track
+- The relevant paper paragraphs and Table 5.13b
+
+Verify the distinction between:
+
+- The raw or instantaneous GPS position returned by the snapshot path.
+- The separately filtered breadcrumb track returned through `/api/gps-track`.
+
+Recalculate the reported 1,609 m cumulative path if possible.
+
+Check the actual number of track points and the distance calculation method.
+
+Explain why cumulative path length calculated from noisy positions while the robot is stationary is not evidence of actual robot movement.
+
+Determine whether the 10 m filter affects only the breadcrumb track or also the live position telemetry.
+
+Ensure that the paper does not imply that the filter removes GPS drift from all outputs if it only filters one code path.
+
+Do not claim that the filter is effective beyond what the code and available evidence demonstrate.
+
+### 4.4 Fault-watch events and dead-man timer
+
+Inspect the preserved fault-watch evidence and relevant code.
+
+Verify the reported:
+
+- 1.988-second communication stall.
+- 2.080-second communication stall.
+- Documented 2,000 ms dead-man timer.
+- Event ordering and available heartbeat timestamps.
+- Reported dead-man trip or non-trip behaviour.
+
+Check the time calculations against the original timestamps.
+
+Explain the results without treating two events as sufficient evidence for general system reliability or a guaranteed failure probability.
+
+If timestamp resolution, event logging, or missing records limit the conclusion, state that limitation.
+
+### 4.5 DHT11 specification
+
+Inspect the exact Adafruit documentation used by the paper and the corresponding `references.bib` entry.
+
+Verify that the cited DHT11-specific specifications support the wording in Section 5, including:
+
+- Humidity measurement range and stated accuracy.
+- Temperature measurement range and stated accuracy.
+- Sampling-rate limitation, if mentioned.
+
+Do not accidentally attribute DHT22 or AM2302 specifications to the DHT11.
+
+Identify the source accurately as distributor-hosted documentation. Do not describe it as an official Aosong document.
+
+If the source does not support an exact claim, correct the claim or retain `[CITATION NEEDED]`.
+
+### 4.6 Battery capacity
+
+Inspect the project documentation and relevant paper statements.
+
+Confirm whether an actual battery capacity in Ah or mAh is documented.
+
+Do not infer capacity from nominal voltage, cell count, runtime, or pack configuration alone.
+
+Retain `[NEEDS SPEC]` unless reliable documentation establishes the actual capacity.
+
+### 4.7 Other Section 5 results
+
+The previous targeted audit did not fully re-verify all other experiments. Check the changed claims and spot-check important underlying evidence for E1, E7, E8, E9, E11, E12, and other relevant results.
+
+Prioritize claims affected by the current diff or claims that support important conclusions.
+
+For each numerical claim checked, record whether it was:
+
+- Fully verified from raw evidence.
+- Recalculated from verified inputs.
+- Spot-checked.
+- Not checked.
+
+Do not describe spot-checking as a complete numerical audit.
+
+Do not spend excessive time on unrelated files or background material. Focus on evidence that could materially affect the correctness of Section 5.
+
+---
+
+## 5. Audit the complete statistical and numerical consistency
+
+Inspect all Section 5 tables and relevant equations, not just the latest additions.
+
+Where feasible, verify:
+
+- Table entries against their source data.
+- Sample counts.
+- Mean, standard deviation, minimum, maximum, and other reported statistics.
+- Rounding and significant figures.
+- Units and conversions.
+- Formula assumptions.
+- Percentages and ratios.
+- Table captions and evidence classifications.
+- References to figures, tables, equations, and subsections.
+- Consistency between the results and the paper's stated methodology.
+
+Run `tools/eval/section5_stats.py` only if safe and non-disruptive.
+
+Confirm whether its output matches the stored `section5_stats.md` byte-for-byte.
+
+If the script writes to the working tree, understand its behaviour before executing it. Do not overwrite original evidence or the stored output without justification.
+
+Do not claim that every table was verified if only a subset was recalculated.
+
+## 6. Audit references and cross-references
+
+Inspect `references.bib` and the paper's citations.
+
+Verify:
+
+1. Every citation key used in Section 5 resolves.
+2. Every newly added bibliography entry is actually cited.
+3. No duplicate citation keys exist.
+4. Bibliographic details are supported by reliable sources.
+5. DOI and URL details are correct where checked.
+6. Citations support the claims attached to them.
+7. Table, figure, equation, and section references point to existing items.
+8. References to Sections 3 and 4 agree with their current contents.
+9. The new `adafruit_dht11` reference is used appropriately and exactly where needed.
+
+Do not invent missing authors, DOIs, dates, page numbers, or venue details.
+
+If a bibliographic detail cannot be verified, preserve uncertainty rather than inventing a correction.
+
+## 7. Evidence classifications and scientific language
+
+Check whether Section 5 consistently distinguishes:
+
+- `MEASURED` — directly observed and traceable experimental evidence.
+- `DERIVED` — calculations based on verified measurements or documented constants.
+- `PUBLISHED REFERENCE` — values obtained from verified external sources.
+- `ESTIMATE` — theoretical predictions based on explicit assumptions.
+- `SIMULATION` — reproducible computational results.
+- `PENDING MEASUREMENT` — evidence requiring unavailable experimental work.
+
+Do not convert an estimate into a measured result.
+
+Do not present simulated results as proof of physical performance.
+
+Do not invent data to complete tables.
+
+Retain appropriate markers:
+
+- `[PENDING MEASUREMENT]`
+- `[VERIFICATION REQUIRED]`
+- `[CITATION NEEDED]`
+- `[NEEDS SPEC]`
+
+Remove a marker only if the relevant issue has genuinely been resolved by traceable evidence.
+
+If a result remains uncertain, explain the uncertainty directly in the paper where necessary.
+
+## 8. Research integrity and writing quality
+
+Read the changed paragraphs in context.
+
+Check that they are clear, concise, technically accurate, and appropriate for an engineering research paper.
+
+Look for:
+
+- Unsupported causal claims.
+- Overgeneralization from small samples.
+- Claims of safety or reliability stronger than the evidence permits.
+- Confusion between analytical and experimental validation.
+- Confusion between calculated GPS distance and actual movement.
+- Ambiguous descriptions of data provenance.
+- Contradictions with unchanged methodology or experimental setup.
+- Repetitive wording that adds no scientific value.
+
+Preserve inconvenient results and negative findings.
+
+Do not strengthen claims merely to make the paper sound more impressive.
+
+Do not claim that the paper is guaranteed to be accepted by IEEE Access.
+
+## 9. Strict protection of the live robot and original evidence
+
+This audit is read-only by default.
+
+Do not:
+
+- Conduct physical experiments.
+- Ask me to collect new measurements.
+- Reboot the Raspberry Pi.
+- Interrupt live robot sessions or services.
+- Run power-intensive tests.
+- Modify live robot software or service configuration.
+- Modify hardware settings.
+- Edit original measured CSVs or original logs.
+- Commit or push changes.
+
+The live log `var/log/p1_events.log` may continue growing because the robot is running. Do not stop the service or mistake normal log growth for a modification made by this audit.
+
+Use the frozen log excerpts as the evidence source where appropriate.
+
+Preserve the repository's ASCII-only research-paper rule.
+
+Before running any command that might write files, inspect its effects.
+
+## 10. Editing policy
+
+Follow this order:
+
+1. Inspect the current status and diff.
+2. Audit the full Section 5 diff.
+3. Verify the highest-impact claims against source evidence.
+4. Record findings before making corrections.
+5. If everything is correct, make no changes.
+6. If a demonstrable error exists, make only the smallest necessary correction.
+7. Reinspect the resulting diff.
+8. Rerun only the relevant safe validation checks.
+
+Do not rewrite correct paragraphs for stylistic preference.
+
+Do not expand the task into a general paper rewrite.
+
+Do not alter unrelated files.
+
+Do not commit or push.
+
+## 11. Final validation checklist
+
+At the end, verify as applicable:
+
+- [ ] The current Git diff has been inspected completely.
+- [ ] Each substantive diff item has a PASS, CORRECTION REQUIRED, or UNCERTAIN status.
+- [ ] E3's analytical and physical-validation claims are correctly distinguished.
+- [ ] E10's identical values and uncertain provenance are accurately described.
+- [ ] GPS path length is distinguished from actual robot movement.
+- [ ] Fault-watch timestamps and dead-man behaviour are supported by retained evidence.
+- [ ] The DHT11 source supports the specifications attributed to it.
+- [ ] Battery capacity is not asserted without evidence.
+- [ ] Important changed numerical claims have been checked.
+- [ ] Any spot-checking is clearly distinguished from full verification.
+- [ ] Citation keys and bibliography entries are consistent.
+- [ ] Table, figure, equation, and section cross-references are valid.
+- [ ] Evidence classifications are consistent.
+- [ ] The ASCII-only rule is satisfied.
+- [ ] The statistics script reproduces the stored output, if safely checked.
+- [ ] Original CSVs and frozen logs remain unchanged.
+- [ ] Live software, service configuration, and hardware settings remain untouched.
+- [ ] No commits or pushes were made.
+
+Mark a check as not performed if you could not actually perform it.
+
+## 12. Final report
+
+Provide a concise but detailed audit report with these sections:
+
+### A. Overall decision
+
+Choose exactly one:
+
+- `READY TO FREEZE`
+- `MINOR CORRECTIONS REQUIRED`
+- `MATERIAL ISSUES REMAIN`
+
+Explain the decision in a few sentences.
+
+### B. Files and changes
+
+List the files modified before the audit, any files modified during the audit, and the reason for every new change.
+
+### C. Diff audit
+
+List each substantive change and its PASS, CORRECTION REQUIRED, or UNCERTAIN status.
+
+### D. Numerical verification
+
+Identify which important claims and tables were fully verified, recalculated, spot-checked, or not checked.
+
+### E. References and cross-references
+
+Report the checks performed and any remaining problems.
+
+### F. Integrity and safety
+
+Report whether original data, frozen logs, live software, service configuration, and hardware settings remained untouched.
+
+### G. Remaining limitations
+
+List the outstanding evidence gaps and the reason each remains unresolved.
+
+### H. Final recommendation
+
+State whether Section 5 can be frozen in its current state or what specific corrections must happen first.
+
+**Do not claim that a clean diff or successful script run proves every scientific claim is correct. Clearly distinguish verified facts, supported inferences, and unresolved uncertainties.**
+
+## Final instruction
+
+Work independently, use existing evidence, and conserve effort by focusing on material scientific risks. The goal is not to make Section 5 look complete at any cost. The goal is to ensure that every claim is as accurate and defensible as the available evidence permits.
