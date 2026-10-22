@@ -1,8 +1,0 @@
-- [Live service runs from repo](live-service-runs-from-repo.md) — robot-watchdog uses /home/pi/robot directly; branch = live code, build overwrites live dist
-- [Research paper ASCII only](research-paper-ascii-only.md) — no Unicode symbols in research paper/ files; they show as �
-- [Mermaid figures: no back-edges](mermaid-figures-no-back-edges.md) — all peripherals on one side of the hub node; bidirectional form, not reverse arrows
-- [Research paper Q1 project](research-paper-q1-project.md) — completing paper to IEEE Access; integrity rules, verified-only .bib, [PENDING MEASUREMENT] for unmeasured results
-- [E8 resource supply blocker](e8-resource-supply-blocker.md) — E8 measured after supply upgrade; driving+media is two spliced logger runs, 16kbps run confounded by P2 restart
-- [Section 5 data audit](section5-data-audit.md) — 2026-10-22 log cross-check: E3/E10 contradicted, 5.7 100-run table unsupported, GPS log 4-dp; how to verify new data
-- [Dead-man mock vs firmware mismatch](deadman-mock-firmware-mismatch.md) — RESOLVED 2026-10-22: mock's boundary/arming discrepancies found via native compile, now patched to match firmware
-- [Bench-motor floor-contact mismatch](bench-motor-floor-contact-mismatch.md) — 2026-10-22: bench_motor.csv's 60 rows run on a false "wheels elevated" premise; robot was actually on the floor, no harm; confirmation prompts aren't verification
