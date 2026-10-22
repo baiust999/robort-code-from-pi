@@ -1,0 +1,99 @@
+{"send_ts": "2026-10-22T21:44:13.049+00:00", "direction": "send", "payload": {"type": "hello", "role": "controller", "key": "666", "seq": 1}}
+{"recv_ts": "2026-10-22T21:44:13.051+00:00", "direction": "recv", "payload": {"type": "ack", "of": "hello", "role": "controller", "auth": "ok", "session": "0896444f-4e5a-4408-8ed9-50cd2e274401"}}
+{"send_ts": "2026-10-22T21:44:13.053+00:00", "direction": "send", "payload": {"type": "motor", "dir": "F", "speed": 120, "seq": 2}}
+{"send_ts": "2026-10-22T21:44:13.053+00:00", "direction": "send", "payload": {"type": "heartbeat", "seq": 3}}
+{"recv_ts": "2026-10-22T21:44:13.054+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 3, "range_cm": 232, "uptime_ms": 2980357, "seq": 14937}}
+{"recv_ts": "2026-10-22T21:44:13.158+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 3, "range_cm": 232, "uptime_ms": 2980357, "seq": 14938}}
+{"send_ts": "2026-10-22T21:44:13.354+00:00", "direction": "send", "payload": {"type": "motor", "dir": "F", "speed": 120, "seq": 4}}
+{"recv_ts": "2026-10-22T21:44:13.383+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 3, "range_cm": 232, "uptime_ms": 2980357, "seq": 14939}}
+{"recv_ts": "2026-10-22T21:44:13.548+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 2, "range_cm": 230, "uptime_ms": 2980856, "seq": 14940}}
+{"send_ts": "2026-10-22T21:44:13.555+00:00", "direction": "send", "payload": {"type": "heartbeat", "seq": 5}}
+{"send_ts": "2026-10-22T21:44:13.656+00:00", "direction": "send", "payload": {"type": "motor", "dir": "F", "speed": 120, "seq": 6}}
+{"recv_ts": "2026-10-22T21:44:13.776+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 2, "range_cm": 230, "uptime_ms": 2980856, "seq": 14941}}
+{"send_ts": "2026-10-22T21:44:13.958+00:00", "direction": "send", "payload": {"type": "motor", "dir": "F", "speed": 120, "seq": 7}}
+{"recv_ts": "2026-10-22T21:44:14.052+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 2, "range_cm": 230, "uptime_ms": 2981356, "seq": 14942}}
+{"send_ts": "2026-10-22T21:44:14.057+00:00", "direction": "send", "payload": {"type": "heartbeat", "seq": 8}}
+{"recv_ts": "2026-10-22T21:44:14.158+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 2, "range_cm": 230, "uptime_ms": 2981356, "seq": 14943}}
+{"send_ts": "2026-10-22T21:44:14.259+00:00", "direction": "send", "payload": {"type": "stop_all", "seq": 9}}
+{"recv_ts": "2026-10-22T21:44:14.373+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 2, "range_cm": 230, "uptime_ms": 2981356, "seq": 14944}}
+{"recv_ts": "2026-10-22T21:44:14.552+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 1, "range_cm": 229, "uptime_ms": 2981858, "seq": 14945}}
+{"send_ts": "2026-10-22T21:44:14.558+00:00", "direction": "send", "payload": {"type": "heartbeat", "seq": 10}}
+{"recv_ts": "2026-10-22T21:44:14.777+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 1, "range_cm": 229, "uptime_ms": 2981858, "seq": 14946}}
+{"recv_ts": "2026-10-22T21:44:14.903+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 1, "range_cm": 229, "uptime_ms": 2981858, "seq": 14947}}
+{"send_ts": "2026-10-22T21:44:15.060+00:00", "direction": "send", "payload": {"type": "heartbeat", "seq": 11}}
+{"send_ts": "2026-10-22T21:44:15.066+00:00", "direction": "send", "payload": {"type": "motor", "dir": "F", "speed": 120, "seq": 12}}
+{"recv_ts": "2026-10-22T21:44:15.161+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 1, "range_cm": 229, "uptime_ms": 2982358, "seq": 14948}}
+{"send_ts": "2026-10-22T21:44:15.368+00:00", "direction": "send", "payload": {"type": "motor", "dir": "F", "speed": 120, "seq": 13}}
+{"recv_ts": "2026-10-22T21:44:15.389+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 1, "range_cm": 229, "uptime_ms": 2982358, "seq": 14949}}
+{"recv_ts": "2026-10-22T21:44:15.555+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 2, "range_cm": 227, "uptime_ms": 2982858, "seq": 14950}}
+{"send_ts": "2026-10-22T21:44:15.560+00:00", "direction": "send", "payload": {"type": "heartbeat", "seq": 14}}
+{"send_ts": "2026-10-22T21:44:15.670+00:00", "direction": "send", "payload": {"type": "motor", "dir": "F", "speed": 120, "seq": 15}}
+{"recv_ts": "2026-10-22T21:44:15.785+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 2, "range_cm": 227, "uptime_ms": 2982858, "seq": 14951}}
+{"recv_ts": "2026-10-22T21:44:15.903+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 2, "range_cm": 227, "uptime_ms": 2982858, "seq": 14952}}
+{"send_ts": "2026-10-22T21:44:15.971+00:00", "direction": "send", "payload": {"type": "motor", "dir": "F", "speed": 120, "seq": 16}}
+{"send_ts": "2026-10-22T21:44:16.062+00:00", "direction": "send", "payload": {"type": "heartbeat", "seq": 17}}
+{"recv_ts": "2026-10-22T21:44:16.161+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 2, "range_cm": 231, "uptime_ms": 2983358, "seq": 14953}}
+{"send_ts": "2026-10-22T21:44:16.272+00:00", "direction": "send", "payload": {"type": "stop_all", "seq": 18}}
+{"recv_ts": "2026-10-22T21:44:16.373+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 2, "range_cm": 231, "uptime_ms": 2983358, "seq": 14954}}
+{"recv_ts": "2026-10-22T21:44:16.553+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 1, "range_cm": 231, "uptime_ms": 2983858, "seq": 14955}}
+{"send_ts": "2026-10-22T21:44:16.564+00:00", "direction": "send", "payload": {"type": "heartbeat", "seq": 19}}
+{"recv_ts": "2026-10-22T21:44:16.786+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 1, "range_cm": 231, "uptime_ms": 2983858, "seq": 14956}}
+{"recv_ts": "2026-10-22T21:44:16.902+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 1, "range_cm": 231, "uptime_ms": 2983858, "seq": 14957}}
+{"send_ts": "2026-10-22T21:44:17.067+00:00", "direction": "send", "payload": {"type": "heartbeat", "seq": 20}}
+{"send_ts": "2026-10-22T21:44:17.077+00:00", "direction": "send", "payload": {"type": "motor", "dir": "F", "speed": 120, "seq": 21}}
+{"recv_ts": "2026-10-22T21:44:17.168+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 1, "range_cm": 231, "uptime_ms": 2984358, "seq": 14958}}
+{"send_ts": "2026-10-22T21:44:17.384+00:00", "direction": "send", "payload": {"type": "motor", "dir": "F", "speed": 120, "seq": 22}}
+{"recv_ts": "2026-10-22T21:44:17.404+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 1, "range_cm": 231, "uptime_ms": 2984358, "seq": 14959}}
+{"recv_ts": "2026-10-22T21:44:17.558+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 2, "range_cm": 227, "uptime_ms": 2984858, "seq": 14960}}
+{"send_ts": "2026-10-22T21:44:17.572+00:00", "direction": "send", "payload": {"type": "heartbeat", "seq": 23}}
+{"send_ts": "2026-10-22T21:44:17.691+00:00", "direction": "send", "payload": {"type": "motor", "dir": "F", "speed": 120, "seq": 24}}
+{"recv_ts": "2026-10-22T21:44:17.790+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 2, "range_cm": 227, "uptime_ms": 2984858, "seq": 14961}}
+{"recv_ts": "2026-10-22T21:44:17.914+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 2, "range_cm": 227, "uptime_ms": 2984858, "seq": 14962}}
+{"send_ts": "2026-10-22T21:44:17.994+00:00", "direction": "send", "payload": {"type": "motor", "dir": "F", "speed": 120, "seq": 25}}
+{"send_ts": "2026-10-22T21:44:18.076+00:00", "direction": "send", "payload": {"type": "heartbeat", "seq": 26}}
+{"recv_ts": "2026-10-22T21:44:18.182+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 2, "range_cm": 228, "uptime_ms": 2985359, "seq": 14963}}
+{"send_ts": "2026-10-22T21:44:18.296+00:00", "direction": "send", "payload": {"type": "stop_all", "seq": 27}}
+{"recv_ts": "2026-10-22T21:44:18.396+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 2, "range_cm": 228, "uptime_ms": 2985359, "seq": 14964}}
+{"recv_ts": "2026-10-22T21:44:18.561+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 1, "range_cm": 227, "uptime_ms": 2985858, "seq": 14965}}
+{"send_ts": "2026-10-22T21:44:18.579+00:00", "direction": "send", "payload": {"type": "heartbeat", "seq": 28}}
+{"recv_ts": "2026-10-22T21:44:18.786+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 1, "range_cm": 227, "uptime_ms": 2985858, "seq": 14966}}
+{"recv_ts": "2026-10-22T21:44:18.902+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 1, "range_cm": 227, "uptime_ms": 2985858, "seq": 14967}}
+{"send_ts": "2026-10-22T21:44:19.081+00:00", "direction": "send", "payload": {"type": "heartbeat", "seq": 29}}
+{"send_ts": "2026-10-22T21:44:19.103+00:00", "direction": "send", "payload": {"type": "motor", "dir": "F", "speed": 120, "seq": 30}}
+{"recv_ts": "2026-10-22T21:44:19.171+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 1, "range_cm": 238, "uptime_ms": 2986359, "seq": 14968}}
+{"recv_ts": "2026-10-22T21:44:19.396+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 1, "range_cm": 238, "uptime_ms": 2986359, "seq": 14969}}
+{"send_ts": "2026-10-22T21:44:19.404+00:00", "direction": "send", "payload": {"type": "motor", "dir": "F", "speed": 120, "seq": 31}}
+{"recv_ts": "2026-10-22T21:44:19.560+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 2, "range_cm": 228, "uptime_ms": 2986859, "seq": 14970}}
+{"send_ts": "2026-10-22T21:44:19.582+00:00", "direction": "send", "payload": {"type": "heartbeat", "seq": 32}}
+{"send_ts": "2026-10-22T21:44:19.705+00:00", "direction": "send", "payload": {"type": "motor", "dir": "F", "speed": 120, "seq": 33}}
+{"recv_ts": "2026-10-22T21:44:19.789+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 2, "range_cm": 228, "uptime_ms": 2986859, "seq": 14971}}
+{"recv_ts": "2026-10-22T21:44:19.909+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 2, "range_cm": 228, "uptime_ms": 2986859, "seq": 14972}}
+{"send_ts": "2026-10-22T21:44:20.006+00:00", "direction": "send", "payload": {"type": "motor", "dir": "F", "speed": 120, "seq": 34}}
+{"send_ts": "2026-10-22T21:44:20.084+00:00", "direction": "send", "payload": {"type": "heartbeat", "seq": 35}}
+{"recv_ts": "2026-10-22T21:44:20.174+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 2, "range_cm": 231, "uptime_ms": 2987360, "seq": 14973}}
+{"send_ts": "2026-10-22T21:44:20.308+00:00", "direction": "send", "payload": {"type": "stop_all", "seq": 36}}
+{"recv_ts": "2026-10-22T21:44:20.390+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 2, "range_cm": 231, "uptime_ms": 2987360, "seq": 14974}}
+{"recv_ts": "2026-10-22T21:44:20.563+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 1, "range_cm": 232, "uptime_ms": 2987859, "seq": 14975}}
+{"send_ts": "2026-10-22T21:44:20.587+00:00", "direction": "send", "payload": {"type": "heartbeat", "seq": 37}}
+{"recv_ts": "2026-10-22T21:44:20.793+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 1, "range_cm": 232, "uptime_ms": 2987859, "seq": 14976}}
+{"recv_ts": "2026-10-22T21:44:20.905+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 1, "range_cm": 232, "uptime_ms": 2987859, "seq": 14977}}
+{"send_ts": "2026-10-22T21:44:21.089+00:00", "direction": "send", "payload": {"type": "heartbeat", "seq": 38}}
+{"send_ts": "2026-10-22T21:44:21.116+00:00", "direction": "send", "payload": {"type": "motor", "dir": "F", "speed": 120, "seq": 39}}
+{"recv_ts": "2026-10-22T21:44:21.180+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 1, "range_cm": 229, "uptime_ms": 2988359, "seq": 14978}}
+{"recv_ts": "2026-10-22T21:44:21.303+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 1, "range_cm": 229, "uptime_ms": 2988359, "seq": 14979}}
+{"send_ts": "2026-10-22T21:44:21.418+00:00", "direction": "send", "payload": {"type": "motor", "dir": "F", "speed": 120, "seq": 40}}
+{"recv_ts": "2026-10-22T21:44:21.567+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 2, "range_cm": 230, "uptime_ms": 2988860, "seq": 14980}}
+{"send_ts": "2026-10-22T21:44:21.591+00:00", "direction": "send", "payload": {"type": "heartbeat", "seq": 41}}
+{"send_ts": "2026-10-22T21:44:21.720+00:00", "direction": "send", "payload": {"type": "motor", "dir": "F", "speed": 120, "seq": 42}}
+{"recv_ts": "2026-10-22T21:44:21.798+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 2, "range_cm": 230, "uptime_ms": 2988860, "seq": 14981}}
+{"recv_ts": "2026-10-22T21:44:21.916+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 2, "range_cm": 230, "uptime_ms": 2988860, "seq": 14982}}
+{"send_ts": "2026-10-22T21:44:22.023+00:00", "direction": "send", "payload": {"type": "motor", "dir": "F", "speed": 120, "seq": 43}}
+{"send_ts": "2026-10-22T21:44:22.095+00:00", "direction": "send", "payload": {"type": "heartbeat", "seq": 44}}
+{"recv_ts": "2026-10-22T21:44:22.184+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 2, "range_cm": 231, "uptime_ms": 2989361, "seq": 14983}}
+{"send_ts": "2026-10-22T21:44:22.329+00:00", "direction": "send", "payload": {"type": "stop_all", "seq": 45}}
+{"recv_ts": "2026-10-22T21:44:22.395+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 2, "range_cm": 231, "uptime_ms": 2989361, "seq": 14984}}
+{"recv_ts": "2026-10-22T21:44:22.567+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 1, "range_cm": 230, "uptime_ms": 2989860, "seq": 14985}}
+{"send_ts": "2026-10-22T21:44:22.596+00:00", "direction": "send", "payload": {"type": "heartbeat", "seq": 46}}
+{"recv_ts": "2026-10-22T21:44:22.799+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 1, "range_cm": 230, "uptime_ms": 2989860, "seq": 14986}}
+{"recv_ts": "2026-10-22T21:44:22.903+00:00", "direction": "recv", "payload": {"type": "telemetry", "fw_state": 1, "range_cm": 230, "uptime_ms": 2989860, "seq": 14987}}
+{"send_ts": "2026-10-22T21:44:23.085+00:00", "direction": "send", "payload": {"type": "stop_all", "seq": 47}}
