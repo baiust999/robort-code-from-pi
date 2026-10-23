@@ -23,9 +23,9 @@
   - RQ1-RQ4 stated here (reconciled 2026-10-22 with actual usage in Sections 3
     and 5, which cite RQ4 for both the two-way victim path and GPS/mapping;
     the figure was previously given as RQ1-RQ3), each mapped to a contribution
-    and answered in Section 7.1
+    and answered in Section 8.1
   - Contributions mapped to C1-C4 and to the evaluation in Section 5, summarised
-    in Section 7.2
+    in Section 8.2
   - (unnumbered closing paragraph: organization of the paper)
 
 **2. Related Work**
@@ -163,22 +163,7 @@
 - 6.3 Limitations
 - 6.4 Threats to Validity
 
-**7. Conclusion**
-
-- 7.1 Answers to the Research Questions
-  - One subsection-level answer per research question, each stating the claim,
-    the measured evidence from Section 5 that supports it, and the bound within
-    which the claim holds
-  - RQ labels and their count: RQ1-RQ4, matching Section 1.3 as reconciled
-    above and the mapping already used in Sections 3 and 5
-- 7.2 Summary of Contributions
-  - Each contribution restated and mapped back to the challenge it addresses
-    (C1-C4, Section 1.2) and to the subsection of Section 5 that evaluates it
-  - What the system demonstrates as a whole: a bounded stop time, process
-    supervision and two-way victim interaction on low-cost edge hardware
-  - (unnumbered closing paragraph: what a deploying team can take from this work)
-
-**8. Future Work**
+**7. Future Work**
 
 - One item per limitation recorded in Section 6.3, in the same order, so every
   deferred item has a stated path forward
@@ -192,6 +177,21 @@
   beyond the sample reported in Section 5.8
 - Hardware extensions: thermal or gas sensing for victim detection, extended
   battery endurance, ruggedised chassis
+
+**8. Conclusion**
+
+- 8.1 Answers to the Research Questions
+  - One subsection-level answer per research question, each stating the claim,
+    the measured evidence from Section 5 that supports it, and the bound within
+    which the claim holds
+  - RQ labels and their count: RQ1-RQ4, matching Section 1.3 as reconciled
+    above and the mapping already used in Sections 3 and 5
+- 8.2 Summary of Contributions
+  - Each contribution restated and mapped back to the challenge it addresses
+    (C1-C4, Section 1.2) and to the subsection of Section 5 that evaluates it
+  - What the system demonstrates as a whole: a bounded stop time, process
+    supervision and two-way victim interaction on low-cost edge hardware
+  - (unnumbered closing paragraph: what a deploying team can take from this work)
 
 ---
 

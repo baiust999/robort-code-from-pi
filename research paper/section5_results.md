@@ -604,7 +604,7 @@ This subsection reports the operator usability study (E14, Table 3). No particip
 | Errors per participant | | | | | |
 | Task completion | | | | (Wilson) | - |
 
-[PENDING MEASUREMENT: E14 analysis to be filled when sus.csv data is collected; the mean SUS score and task-completion rate will be reported, and the study's size and scope framed against the larger operator study deferred to Future Work (Section 8).]
+[PENDING MEASUREMENT: E14 analysis to be filled when sus.csv data is collected; the mean SUS score and task-completion rate will be reported, and the study's size and scope framed against the larger operator study deferred to Future Work (Section 7).]
 
 ## 5.9 Cost Analysis and Comparison with Existing Systems
 
