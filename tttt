@@ -1,13 +1,4 @@
-In Section 7 (Future Work), completely remove these two entries:
 
-- **7.1.1 Safety-aware, network-adaptive teleoperation**
-- **7.1.2 Two-way communication under degraded networks**
-
-Remove their full descriptions and all references to them in the Future Work tables or lists. Renumber the remaining entries and update any cross-references affected by their removal.
-
-Do not delete the related existing code, research results, or evaluation records. I will measure these features later and decide whether to include them in the paper.
-
-Preserve the existing structure and formatting. Do not invent data or modify unrelated sections. After editing, check Section 7 for numbering errors and broken cross-references, then summarize the changes. Do not commit or push.
 
 
 
