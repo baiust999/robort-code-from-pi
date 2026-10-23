@@ -31,10 +31,11 @@
 **2. Related Work**
 
 - (opening) Roadmap; literature-selection paragraph (non-systematic
-  OpenAlex search with query counts, backward citation, inclusion rule for
-  Table 2.1)
+  OpenAlex search with query counts, a second round on Pi/ROS rescue robots,
+  link-loss failsafes, watchdog timers and fault tolerance, backward
+  citation, inclusion rule for Table 2.1)
 - 2.1 Prior Reviews and Levels of Operator Involvement
-  \cite{murphy2004hri,liu2013,queralta2020,delmerico2019,schneider2016,kareem2026,sinha2026,bakzadeh2026,tong2024,chitikena2023,daun2023,chen2007}
+  \cite{murphy2004hri,liu2013,queralta2020,delmerico2019,schneider2016,kareem2026,sinha2026,bakzadeh2026,tong2024,chitikena2023,daun2023,chen2007,isaacs2022}
   - Reviews organise the field by control approach, deployment readiness,
     architecture, platform class or design requirement
   - Four levels of operator involvement along the LORA spectrum
@@ -46,34 +47,40 @@
   - Benchmarks \cite{jacoff2012,chung2023}; Section 5 does not use the
     standard test apparatus
   - Recent platforms
-    \cite{megalingam2022,verano2022,pramono2024,khattab2025,manuel2022,cafolla2026,jia2025,yamauchi2022,kim2023,raghavan2026,cantizani2022}
+    \cite{megalingam2022,verano2022,pramono2024,khattab2025,manuel2022,cafolla2026,jia2025,yamauchi2022,kim2023,raghavan2026,cantizani2022,deshmukh2025,gehlot2025}
   - Cost asserted without figures (C4)
 - 2.3 Fail-Safe and Fault-Tolerant Architectures for Low-Cost Mobile Robots
   - Bounded stop: behaves like IEC 60204-1 stop category 0, no compliance
     claim \cite{iec60204}; time-triggered
-    firmware \cite{pont2001}; delayed-observation shield is complementary
-    \cite{narasimhan2024}
+    firmware \cite{pont2001}; safety functions moving into software
+    \cite{murray2022}; drone-processor watchdog \cite{madhushankara2024};
+    UAV signal-loss failsafe \cite{khrystyuk2025}; delayed-observation shield
+    is complementary \cite{narasimhan2024}
   - Process supervision: recovery-oriented computing \cite{candea2004};
     microservices \cite{schrick2025}; robot vitals \cite{ramesh2022};
-    safety-engineering review \cite{koczi2025}
+    safety-engineering review \cite{koczi2025}; FMEA-based simulation of
+    hardware-failure mitigation \cite{sini2022}
 - 2.4 Human-Robot Interaction: Operator and Victim
-  - Operator side \cite{endsley1995,chen2007,luz2023,bakzadeh2025,bakzadeh2026b,ruan2025,akgun2023}
+  - Operator side \cite{endsley1995,chen2007,kamtam2024,luz2023,bakzadeh2025,bakzadeh2026b,ruan2025,akgun2023}
   - Victim side (C3): requirement \cite{schneider2016}; 4-10 h wait
     \cite{srinivasan2012}; Survivor Buddy line
     \cite{bethel2007,murphy2010,murphy2011}; two-way voice common on fielded
     mine-rescue robots \cite{bakzadeh2026}; recent platforms treat victims
-    as detection targets; SERR victim audio pending \cite{khattab2025}
+    as detection targets \cite{sharma2022,deshmukh2025}; SERR victim audio
+    pending \cite{khattab2025}
 - 2.5 Real-Time Media and Computing on Edge Hardware
   - WebRTC teleoperation \cite{shi2025webrtc,tiberkak2023}; Opus
     \cite{valin2012}; glass-to-glass delay \cite{bachhuber2016}
   - Cloud/edge placement \cite{militano2023,raghavan2026,cafolla2026,manuel2022,nagatani2013}
 - 2.6 Research Gap
-  - Table 2.1: 11 platforms plus this work; columns for platform/control,
-    link and computing, C1-C4, open source, validation; Survivor Buddy included as the
-    closest prior work on C3
+  - Table 2.1: 13 platforms plus this work; columns for platform/control,
+    link and computing, C1-C4, code availability, evidence and conditions,
+    text read; NR (not reported) distinguished from "(stated)" cells;
+    Survivor Buddy included as the closest prior work on C3
   - Gap stated as a combination; no part claimed as a first
-  - 5 of 11 rows checked against full text (2026-10-22); 6 rows still
-    abstract-based (PDFs paywalled or blocked)
+  - Full texts of 12 of the 13 other rows read; Survivor Buddy rests on
+    abstracts and a related full text (see citation.md); NR cells of six
+    rows keyword-checked against the stored full texts in fulltext/
   - Full text: section2_related_work.md
 
 **3. Methodology**
