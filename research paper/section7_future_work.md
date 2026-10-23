@@ -12,7 +12,7 @@ The directions are grouped under six themes (Sections 7.1 to 7.6) and are not eq
 
 | Section | Direction | Limitation in the current system | Evidence | Priority | Depends on |
 |---|---|---|---|---|---|
-| 7.1.1 | Multi-hop mesh networking | One 802.11n cell; range sweep partial (6 stations, to 50 m) | 3.2, 5.3 | 2 | 7.6.3 |
+| 7.1.1 | Multi-hop mesh networking | One 802.11n cell; range sweep partial (16 line-of-sight stations, 5 to 250 m, no failure point reached, no obstacle condition) | 3.2, 5.3 | 2 | 7.6.3 |
 | 7.1.2 | Communication-aware mission planning | No route planning; link quality not mapped | 3.10, 5.3 | 3 | 7.1.1, 7.3.1 |
 | 7.2.1 | Cross-layer fault detection and recovery | Supervisor sees process liveness and an HTTP health check only; Arduino removal needs a P1 restart | 3.7, 5.4 | 1 | 7.2.2 |
 | 7.2.2 | Quantitative safety and fault-injection evaluation | SIGKILL only (10 trials per process); hangs, sensor loss and network faults not injected; ablations not run | 4.3, 5.4 | 1 | - |
@@ -29,7 +29,7 @@ The directions are grouped under six themes (Sections 7.1 to 7.6) and are not eq
 | 7.5.2 | Edge-based victim assistance | No detection implemented; media path already uses about 63% of one core | 5.5 | 3 | 7.5.1 |
 | 7.6.1 | Secure remote control | Plain HTTP and WebSocket; one shared controller key; sequence check optional | 3.2, 3.8 | 1 | 7.2.2 |
 | 7.6.2 | Multi-robot cooperative exploration | Single robot; one controller slot | 3.8 | 3 | 7.1.1, 7.3.1, 7.6.1 |
-| 7.6.3 | Reproducible experimental benchmarking | Small N per experiment; rotating logs; no standard test apparatus | 4.2 (Table 3), 5.0 | 1 | - |
+| 7.6.3 | Reproducible experimental benchmarking | Small N per experiment; rotating logs; no standard test apparatus | 4.2 (Table 4.1), 5.0 | 1 | - |
 
 ## 7.1 Communication Resilience
 

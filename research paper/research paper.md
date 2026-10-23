@@ -122,7 +122,7 @@
   - Test sites: indoor corridor and lab for latency, fault and resource runs;
     outdoor area for range and GPS runs
 - 4.2 Experiments, Metrics and Validity Rules
-  - Table 3 (the only table in this section): experiment | site | trials (N) |
+  - Table 4.1 (the only table in this section): experiment | site | trials (N) |
     tool under tools/eval/ | metric, start point to end point, unit | reported in
   - Fifteen rows (E1-E15) in nine groups, one per Section 5 subsection
     (5.1-5.9); tools are wslatency.py,
@@ -158,10 +158,40 @@
 
 **6. Discussion**
 
+- (opening) Scope: interprets Section 5 against C1-C4; no new measurement or
+  metric; every figure is taken from a Section 5 table with its evidence class;
+  RQ answers stay in Section 8.1, future directions in Section 7
 - 6.1 Interpretation of Results
+  - Table 6.1: per challenge (C1-C4), the claim supported, the evidence and its
+    class, the bound and what is not shown
+  - One paragraph per challenge: C1 bound is on silence not on the link
+    (2042 ms; F7 stop 21 s before socket close; margin depends on heartbeat
+    rate); C2 supervision turns loss of service into a bounded outage (30/30;
+    F6 marks the edge); C3 feasibility and cost only (about 63% of one core;
+    P1 unaffected; no quality data; a combination, not a first); C4 plausible
+    but not demonstrated (USD 320 ESTIMATE, replacement supply unpriced)
+  - Relation to the literature: qualitative, Table 2.1 "NR" is not absence,
+    no head-to-head, no cost ratio
+    \cite{verano2022,khattab2025,manuel2022,ardupilot_rover_failsafe,candea2004,chen2007,bakzadeh2026}
 - 6.2 Design Trade-offs and Lessons Learned
+  - Table 6.2: decision | gain | cost, each with its evidence (dead-man window,
+    three-process split, single serial writer, 10 m GPS filter)
+  - Lessons from the build and audit: a test count is not evidence about the
+    firmware (mock vs compiled source); budget resources on the intended
+    supply; hand-entered data needs an independent log; experiment
+    configuration belongs in version control; choose instrument resolution
+    before the run
 - 6.3 Limitations
+  - Seven claims the paper does not make (physical stop timing, end-to-end
+    performance, benefit over a baseline, fault and environment coverage,
+    unverified sensors, software-only checks, cost); points to Table 5.0 and
+    Section 4.4 instead of repeating them
 - 6.4 Threats to Validity
+  - Table 6.3: internal, construct, external and conclusion threats with
+    mitigation and residual; itemised deviations stay in Section 4.4
+  - Two comments: the latency jitter and the phase-locked control run
+    (referenced from Section 5.1); the limit of the log audit itself
+  - Full text: section6_discussion.md
 
 **7. Future Work**
 
