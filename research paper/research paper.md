@@ -167,29 +167,32 @@
 
 - (opening) Scope and constraint: every direction starts from a limitation
   stated in Section 3 or measured in Section 5, names its baseline and fixes its
-  metrics in advance; none is an existing capability; the firmware dead-man stop
-  (Section 3.5.2) stays independent of any added automated function
-- Figure 7.1: twenty directions (A-T) grouped into seven research themes
-- Table 7.1: direction-to-limitation map (ID | direction | limitation in the
-  current system | evidence section | challenge C1-C4)
-- 7.1 Network-Adaptive Teleoperation and Victim Communication (A, M)
-  - Table 7.2: evaluation design
-- 7.2 Communication Resilience (B, S)
-  - Multi-hop mesh networking; communication-aware mission planning
-  - Table 7.3: evaluation design
-- 7.3 Fault Detection and Quantitative Fail-Safe Validation (C, Q, T)
-  - Cross-layer fault detection and recovery; quantitative fault injection;
-    digital-twin and simulation-based validation
-  - Table 7.4: fault-injection matrix for Direction Q
-- 7.4 GPS-Denied Localization and Return Navigation (D, E, F, G)
-  - Table 7.5: evaluation design
-- 7.5 Platform: Compact Chassis, Mobility, Thermal Protection and Energy
-  (H, J, I, N)
-  - Table 7.6: evaluation design
-- 7.6 Hazard Sensing and Edge-Based Victim Assistance (K, L)
-  - Table 7.7: evaluation design
-- 7.7 Security, Multi-Robot Scale and Reproducibility (O, P, R)
-  - Table 7.8: priority and dependencies
+  metrics in advance; none is an existing capability and none is claimed as
+  novel; the firmware dead-man stop (Section 3.5.2) stays independent of any
+  added automated function; three priority levels
+- Table 7.1: future-work directions, limitation addressed, evidence section,
+  priority level and dependencies
+- 7.1 Safety-Aware, Network-Adaptive Teleoperation
+- 7.2 Multi-Hop Mesh Networking
+- 7.3 Cross-Layer Fault Detection and Recovery
+- 7.4 Quantitative Safety and Fault-Injection Evaluation
+  - Table 7.2: fault-injection matrix
+- 7.5 Indoor Localization and Mapping
+- 7.6 Trajectory Tracking and Visualization
+- 7.7 Autonomous Return Navigation
+- 7.8 Localization-Aware and Obstacle-Aware Navigation
+- 7.9 Compact, Low-Profile Chassis Design
+- 7.10 Heat-Resistant Structural Protection
+- 7.11 Improved Disaster-Terrain Mobility
+- 7.12 Energy-Aware Operation
+- 7.13 Sensor Fusion for Hazard Assessment
+- 7.14 Edge-Based Victim Assistance
+- 7.15 Two-Way Communication Under Degraded Networks
+- 7.16 Secure Remote Control
+- 7.17 Communication-Aware Mission Planning
+- 7.18 Multi-Robot Cooperative Exploration
+- 7.19 Simulation-Based Validation
+- 7.20 Reproducible Experimental Benchmarking
 
 **8. Conclusion**
 
