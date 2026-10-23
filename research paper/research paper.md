@@ -208,7 +208,6 @@
 - 7.2 Fault Detection and Quantitative Fail-Safe Validation
   - 7.2.1 Cross-Layer Fault Detection and Recovery
   - 7.2.2 Quantitative Safety and Fault-Injection Evaluation
-    - Table 7.2: fault-injection matrix
   - 7.2.3 Simulation-Based Validation
 - 7.3 GPS-Denied Localization and Return Navigation
   - 7.3.1 Indoor Localization and Mapping
@@ -230,18 +229,22 @@
 
 **8. Conclusion**
 
+- (opening) Summary of the work; conclusions apply to the robot as built and
+  tested; no new measurement, metric or citation
 - 8.1 Answers to the Research Questions
-  - One subsection-level answer per research question, each stating the claim,
-    the measured evidence from Section 5 that supports it, and the bound within
-    which the claim holds
-  - RQ labels and their count: RQ1-RQ4, matching Section 1.3 as reconciled
-    above and the mapping already used in Sections 3 and 5
+  - Table 8.1: RQ | topic (challenge) | answer | evidence and class | scope of
+    the claim
+  - RQ1 stop time (C1); RQ2 control path, serial link, session resume; RQ3
+    supervision (C2); RQ4 victim path (C3) and GPS; labels follow Sections 3 and 5
+  - One short paragraph per RQ
 - 8.2 Summary of Contributions
-  - Each contribution restated and mapped back to the challenge it addresses
-    (C1-C4, Section 1.2) and to the subsection of Section 5 that evaluates it
-  - What the system demonstrates as a whole: a bounded stop time, process
-    supervision and two-way victim interaction on low-cost edge hardware
-  - (unnumbered closing paragraph: what a deploying team can take from this work)
+  - Table 8.2: contribution | challenge (C1-C4) | evaluated in | evidence class |
+    what is claimed
+  - What the system shows as a whole; contribution stated as a combination, not
+    a first
+- (unnumbered closing paragraph: what a deploying team can take; points to
+  Section 7)
+  - Full text: section8_conclusion.md
 
 ---
 

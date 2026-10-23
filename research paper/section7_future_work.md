@@ -47,31 +47,19 @@ There is no route planning and link quality is not mapped. The proposed work use
 
 ## 7.2 Fault Detection and Quantitative Fail-Safe Validation
 
-These directions turn the fail-safe claims of Challenges C1 and C2 into measured evidence. Section 7.2.2 defines the injection matrix and regression suite that the other directions in this section must pass.
+These directions turn the fail-safe claims of Challenges C1 and C2 into measured evidence. Section 7.2.2 defines the fault-injection campaign and regression suite that the other directions in this section must pass.
 
 ### 7.2.1 Cross-Layer Fault Detection and Recovery
 
 The supervisor of Section 3.7 detects a crashed or unresponsive process, but it does not classify faults across layers, and a removed Arduino requires a P1 restart (Section 5.4). Today the dashboard learns of a firmware trip through the `fw_state` field of telemetry, up to 700 ms after the motors stop (Section 3.5.2); P1 logs the PANIC line but does not forward it as an event.
 
-The proposed work adds a supervisor that watches serial health, process health, telemetry freshness and command delivery, and moves the system through defined recovery states, and forwards the PANIC line to the dashboard. The dead-man stays in the firmware and outside the supervisor's control, and the supervisor may only make the system more conservative. Metrics are detection latency, false-alarm rate, recovery success with a Wilson interval [@wilson1927] and unintended-motion duration, measured against the current supervisor using the injection matrix of Section 7.2.2. A sound detector must be shown not to delay the stop or to cause a spurious one; both are test outcomes, not assumptions.
+The proposed work adds a supervisor that watches serial health, process health, telemetry freshness and command delivery, and moves the system through defined recovery states, and forwards the PANIC line to the dashboard. The dead-man stays in the firmware and outside the supervisor's control, and the supervisor may only make the system more conservative. Metrics are detection latency, false-alarm rate, recovery success with a Wilson interval [@wilson1927] and unintended-motion duration, measured against the current supervisor using the fault-injection campaign of Section 7.2.2. A sound detector must be shown not to delay the stop or to cause a spurious one; both are test outcomes, not assumptions.
 
 ### 7.2.2 Quantitative Safety and Fault-Injection Evaluation
 
 Section 5.4 injected SIGKILL crashes, 10 trials per process, and single injections of the other faults. Thirty of thirty recoveries give a Wilson lower bound of 88.6% [@wilson1927]; that bound is a statement about bench SIGKILL faults and not a reliability figure. The ablations planned in Section 4.3 (dead-man removed, P3 disabled, control and media merged) have not been run.
 
-The proposed work replaces the single-fault campaign with a fault-injection matrix (Table 7.2) and runs the ablations, so that each fail-safe claim has a measured effect size against a defined baseline. Metrics for every row are detection latency, motor-stop response, unintended-motion duration, recovery success with Wilson interval and false-alarm rate. The motor-stop response must be taken at the wheels (E4, 240 fps video), not only from firmware logs, because the log measurements of Section 5.1 establish when the firmware removed drive and not when the wheels stopped. This direction also defines the regression suite that every other direction in this section must pass before any change reaches the robot.
-
-**Table 7.2.** Fault-injection matrix.
-
-| Layer | Fault | Injected in Section 5.4 | Method |
-|---|---|---|---|
-| Process | P1, P2 or P3 crash (SIGKILL) | Yes (10 each) | `faultinject.py` |
-| Process | Hang (process alive, unresponsive) | No | SIGSTOP |
-| Serial | Arduino unplug and reconnect | Single injection | USB device unbind |
-| Serial | Corrupted or truncated frames | No | Serial fault proxy |
-| Network | Wi-Fi drop, delay, loss, bandwidth cap | Single drop | `tc netem`, access-point power-off |
-| Sensor | Camera, microphone or GPS loss | No (GPS run invalid) | Device unbind |
-| Ablation | Dead-man removed, P3 disabled, merged process | No | Build and configuration flags |
+The proposed work replaces the single-fault campaign with a fault-injection campaign across the process, serial, network and sensor layers, and runs the ablations, so that each fail-safe claim has a measured effect size against a defined baseline. Process faults extend the SIGKILL crashes to hangs (process alive but unresponsive, injected with SIGSTOP). Serial faults extend the single Arduino unplug to repeated reconnects and to corrupted or truncated frames through a serial fault proxy. Network faults extend the single drop to delay, loss and bandwidth caps (`tc netem`, access-point power-off). Sensor faults cover camera, microphone and GPS loss by device unbind. The ablations remove the dead-man, disable P3, or merge control and media into one process, using build and configuration flags. Metrics for every fault are detection latency, motor-stop response, unintended-motion duration, recovery success with Wilson interval and false-alarm rate. The motor-stop response must be taken at the wheels (E4, 240 fps video), not only from firmware logs, because the log measurements of Section 5.1 establish when the firmware removed drive and not when the wheels stopped. This direction also defines the regression suite that every other direction in this section must pass before any change reaches the robot.
 
 ### 7.2.3 Simulation-Based Validation
 
