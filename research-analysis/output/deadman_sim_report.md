@@ -8,19 +8,19 @@ Monte Carlo: seed=20261022, trials per p=50000, mission=300 s.
 
 How many consecutive full-period heartbeat losses, starting right
 after a successful one, are guaranteed to trip the dead-man --
-continuous-time check against the real inclusive `<=` boundary.
+continuous-time check against the firmware's inclusive `>=` trip boundary
+(zero transit jitter; a heartbeat due exactly at 2000 ms is too late).
 
 | heartbeat period (ms) | consecutive losses tolerated | losses that guarantee a trip |
 |---|---|---|
-| 200 | 9 | 10 |
-| 500  (actual system) | 3 | 4 |
-| 1000 | 1 | 2 |
-| 2000 | 0 | 1 |
+| 200 | 8 | 9 |
+| 500  (actual system) | 2 | 3 |
+| 1000 | 0 | 1 |
+| 2000 | -1 | 0 |
 
-At the dashboard's actual 500 ms heartbeat period, 3 consecutive
-losses are tolerated; a 4th in a row is guaranteed to trip the
-dead-man, essentially at the moment the 4th scheduled heartbeat
-would have arrived (2000 ms of silence), not waiting for a 5th.
+At the dashboard's configured 500 ms heartbeat period, 2 consecutive
+losses are tolerated; a 3rd in a row leaves 2000 ms of silence when the
+4th heartbeat is due, and the firmware trips at >= 2000 ms.
 
 ## Part B: SIMULATED Monte Carlo trip probability vs heartbeat loss rate
 
@@ -29,18 +29,18 @@ iid Bernoulli loss per scheduled heartbeat (no retries, no jitter).
 
 | p_loss (per heartbeat) | tripped / trials | trip rate | 95% CI half-width |
 |---|---|---|---|
-| 0.01 | 0/50000 | 0.00% | +/- 0.00 pp |
-| 0.02 | 5/50000 | 0.01% | +/- 0.01 pp |
-| 0.05 | 160/50000 | 0.32% | +/- 0.05 pp |
-| 0.10 | 2711/50000 | 5.42% | +/- 0.20 pp |
-| 0.15 | 11428/50000 | 22.86% | +/- 0.37 pp |
-| 0.20 | 26870/50000 | 53.74% | +/- 0.44 pp |
-| 0.30 | 48363/50000 | 96.73% | +/- 0.16 pp |
+| 0.01 | 25/50000 | 0.05% | +/- 0.02 pp |
+| 0.02 | 235/50000 | 0.47% | +/- 0.06 pp |
+| 0.05 | 3422/50000 | 6.84% | +/- 0.22 pp |
+| 0.10 | 21020/50000 | 42.04% | +/- 0.43 pp |
+| 0.15 | 41172/50000 | 82.34% | +/- 0.33 pp |
+| 0.20 | 48972/50000 | 97.94% | +/- 0.12 pp |
+| 0.30 | 49999/50000 | 100.00% | +/- 0.01 pp |
 | 0.50 | 50000/50000 | 100.00% | +/- 0.00 pp |
 
 ## Part C: closed-form cross-check (no randomness, validates Part B's pipeline)
 
-n scheduled heartbeat slots per mission = 600; trip threshold k = 4 consecutive losses.
+n scheduled heartbeat slots per mission = 600; trip threshold k = 3 consecutive losses.
 This treats a trip as 'a run of k consecutive losses lands on a slot boundary',
 which is the same event Part A derived; it is an approximation of Part B's
 continuous-time check (ignores losses that straddle mission start/end), used
@@ -49,13 +49,13 @@ independent model of the real system.
 
 | p_loss | Monte Carlo trip rate | closed-form trip rate | difference |
 |---|---|---|---|
-| 0.01 | 0.00% | 0.00% | 0.00 pp |
-| 0.02 | 0.01% | 0.01% | 0.00 pp |
-| 0.05 | 0.32% | 0.35% | 0.03 pp |
-| 0.10 | 5.42% | 5.23% | 0.19 pp |
-| 0.15 | 22.86% | 22.70% | 0.16 pp |
-| 0.20 | 53.74% | 53.65% | 0.09 pp |
-| 0.30 | 96.73% | 96.91% | 0.18 pp |
+| 0.01 | 0.05% | 0.06% | 0.01 pp |
+| 0.02 | 0.47% | 0.47% | 0.00 pp |
+| 0.05 | 6.84% | 6.86% | 0.01 pp |
+| 0.10 | 42.04% | 41.73% | 0.31 pp |
+| 0.15 | 82.34% | 82.33% | 0.01 pp |
+| 0.20 | 97.94% | 98.01% | 0.07 pp |
+| 0.30 | 100.00% | 100.00% | 0.00 pp |
 | 0.50 | 100.00% | 100.00% | 0.00 pp |
 
 Agreement within the Monte Carlo's own 95% CI half-width at every p_loss

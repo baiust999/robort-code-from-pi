@@ -23,15 +23,13 @@ word SIMULATED when it is copied anywhere outside this directory.
 Two independent methods are run and cross-checked against each other
 (Phase 5 "statistical-pipeline validation"):
   1. Monte Carlo: explicit per-heartbeat Bernoulli loss trials, continuous
-     time semantics using elapsed_ms <= DEADMAN_MS as alive. This script is
-     self-contained and does not import pi/common, so it is unaffected by,
-     and does not track, any later change there: as of 2026-10-22,
-     pi/common/mock_hardware.py's MockArduino._check_deadman was corrected
-     to `<` (matching the firmware's own `>=` trip condition), so this
-     script's `<=` convention no longer matches MockArduino. See
-     research paper/section5_results.md Section 5.1b's Limitations
-     paragraph for why this does not change any figure in Table 5.5c at
-     this sweep's 500 ms heartbeat-period granularity.
+     time semantics using the firmware's trip condition: elapsed >=
+     DEADMAN_MS trips (arduino taskSafety(); pi/common/mock_hardware.py was
+     corrected to match on 2026-10-22). A heartbeat due exactly at
+     elapsed == DEADMAN_MS is too late. An earlier version of this script used
+     elapsed <= DEADMAN_MS as alive, which is one loss too lenient at the
+     500 ms period; the previous report is kept as
+     output/deadman_sim_report_pre-firmware-boundary_2026-10-23.md.
   2. A closed-form recursion for P(a run of >= k consecutive losses occurs
      in n iid Bernoulli(p) trials), which needs no randomness at all.
 
@@ -69,11 +67,14 @@ def consecutive_losses_to_trip(heartbeat_period_ms: int, deadman_ms: int = DEADM
     that next heartbeat's outcome. The condition is therefore k*period >=
     deadman_ms, not strictly >.
     """
+    # Firmware convention (arduino taskSafety(): trip when elapsed >=
+    # DEADMAN_TIMEOUT_MS). After k lost heartbeats the next one can arrive no
+    # sooner than (k + 1) * period after the last success; if that is already
+    # >= deadman_ms, the supervisor tripped first (10 ms pass), so the
+    # k-th loss is guaranteed to trip. Zero-jitter idealisation.
     k = 0
-    elapsed = 0
-    while elapsed < deadman_ms:
+    while (k + 1) * heartbeat_period_ms < deadman_ms:
         k += 1
-        elapsed = k * heartbeat_period_ms
     return k
 
 
@@ -85,7 +86,7 @@ def boundary_margin_table() -> list[tuple[int, int, int]]:
     rows = []
     for period in (200, 500, 1000, 2000):
         trip_at = consecutive_losses_to_trip(period)
-        rows.append((period, trip_at - 1, trip_at))
+        rows.append((period, trip_at - 1, trip_at))  # -1: trips even with no loss
     return rows
 
 
@@ -103,8 +104,8 @@ def simulate_mission(p_loss: float, mission_s: float, rng: random.Random) -> Mis
     each independently lost with probability p_loss. Returns whether the
     dead-man ever trips, and if so, at what simulated time.
 
-    This reproduces the real inclusive-boundary semantics: alive while
-    elapsed_ms <= DEADMAN_MS.
+    This reproduces the firmware's trip condition: tripped once
+    elapsed_ms >= DEADMAN_MS.
     """
     n_beats = int(mission_s * 1000 / HEARTBEAT_PERIOD_MS)
     last_success_ms = 0.0
@@ -112,7 +113,7 @@ def simulate_mission(p_loss: float, mission_s: float, rng: random.Random) -> Mis
         t_ms = i * HEARTBEAT_PERIOD_MS
         lost = rng.random() < p_loss
         elapsed = t_ms - last_success_ms
-        if elapsed > DEADMAN_MS:
+        if elapsed >= DEADMAN_MS:  # firmware: trips at >=, a beat due exactly now is too late
             return MissionResult(True, (last_success_ms + DEADMAN_MS) / 1000.0)
         if not lost:
             last_success_ms = t_ms
@@ -203,7 +204,8 @@ def main() -> None:
     emit()
     emit("How many consecutive full-period heartbeat losses, starting right")
     emit("after a successful one, are guaranteed to trip the dead-man --")
-    emit("continuous-time check against the real inclusive `<=` boundary.")
+    emit("continuous-time check against the firmware's inclusive `>=` trip boundary")
+    emit("(zero transit jitter; a heartbeat due exactly at 2000 ms is too late).")
     emit()
     emit("| heartbeat period (ms) | consecutive losses tolerated | losses that guarantee a trip |")
     emit("|---|---|---|")
@@ -211,10 +213,9 @@ def main() -> None:
         marker = "  (actual system)" if period == HEARTBEAT_PERIOD_MS else ""
         emit(f"| {period}{marker} | {tolerated} | {trips} |")
     emit()
-    emit("At the dashboard's actual 500 ms heartbeat period, 3 consecutive")
-    emit("losses are tolerated; a 4th in a row is guaranteed to trip the")
-    emit("dead-man, essentially at the moment the 4th scheduled heartbeat")
-    emit("would have arrived (2000 ms of silence), not waiting for a 5th.")
+    emit("At the dashboard's configured 500 ms heartbeat period, 2 consecutive")
+    emit("losses are tolerated; a 3rd in a row leaves 2000 ms of silence when the")
+    emit("4th heartbeat is due, and the firmware trips at >= 2000 ms.")
     emit()
 
     emit("## Part B: SIMULATED Monte Carlo trip probability vs heartbeat loss rate")
