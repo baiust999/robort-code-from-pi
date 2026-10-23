@@ -165,18 +165,24 @@
 
 **7. Future Work**
 
-- One item per limitation recorded in Section 6.3, in the same order, so every
-  deferred item has a stated path forward
-- Extending radio reach beyond a single Wi-Fi cell: repeater, mesh or second
-  radio (deferred in Sections 3.2 and 6.3)
-- Transport security: TLS on both ports, removing the insecure-origin exception
-  the operator currently sets by hand (Section 3.2)
-- Autonomy above the teleoperation tier, kept subordinate to the stop guarantee:
-  supervisory or shared-collaborative control in the Section 2.1 taxonomy
-- Larger operator study and field validation with trained rescue personnel,
-  beyond the sample reported in Section 5.8
-- Hardware extensions: thermal or gas sensing for victim detection, extended
-  battery endurance, ruggedised chassis
+- (opening) Every direction starts from a limitation in Sections 3 or 5,
+  names its baseline and metrics, and is not an existing capability; the
+  firmware dead-man of Section 3.5.2 stays independent of every new function
+- Figure 7.1: six themes holding directions A-T; Table 7.1: direction to
+  limitation map (evidence subsection, challenge C1-C4)
+- 7.1 Network-Adaptive Teleoperation and Victim Communication (A, M);
+  Table 7.2
+- 7.2 Communication Resilience: 802.11s mesh, communication-aware planning
+  (B, S); Table 7.3
+- 7.3 Fault Detection and Quantitative Fail-Safe Validation (C, Q, T);
+  Table 7.4 fault-injection matrix
+- 7.4 GPS-Denied Localization and Return Navigation (D, E, F, G); Table 7.5
+- 7.5 Platform: Compact Chassis, Mobility, Thermal Protection, Energy
+  (H, J, I, N); Table 7.6
+- 7.6 Hazard Sensing and Edge-Based Victim Assistance (K, L); Table 7.7
+- 7.7 Security, Multi-Robot Scale and Reproducibility (O, P, R); Table 7.8
+  priority and dependencies
+- Full text: section7_future_work.md
 
 **8. Conclusion**
 
