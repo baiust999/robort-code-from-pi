@@ -63,3 +63,23 @@ is a read-only check.
 ## Update 2026-10-22: avi2026review removed
 
 At the authors' request, avi2026review was deleted from references.bib, citation.md, the paper outline, Section 2 and Section 5.7. Claims that rested only on it (2025-2026 corpus statistics, the review's mode classification of individual papers) were removed; the remaining Section 2 claims are sourced to the primary papers. The entry above is kept as a historical record only.
+
+## Section 2 Q1 revision (2026-10-22)
+
+24 entries added to references.bib for the Section 2 rewrite. Each was
+generated directly from its Crossref record (api.crossref.org/works/<DOI>),
+so title, authors, venue, volume, issue, pages and year are Crossref's own
+values, and each claim made about it in Section 2 was checked against the
+abstract (OpenAlex abstract_inverted_index).
+
+| BibKey | Verdict | Notes |
+|---|---|---|
+| delmerico2019, nagatani2013, kawatsuma2012, murphy2004, jacoff2012, chung2023, murphy2010, murphy2011, bethel2007, srinivasan2012, candea2004, kim2023, manuel2022, yamauchi2022, cantizani2022, militano2023, tiberkak2023, narasimhan2024, ramesh2022, luz2023, bakzadeh2026b | VERIFIED | Crossref record + abstract |
+| pramono2024 | VERIFIED (caveat) | Crossref gives no volume/issue; volume 13, number 1 taken from the DOI suffix (v13n1) |
+| schneider2016 | VERIFIED (caveat) | Crossref record for the ICCC 2016 paper; the quoted requirement (audio-visual communication between operator and trapped persons) was read in the authors' arXiv version 1912.04693, whose journal-ref is this paper |
+| iec60204 | VERIFIED (caveat) | Title, edition 6.0, date 2016-10-13 from IEC webstore publication 26037; the stop-category-0 wording (clause 9.2.2) comes from vendor documents quoting the clause (ABB), not from the normative text |
+
+Not added (found but not needed, or not verifiable from an abstract):
+kruijff2015 TRADR (10.1007/s13218-015-0352-5, no abstract available),
+Murphy, Disaster Robotics, MIT Press 2014 (10.7551/mitpress/9407.001.0001,
+no abstract), crick2017 rosbridge (no abstract).

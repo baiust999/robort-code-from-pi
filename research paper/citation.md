@@ -38,10 +38,10 @@ Status values: `VERIFIED` = in references.bib, safe to cite.
 | daun2023 | 2.2 | Requirements for autonomy and assistance functions in ground rescue robots | Daun and von Stryk, IEEE SSRR, 2023 | 10.1109/SSRR59696.2023.10499930 | VERIFIED |
 | megalingam2022 | 2.2 | Low-cost SAR robot platform evaluated at WRS 2020 | Megalingam et al., Advanced Robotics, 2022 | 10.1080/01691864.2022.2117575 | VERIFIED |
 | verano2022 | 2.2 | Low-cost teleoperated explorer robot | Verano et al., IJACSA, 2022 | 10.14569/IJACSA.2022.01307104 | VERIFIED |
-| cafolla2026 | 2.2 | Teleoperated universal SAR add-on platform (drone and quadruped) | Cafolla et al., Robot. Auton. Syst., 2026 | 10.1016/j.robot.2025.105237 | VERIFIED |
-| jia2025 | 2.2 | Teleoperated terrestrial-aerial caged UAV; navigation autonomy deferred | Jia et al., Applied Sciences, 2025 | 10.3390/app15168792 | VERIFIED |
-| liu2026hexapod | 2.2 | Teleoperated heavy-payload wheeled-hexapod rescue platform; navigation autonomy deferred | Liu et al., Mech. Mach. Theory, 2026 | 10.1016/j.mechmachtheory.2026.106472 | VERIFIED |
-| raghavan2026 | 2.2 | Teleoperated UGV with YOLOv8 occluded-victim detection | Raghavan et al., Results in Engineering, 2026 | 10.1016/j.rineng.2026.110608 | VERIFIED |
+| cafolla2026 | 2.2, 2.5, 2.6 | Universal add-on SAR controller (voice control, 3D reconstruction, person following) on drone and quadruped; cloud-based connectivity | Cafolla et al., Robot. Auton. Syst., 2026 | 10.1016/j.robot.2025.105237 | VERIFIED |
+| jia2025 | 2.2, 2.6 | Ground-air amphibious UAV, separation cage; 1.2 kg, 40 min endurance at 1 kg payload; control mode not stated in abstract | Jia et al., Applied Sciences, 2025 | 10.3390/app15168792 | VERIFIED |
+| liu2026hexapod | 2.2, 2.6 | Mechanical structure and locomotion control framework of a wheeled hexapod rescue device (no abstract available; full text needed) | Liu et al., Mech. Mach. Theory, 2026 | 10.1016/j.mechmachtheory.2026.106472 | VERIFIED |
+| raghavan2026 | 2.2, 2.4, 2.5, 2.6 | YOLOv8 victim detection on a Jetson Nano mobile robotic vehicle with cloud alerts; control mode not stated in abstract | Raghavan et al., Results in Engineering, 2026 | 10.1016/j.rineng.2026.110608 | VERIFIED |
 | khattab2025 | 2.2, 2.4, 2.6 | Teleoperated earthquake rescue robot; multimodal detection validated in MATLAB simulation; victim speaker/microphone pending implementation (abstract) | Khattab et al., Scientific Reports, 2025 | 10.1038/s41598-025-16003-7 | VERIFIED |
 | schrick2025 | 2.3 | Microservice control architecture for safety-critical mobile robots | Schrick et al., Robot. Auton. Syst., 2025 | 10.1016/j.robot.2024.104795 | VERIFIED |
 | koczi2025 | 2.3 | Safety-engineering practice for robots operating near people | Koczi and Sarosi, Electronics, 2025 | 10.3390/electronics14234734 | VERIFIED |
@@ -51,6 +51,30 @@ Status values: `VERIFIED` = in references.bib, safe to cite.
 | akgun2023 | 2.4 | Affect (LED expressions) as a robot-to-rescue-worker communication channel; three online studies, N = 112, 223, 151 | Akgun et al., IEEE Trans. Affect. Comput., 2023 | 10.1109/TAFFC.2022.3221922 | VERIFIED |
 | chitikena2023 | 2.4 | Ethical and design framework for SAR robots in the response phase | Chitikena, Sanfilippo, Ma, Applied Sciences, 2023 | 10.3390/app13031800 | VERIFIED |
 | bachhuber2016 | 2.5, 5.2 | Glass-to-glass video delay measurement method | Bachhuber and Steinbach, IEEE ICIP, 2016 | 10.1109/ICIP.2016.7532735 | VERIFIED |
+| delmerico2019 | 2.1, 2.6 | Survey of rescue robotics against first-responder needs; robustness, speed, versatility, ease of use not yet met | Delmerico et al., J. Field Robot., 2019 | 10.1002/rob.21887 | VERIFIED |
+| schneider2016 | 2.1, 2.4, 2.6 | SAR requirements; robot should provide audio-visual communication between operator and trapped persons (quote read in arXiv:1912.04693 version) | Schneider and Wildermuth, ICCC, 2016 | 10.1109/carpathiancc.2016.7501177 | VERIFIED |
+| murphy2004 | 2.2, 2.6 | WTC 2001, first known use of robots for USAR; performance by mobility, sensors, control, communications, power | Murphy, IEEE Robot. Autom. Mag., 2004 | 10.1109/MRA.2004.1337826 | VERIFIED |
+| nagatani2013 | 2.2, 2.5, 2.6 | Fukushima: robust wireless not possible in reactor buildings, wired communication device installed | Nagatani et al., J. Field Robot., 2013 | 10.1002/rob.21439 | VERIFIED |
+| kawatsuma2012 | 2.2 | Fukushima robot response lessons: organisation, operation scheme, systemisation | Kawatsuma, Fukushima, Okada, Industrial Robot, 2012 | 10.1108/01439911211249715 | VERIFIED |
+| jacoff2012 | 2.2, 2.6 | Standard test methods for response robots developed through competitions | Jacoff et al., PerMIS, 2012 | 10.1145/2393091.2393126 | VERIFIED |
+| chung2023 | 2.2, 2.6 | DARPA Subterranean Challenge 2018-2021 analysis and lessons | Chung, Orekhov, Maio, Annu. Rev. Control Robot. Auton. Syst., 2023 | 10.1146/annurev-control-062722-100728 | VERIFIED |
+| pramono2024 | 2.2, 2.4, 2.6 | 3D-printed IoT disaster robot: video, GPS, lighting; Bluetooth 10 m, video 12 m; "affordable" | Pramono, Al Hakim, Alfianto, J. Nas. Tek. Elektro, 2024 | 10.25077/jnte.v13n1.1191.2024 | VERIFIED |
+| manuel2022 | 2.2, 2.5, 2.6 | LoRa LPWAN SAR communication architecture; Rescuer robot, Gazebo and lab tests | Manuel, Faied, Krishnan, IEEE Access, 2022 | 10.1109/access.2022.3178437 | VERIFIED |
+| yamauchi2022 | 2.2, 2.4, 2.6 | Active scope camera with 80 distributed sensors incl. microphones and speakers; Fukushima Robot Test Field | Yamauchi et al., ROBOMECH J., 2022 | 10.1186/s40648-022-00223-x | VERIFIED |
+| kim2023 | 2.2, 2.4, 2.6 | Low-cost thermal-IR survivor localisation and approach for a SAR assistant robot | Kim et al., Machines, 2023 | 10.3390/machines11030329 | VERIFIED |
+| cantizani2022 | 2.2, 2.4 | BLE wearables detected by SAR robots up to 15 m | Cantizani-Estepa et al., IEEE Access, 2022 | 10.1109/access.2022.3204272 | VERIFIED |
+| iec60204 | 2.3, 2.6 | Stop category 0: immediate removal of power to machine actuators (uncontrolled stop) | IEC 60204-1:2016 Ed. 6.0 | IEC webstore publication 26037 | VERIFIED (metadata on IEC webstore; clause 9.2.2 wording via vendor documents, normative text not read) |
+| narasimhan2024 | 2.3 | Run-time shield for networked robots under stochastic latency; F1/10th over congested Wi-Fi | Narasimhan, Bhat, Chinchali, IEEE RA-L, 2024 | 10.1109/lra.2023.3340525 | VERIFIED |
+| candea2004 | 2.3, 2.6 | Recovery-oriented computing: recover fast, multiple lines of defence | Candea et al., Computer, 2004 | 10.1109/mc.2004.219 | VERIFIED |
+| ramesh2022 | 2.3 | Robot vitals / robot health: run-time degradation detection for human takeover | Ramesh, Stolkin, Chiou, IEEE RA-L, 2022 | 10.1109/lra.2022.3192612 | VERIFIED |
+| luz2023 | 2.4 | Latency compromises robot safety, overshoot, workload; interfaces for 3 s latency | Luz, Silva, Ventura, IEEE Access, 2023 | 10.1109/access.2023.3240307 | VERIFIED |
+| bakzadeh2026b | 2.4 | Interviews with ten mine-rescue personnel: real-time situational data, communication, reliability | Bakzadeh et al., Front. Robot. AI, 2026 | 10.3389/frobt.2026.1698570 | VERIFIED |
+| bethel2007 | 2.4, 2.6 | Non-facial/non-verbal affect for robot-assisted victim assessment within about 3 m | Bethel and Murphy, ACM/IEEE HRI, 2007 | 10.1145/1228716.1228755 | VERIFIED |
+| murphy2010 | 2.4, 2.6 | Survivor Buddy: 4-DoF head, touch-screen face, social medium between trapped survivors and outside world | Murphy et al., ACM/IEEE HRI, 2010 | 10.1109/hri.2010.5453233 | VERIFIED |
+| murphy2011 | 2.4, 2.6 | Survivor Buddy 2.0: 50% cheaper, 78% lighter, up to 700% faster than 1.0 | Murphy et al., IEEE ICRA, 2011 | 10.1109/icra.2011.5979977 | VERIFIED |
+| srinivasan2012 | 2.4, 2.6 | 4-10 h from victim discovery to extrication; robot stays with victim; simulated US&R studies | Srinivasan, Henkel, Murphy, IEEE SSRR, 2012 | 10.1109/ssrr.2012.6523916 | VERIFIED |
+| tiberkak2023 | 2.5 | WebRTC multi-operator remote control platform with priority system and chat | Tiberkak, Hentout, Belkhir, Int. J. Intell. Robot. Appl., 2023 | 10.1007/s41315-023-00281-3 | VERIFIED |
+| militano2023 | 2.5 | Cloud-to-edge-to-IoT continuum for SAR low-delay requirements; open challenge | Militano et al., Future Internet, 2023 | 10.3390/fi15020055 | VERIFIED |
 
 ## Pending / needed citations
 

@@ -30,59 +30,47 @@
 
 **2. Related Work**
 
+- (opening) Roadmap; literature-selection paragraph (Crossref/OpenAlex,
+  backward citation, inclusion rule for Table 2.1) [AUTHORS: confirm]
 - 2.1 Prior Reviews and Levels of Operator Involvement
-  \cite{liu2013,kareem2026,sinha2026,bakzadeh2026,tong2024,daun2023,chen2007}
-  - How prior reviews organise the field: the control perspective
-    \cite{liu2013}, a five-layer system architecture \cite{kareem2026}, UGV
-    reconnaissance hardware and algorithms \cite{sinha2026}, mine-rescue
-    design requirements \cite{bakzadeh2026}, perception deficiencies
-    \cite{tong2024}
-  - Four levels of operator involvement used in this paper (Teleoperation,
-    Supervisory Control, Shared-Collaborative Control, Full Autonomy); this
-    work is Teleoperation
-  - Why Teleoperation: typical mode in actual disasters \cite{daun2023}; an
-    important default mode even for autonomous systems \cite{chen2007}
-- 2.2 Rescue Robot Platforms and Their Cost
-  - Field evidence for a human in the loop \cite{casper2003}; combining
-    operator and robotic assistance \cite{daun2023}
-  - Teleoperated platforms \cite{megalingam2022,verano2022,khattab2025,cafolla2026}
-  - Mobility and detection platforms \cite{jia2025,liu2026hexapod,raghavan2026};
-    none reports a bounded stop time or process supervision in its abstract
-  - Cost asserted without figures (C4) \cite{verano2022,raghavan2026,sinha2026}
+  \cite{liu2013,delmerico2019,schneider2016,kareem2026,sinha2026,bakzadeh2026,tong2024,daun2023,chen2007}
+  - Reviews organise the field by control approach, deployment readiness,
+    architecture, platform class or design requirement
+  - Four levels of operator involvement; this work is Teleoperation
+    \cite{daun2023,chen2007}
+- 2.2 Field Deployments, Benchmarks and Recent Platforms
+  - Field deployments: WTC \cite{murphy2004,casper2003}; Fukushima wired
+    link \cite{nagatani2013,kawatsuma2012}; link loss is an expected
+    condition (C1, C2)
+  - Benchmarks \cite{jacoff2012,chung2023}; Section 5 does not use the
+    standard test apparatus
+  - Recent platforms
+    \cite{megalingam2022,verano2022,pramono2024,khattab2025,manuel2022,cafolla2026,jia2025,liu2026hexapod,yamauchi2022,kim2023,raghavan2026,cantizani2022}
+  - Cost asserted without figures (C4)
 - 2.3 Fail-Safe and Fault-Tolerant Architectures for Low-Cost Mobile Robots
-  \cite{pont2001,schrick2025,koczi2025}
-  - Time-triggered embedded scheduling as the basis for a bounded stop time
-    (C1) \cite{pont2001}
-  - Microservice isolation in safety-critical mobile-robot control (C2)
-    \cite{schrick2025}; safety-engineering practice for robots operating
-    near people \cite{koczi2025}
+  - Bounded stop: IEC 60204-1 stop category 0 \cite{iec60204}; time-triggered
+    firmware \cite{pont2001}; delayed-observation shield is complementary
+    \cite{narasimhan2024}
+  - Process supervision: recovery-oriented computing \cite{candea2004};
+    microservices \cite{schrick2025}; robot vitals \cite{ramesh2022};
+    safety-engineering review \cite{koczi2025}
 - 2.4 Human-Robot Interaction: Operator and Victim
-  - Operator side: interface design, latency and situational awareness in
-    teleoperation \cite{chen2007,bakzadeh2025,ruan2025}
-  - Robot to rescue team: affect as an added communication channel to rescue
-    workers \cite{akgun2023}; ethics and design in the response phase
-    \cite{chitikena2023}
-  - Victim side (C3): in the Table 2.1 platforms victims are detection
-    targets; the one system that provisions victim audio reports it as
-    pending implementation \cite{khattab2025}
+  - Operator side \cite{chen2007,luz2023,bakzadeh2025,bakzadeh2026b,ruan2025}
+  - Robot to rescue team \cite{akgun2023,chitikena2023}
+  - Victim side (C3): requirement \cite{schneider2016}; 4-10 h wait
+    \cite{srinivasan2012}; Survivor Buddy line
+    \cite{bethel2007,murphy2010,murphy2011}; recent platforms treat victims
+    as detection targets; SERR victim audio pending \cite{khattab2025}
 - 2.5 Real-Time Media and Computing on Edge Hardware
-  \cite{shi2025webrtc,valin2012,bachhuber2016}
-  - Latency of a WebRTC-based teleoperated robot (remote dental surgery)
-    \cite{shi2025webrtc}; local signalling here, no cloud dependence
-  - Opus frame-size trade-off \cite{valin2012}; measuring glass-to-glass
-    video delay \cite{bachhuber2016}
-  - Cloud dependence of recent platforms \cite{raghavan2026,cafolla2026}
-    versus fully local operation on one single-board computer
+  - WebRTC teleoperation \cite{shi2025webrtc,tiberkak2023}; Opus
+    \cite{valin2012}; glass-to-glass delay \cite{bachhuber2016}
+  - Cloud/edge placement \cite{militano2023,raghavan2026,cafolla2026,manuel2022,nagatani2013}
 - 2.6 Research Gap
-  - Table 2.1 (numbered by section, as in Section 5, because Section 3
-    already has a Table 1): seven representative rescue platforms plus this
-    work, one column per challenge: bounded stop-time guarantee (C1), process
-    supervision (C2), two-way victim audio/video (C3), reported cost (C4),
-    plus validation reported
-  - Field study, requirements study and survey \cite{casper2003,daun2023,liu2013}
-    are cited in 2.1-2.2 but not tabulated, since they are not single platforms
-  - Every Table 2.1 cell is sourced from the cited paper; a property a paper
-    does not report is entered as "NR", never inferred
+  - Table 2.1: 12 platforms plus this work; columns for platform/control,
+    link and computing, C1-C4, validation; Survivor Buddy included as the
+    closest prior work on C3
+  - Gap stated as a combination; no part claimed as a first
+  - Every NR and link cell still to be checked against full text
   - Full text: section2_related_work.md
 
 **3. Methodology**
