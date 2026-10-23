@@ -1,0 +1,66 @@
+A. Safety-Aware, Network-Adaptive Teleoperation
+Future work will investigate a safety-aware, network-adaptive teleoperation framework that monitors network latency, packet loss, signal quality, and telemetry age. The framework will adapt video resolution, frame rate, and bitrate under degraded network conditions while prioritizing control traffic. When control communication becomes unreliable, the system will invoke the existing safe-stop mechanism. Evaluation will compare the proposed policy with fixed-quality teleoperation in terms of control latency, video usability, safe-stop response, and task completion rate.
+B. Multi-Hop Mesh Networking for Rescue Robots
+Future work will implement and evaluate an IEEE 802.11s multi-hop mesh network using multiple wireless nodes and HWMP routing. The investigation will examine communication continuity when nodes fail, routes change, and obstacles obstruct wireless links. Performance will be compared with a single-access-point configuration using packet delivery ratio, end-to-end latency, route recovery time, and control availability.
+C. Cross-Layer Fault Detection and Recovery
+Future work will extend the existing Arduino dead-man timer and Raspberry Pi watchdog with a cross-layer fault supervisor. The supervisor will monitor serial communication, process health, telemetry freshness, and command delivery to identify and classify system failures. Controlled recovery states will be investigated while preserving independent motor-stop protection. Evaluation will measure fault detection time, recovery time, false-alarm rate, and compliance with the motor-stop safety requirement.
+D. Indoor Localization and SLAM
+Future work will integrate a 2D LiDAR, wheel encoders, and an inertial measurement unit (IMU) to investigate indoor localization and simultaneous localization and mapping (SLAM). The system will generate an occupancy-grid map of an unfamiliar building and estimate the robot's position and orientation without relying on GPS. Localization accuracy will be evaluated against independently measured reference positions.
+E. Trajectory Tracking and Visualization
+Future work will extend the operator dashboard to visualize the robot's estimated indoor position, orientation, and travelled trajectory on a generated building map. Timestamped pose data will be recorded to reconstruct explored routes and support post-mission analysis. Evaluation will examine trajectory error, route reconstruction accuracy, and visualization latency.
+F. Autonomous Return Navigation
+Future work will investigate waypoint-based path retracing and map-based route planning to support return to a designated exit. Algorithms such as A* will be evaluated for selecting obstacle-aware routes on a mapped environment. The robot will retain operator control and an independent emergency-stop mechanism. Performance will be measured using return-to-start success rate, route length, return time, and obstacle-related failures.
+G. Localization-Aware and Obstacle-Aware Navigation
+Future work will investigate navigation strategies that account for localization uncertainty, obstacle proximity, and changing environmental conditions. The robot will reduce speed, request operator intervention, or stop when localization confidence falls below predefined thresholds. Experiments will assess position error, obstacle-avoidance success, collision frequency, and safe navigation completion rate.
+H. Compact and Low-Profile Chassis Design
+Future work will redesign the robot chassis to reduce its overall height and width, enabling access to narrow passages and confined spaces beneath partially collapsed structures. The design will balance compact dimensions with ground clearance, structural strength, sensor visibility, component accessibility, and payload capacity. Performance will be evaluated using minimum navigable clearance, turning radius, obstacle traversal success, and structural deformation under defined loads.
+I. Heat-Resistant Structural Design
+Future work will investigate heat-resistant chassis materials, thermal insulation, protective enclosures, and heat dissipation strategies for electronic components. The design will account for the operating temperature limits of the Raspberry Pi, Arduino, batteries, sensors, motors, and communication hardware. Controlled thermal testing will measure internal temperature, component temperature rise, and operational stability under specified exposure conditions.
+J. Improved Mobility in Disaster Environments
+Future work will investigate alternative mobility configurations, including tracked drive systems, improved wheel traction, and enhanced obstacle clearance. Experiments will evaluate movement over rubble-like surfaces, loose materials, slopes, and uneven terrain. Performance indicators will include traversal success rate, maximum negotiable slope, obstacle clearance, slip ratio, and energy consumption.
+K. Sensor Fusion for Hazard Assessment
+Future work will investigate sensor fusion to improve environmental hazard assessment by combining gas concentration, temperature, humidity, distance measurements, and additional suitable sensors. Calibration against appropriate reference instruments will be used to quantify measurement uncertainty and detect abnormal environmental conditions. Evaluation will examine measurement error, detection sensitivity, false-alarm rate, and response time under controlled conditions.
+L. Edge-Based Victim Detection and Assistance
+Future work will explore lightweight edge-computing models for identifying potential victims and detecting selected visual indicators of distress. Models will be evaluated on the Raspberry Pi or suitable edge hardware using precision, recall, inference latency, memory consumption, and energy usage. Automated outputs will be presented as decision-support information for the remote operator rather than as definitive confirmation of a victim's condition.
+M. Two-Way Victim Communication Under Degraded Networks
+Future work will evaluate audio and video communication between the operator and a simulated victim under bandwidth constraints, packet loss, high latency, and intermittent connectivity. The study will investigate adaptive media configurations and their effect on speech intelligibility, video usability, interaction delay, and operator assessment performance.
+N. Energy-Aware Operation and Battery Management
+Future work will investigate power-efficient operation through motor-power profiling, adaptive media processing, and workload management. The robot's energy consumption will be measured during locomotion, sensor acquisition, video streaming, and standby operation. A battery-aware return strategy will also be explored to initiate a return-to-start procedure when the remaining energy reaches a validated threshold.
+O. Cybersecurity and Secure Remote Control
+Future work will investigate stronger authentication, role-based command authorization, encrypted communication, replay-attack protection, and secure software updates. Security experiments will assess unauthorized-command rejection, communication overhead, recovery from interrupted sessions, and the preservation of safe motor states during communication or authentication failures.
+P. Multi-Robot Cooperative Exploration
+Future work will explore cooperative rescue operations involving multiple robots that share environmental maps, hazard observations, and potential victim locations. The investigation will consider task allocation, map merging, communication overhead, and coordination under network interruptions. Performance will be compared with single-robot operation using exploration coverage, mission completion time, and resource utilization.
+Q. Quantitative Fail-Safe and Fault-Injection Evaluation
+Future work will establish a systematic fault-injection framework for evaluating the robot's safety mechanisms. Controlled failures will include command timeouts, serial-link interruptions, process crashes, stale sensor data, and wireless disconnections. Evaluation will measure detection latency, motor-stop response, unintended-motion duration, recovery success rate, and repeatability across trials.
+R. Standardized Benchmarking and Reproducibility
+Future work will establish a reproducible experimental framework with documented hardware configurations, test procedures, network conditions, raw telemetry, and statistical analysis. Repeated trials and comparisons with relevant baselines will be used to quantify uncertainty, identify limitations, and support independent verification of the reported results.
+S. Communication-Aware Mission Planning
+Future work will investigate mission planning that considers both physical route conditions and wireless communication quality. The planner will examine the trade-off between route length, obstacle exposure, and communication availability when selecting a route through a mapped environment. Evaluation will compare communication-aware route selection with distance-only planning using route length, connectivity interruptions, control availability, and mission completion rate.
+T. Digital-Twin and Simulation-Based Validation
+Future work will investigate a simulation environment that models robot motion, sensors, obstacles, wireless degradation, and selected hardware failures. The environment will support repeatable testing of navigation and fault-recovery policies before physical deployment. Simulation results will be compared with real-robot experiments to quantify simulation-to-reality differences rather than treating simulated performance as a substitute for physical validation.
+
+Which future-work directions should you prioritize?
+Not every item should receive equal emphasis. For a focused Q1-oriented research agenda, select directions that connect directly to the paper's contribution and can be evaluated experimentally.
+Priority	Direction	Main research contribution
+1	A. Network-adaptive teleoperation	Adaptive communication with safety constraints
+2	B. Multi-hop mesh networking	Communication resilience under topology changes
+3	C. Cross-layer fault recovery	Systematic fault detection and safe recovery
+4	Q. Fault-injection evaluation	Quantitative evidence for fail-safe behavior
+5	D. Indoor localization and SLAM	Position estimation in GPS-denied environments
+6	F. Autonomous return navigation	Return-to-start capability
+7	K. Sensor fusion	More reliable hazard assessment
+8	J. Improved mobility	Traversal of confined and debris-filled environments
+9	I. Heat-resistant design	Thermal protection under defined operating limits
+10	R. Reproducible benchmarking	Stronger repeatability and evidence quality
+
+My recommendation for your paper
+Given your existing architecture, I would organize the final Future Work section around six main themes:
+1. Safety-aware, network-adaptive teleoperation.
+2. Multi-hop mesh networking and communication resilience.
+3. Cross-layer fault detection and quantitative fail-safe validation.
+4. Indoor SLAM, trajectory tracking, and autonomous return navigation.
+5. Compact, thermally protected chassis and improved disaster-terrain mobility.
+6. Sensor fusion for hazard assessment and edge-based victim assistance.
+Use the remaining directions as optional extensions if space permits.
+
+One important distinction: future-work breadth does not determine Q1 acceptance. Your paper will be stronger if the proposed directions follow logically from demonstrated limitations, and if the current manuscript reports credible measurements, appropriate baselines, repeated trials, and transparent limitations. In particular, do not present multi-hop mesh networking, autonomous indoor navigation, heat resistance, or automated victim detection as existing capabilities unless they have actually been implemented and validated.
