@@ -160,6 +160,7 @@
              Applications},
   volume  = {13},
   number  = {7},
+  note    = {Paper 104},
   year    = {2022},
   doi     = {10.14569/IJACSA.2022.01307104}
 }
@@ -196,9 +197,11 @@
   url          = {https://arxiv.org/abs/2410.08507}
 }
 
+% Author name split follows the Crossref record deposited by IEEE (checked
+% 2026-10-22): family names "Aqeel Kareem", "Jabbar Abid", "Abdulelah Al-Naji".
 @article{kareem2026,
-  author  = {Kareem, Abbas Aqeel and Abid, Ahmed Jabbar and
-             Hammood, Dalal Abdulmohsin and Al-Naji, Ali Abdulelah and
+  author  = {{Aqeel Kareem}, Abbas and {Jabbar Abid}, Ahmed and
+             Hammood, Dalal Abdulmohsin and {Abdulelah Al-Naji}, Ali and
              Chahl, Javaan},
   title   = {Safe Search and Rescue Operations Based on Autonomous
              Robots: A Systematic Review of the General System
@@ -374,21 +377,9 @@
   doi     = {10.3390/app15168792}
 }
 
-@article{liu2026hexapod,
-  author  = {Liu, Shangfei and Wang, Junzheng and Liu, Dongchen
-             and Zheng, Huaihang},
-  title   = {Mechanical Structure Design and Locomotion Control Framework
-             for a Wheeled Hexapod Rescue Device},
-  journal = {Mechanism and Machine Theory},
-  volume  = {225},
-  pages   = {106472},
-  year    = {2026},
-  doi     = {10.1016/j.mechmachtheory.2026.106472}
-}
-
 @article{raghavan2026,
   author  = {Raghavan, Anirudh and Ramesh, Yukteshwar and Shyam, H.
-             and Hency V, Berlin and Halgamuge, Malka N.},
+             and V, Berlin Hency and Halgamuge, Malka N.},
   title   = {Enhancing Earthquake Response with {AI}: Real-Time Human
              Detection Using Deep Learning and Robotic Systems},
   journal = {Results in Engineering},
@@ -751,6 +742,9 @@
 % of power to the machine actuators, an uncontrolled stop) confirmed via
 % vendor documents quoting the clause (ABB AC500-S manual, ABB ACS880
 % technical note); the normative text itself was not read.
+% Edition checked on the IEC webstore 2026-10-22 (publication 26037): Ed. 6.0
+% was published 2016-10-13; the current valid version is the consolidated
+% IEC 60204-1:2016+AMD1:2021 CSV (Ed. 6.1); Ed. 7.0 is under development.
 @techreport{iec60204,
   author      = {{International Electrotechnical Commission}},
   title       = {Safety of Machinery -- Electrical Equipment of Machines --
@@ -758,6 +752,77 @@
   institution = {International Electrotechnical Commission},
   address     = {Geneva, Switzerland},
   type        = {International Standard},
-  number      = {IEC 60204-1:2016, Ed. 6.0},
-  year        = {2016}
+  number      = {IEC 60204-1:2016+AMD1:2021 CSV, Ed. 6.1},
+  year        = {2021}
+}
+
+% ---- Added 2026-10-22 from the Section 2 audit. Each entry generated from its
+% Crossref record (api.crossref.org/works/<DOI>); the claim made in Section 2
+% was checked against the abstract (OpenAlex). ----
+
+@article{murphy2004hri,
+  author  = {Murphy, R.R.},
+  title   = {Human-Robot Interaction in Rescue Robotics},
+  journal = {IEEE Transactions on Systems, Man, and Cybernetics, Part C
+             (Applications and Reviews)},
+  volume  = {34},
+  number  = {2},
+  pages   = {138--153},
+  year    = {2004},
+  doi     = {10.1109/TSMCC.2004.826267}
+}
+
+@article{queralta2020,
+  author  = {Queralta, Jorge Pena and Taipalmaa, Jussi and Can Pullinen,
+             Bilge and Sarker, Victor Kathan and Nguyen Gia, Tuan and
+             Tenhunen, Hannu and Gabbouj, Moncef and Raitoharju, Jenni and
+             Westerlund, Tomi},
+  title   = {Collaborative Multi-Robot Search and Rescue: Planning,
+             Coordination, Perception, and Active Vision},
+  journal = {IEEE Access},
+  volume  = {8},
+  pages   = {191617--191643},
+  year    = {2020},
+  doi     = {10.1109/ACCESS.2020.3030190}
+}
+
+% Crossref and OpenAlex give only the first page (74); add the end page from
+% the journal PDF before submission.
+@article{beer2014,
+  author  = {Beer, Jenay M. and Fisk, Arthur D. and Rogers, Wendy A.},
+  title   = {Toward a Framework for Levels of Robot Autonomy in Human-Robot
+             Interaction},
+  journal = {Journal of Human-Robot Interaction},
+  volume  = {3},
+  number  = {2},
+  pages   = {74},
+  year    = {2014},
+  doi     = {10.5898/JHRI.3.2.Beer}
+}
+
+@inproceedings{kruijff2016,
+  author    = {Kruijff-Korbayov\'{a}, Ivana and Freda, Luigi and Gianni,
+               Mario and Ntouskos, Valsamis and Hlav\'{a}\v{c}, V\'{a}clav and
+               Kubelka, Vladim\'{i}r and Zimmermann, Erik and Surmann,
+               Hartmut and Dulic, Kresimir and Rottner, Wolfgang and Gissi,
+               Emanuele},
+  title     = {Deployment of Ground and Aerial Robots in Earthquake-Struck
+               {Amatrice} in {Italy} (Brief Report)},
+  booktitle = {2016 IEEE International Symposium on Safety, Security, and
+               Rescue Robotics (SSRR)},
+  pages     = {278--279},
+  publisher = {IEEE},
+  year      = {2016},
+  doi       = {10.1109/SSRR.2016.7784314}
+}
+
+@article{endsley1995,
+  author  = {Endsley, Mica R.},
+  title   = {Toward a Theory of Situation Awareness in Dynamic Systems},
+  journal = {Human Factors},
+  volume  = {37},
+  number  = {1},
+  pages   = {32--64},
+  year    = {1995},
+  doi     = {10.1518/001872095779049543}
 }
