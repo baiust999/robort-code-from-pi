@@ -76,7 +76,7 @@ Status values: `VERIFIED` = in references.bib, safe to cite.
 | militano2023 | 2.5 | Cloud-to-edge-to-IoT continuum for SAR low-delay requirements; open challenge | Militano et al., Future Internet, 2023 | 10.3390/fi15020055 | VERIFIED |
 | murphy2004hri | 2.1, 2.6 | Rescue-HRI tutorial; domain theory of robot-assisted search (workflow and information-flow models) from eight years of USAR HRI | Murphy, IEEE Trans. SMC-C, 2004 | 10.1109/TSMCC.2004.826267 | VERIFIED |
 | queralta2020 | 2.1, 2.6 | Review of multi-robot SAR systems: coordination and perception algorithms | Queralta et al., IEEE Access, 2020 | 10.1109/ACCESS.2020.3030190 | VERIFIED |
-| beer2014 | 2.1 | Levels of robot autonomy range from teleoperation to full autonomy | Beer, Fisk, Rogers, J. Human-Robot Interaction, 2014 | 10.5898/JHRI.3.2.Beer | VERIFIED (end page not in Crossref/OpenAlex) |
+| beer2014 | 2.1 | Levels of robot autonomy range from teleoperation to full autonomy | Beer, Fisk, Rogers, J. Human-Robot Interaction, 2014 | 10.5898/JHRI.3.2.Beer | VERIFIED (pages 74-99 per Scholar Commons record) |
 | kruijff2016 | 2.2, 2.6 | Amatrice (Italy) August 2016 earthquake: ground and aerial robots collected data for 3D models of two damaged churches | Kruijff-Korbayova et al., IEEE SSRR, 2016 | 10.1109/SSRR.2016.7784314 | VERIFIED |
 | endsley1995 | 2.4 | Theory of situation awareness and its role in dynamic decision making | Endsley, Human Factors, 1995 | 10.1518/001872095779049543 | VERIFIED |
 
@@ -99,7 +99,7 @@ master table once its entry is verified and added to references.bib.)
 | 3.8 | "permissive CORS" / cross-origin request handling | WHATWG Fetch Standard (CORS) | UNVERIFIED |
 | 3.10 | "equirectangular approximation ... against the haversine formula" | Standard geodesy reference (e.g. Sinnott 1984, haversine) | UNVERIFIED |
 | 2.2 | liu2026hexapod (Liu et al., Mech. Mach. Theory 225:106472, 2026, doi 10.1016/j.mechmachtheory.2026.106472): wheeled hexapod rescue device. Removed from Section 2 and references.bib on 2026-10-22 because neither abstract nor full text could be read | Full text | UNVERIFIED |
-| 2.6, Table 2.1 | "NR" cells of the six Table 2.1 rows not yet read in full text: murphy2010/murphy2011 (Survivor Buddy), megalingam2022, manuel2022, cafolla2026, yamauchi2022, raghavan2026. Rows checked against full text on 2026-10-22: verano2022, pramono2024, khattab2025, kim2023, jia2025 | Full text of each listed paper (paywalled or bot-blocked when tried) | UNVERIFIED |
+| 2.6, Table 2.1 | "NR*" cells of the six Table 2.1 rows still based on abstracts (full text blocked or paywalled when tried 2026-10-22; Zenodo copy of murphy2011 is listed but could not be downloaded): murphy2010/murphy2011 (Survivor Buddy), megalingam2022, manuel2022, cafolla2026, yamauchi2022, raghavan2026. Rows checked against full text on 2026-10-22: verano2022, pramono2024, khattab2025, kim2023, jia2025 | Full text of each listed paper (paywalled or bot-blocked when tried) | UNVERIFIED |
 
 ## Software / tools (footnote or cite depending on venue policy)
 

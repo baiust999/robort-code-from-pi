@@ -30,8 +30,9 @@
 
 **2. Related Work**
 
-- (opening) Roadmap; literature-selection paragraph (Crossref/OpenAlex,
-  backward citation, inclusion rule for Table 2.1) [AUTHORS: confirm]
+- (opening) Roadmap; literature-selection paragraph (non-systematic
+  OpenAlex search with query counts, backward citation, inclusion rule for
+  Table 2.1)
 - 2.1 Prior Reviews and Levels of Operator Involvement
   \cite{murphy2004hri,liu2013,queralta2020,delmerico2019,schneider2016,kareem2026,sinha2026,bakzadeh2026,tong2024,chitikena2023,daun2023,chen2007}
   - Reviews organise the field by control approach, deployment readiness,
