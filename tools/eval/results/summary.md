@@ -35,6 +35,21 @@ Source: `estop.csv`, 23 raw rows.
 | 180 | concrete | distance (cm) | 7 | 91.29 | 6.65 | 78.0 | 98.0 | 92.0 | 97.7 |
 | 60 | concrete | distance (cm) | 7 | 42.71 | 6.78 | 34.0 | 54.0 | 41.0 | 52.2 |
 
+## Section 5.3
+
+### Wi-Fi range and link degradation
+
+Source: `network.csv`, 6 raw rows.
+
+| label | distance_m | obstacles | loss_pct | rtt_avg_ms | rtt_max_ms | rtt_mdev_ms | signal_dbm_start | tx_bitrate_mbps |
+|---|---|---|---|---|---|---|---|---|
+| N1 | 5 | none | 0.0 | 3.373 | 17.981 | 3.608 | -41.0 | 72.2 |
+| N2 | 10 | none | 0.0 | 5.342 | 30.884 | 6.172 | -39.0 | 72.2 |
+| N3 | 15 | none | 0.0 | 5.738 | 41.687 | 8.206 | -41.0 | 65.0 |
+| N4 | 20 | none | 0.0 | 5.276 | 37.101 | 6.701 | -40.0 | 72.2 |
+| N5 | 25 | none | 0.0 | 4.77 | 31.714 | 6.531 | -42.0 | 72.2 |
+| N6 | 50 | none | 0.0 | 3.467 | 25.388 | 3.869 | -41.0 | 72.2 |
+
 ## Section 5.4
 
 ### Fault injection and automatic recovery
@@ -270,7 +285,6 @@ Source: `gps_static.csv`, 1 raw row.
 - [ ] 5.1 Control latency, 240 fps video (key press -> wheel motion) (`latency_video.csv`)
 - [ ] 5.1 Dead-man wheel-stop time (bound about 2.06 s: 2000 ms window + 10 ms supervisor period + one loop pass) (`deadman_physical.csv`)
 - [ ] 5.2 End-to-end video delay (`glass2glass.csv`)
-- [ ] 5.3 Wi-Fi range and link degradation (`network.csv`)
 - [ ] 5.7 End-to-end rescue runs (`field.csv`)
 - [ ] 5.8 Operator usability (System Usability Scale) (`sus.csv`)
 - [ ] 4-5 Hardware and integration checklist (TEST_REPORT sections 4 and 5) (`checklist.csv`)

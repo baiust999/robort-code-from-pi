@@ -54,7 +54,7 @@
     claim \cite{iec60204}; time-triggered
     firmware \cite{pont2001}; safety functions moving into software
     \cite{murray2022}; drone-processor watchdog \cite{madhushankara2024};
-    UAV signal-loss failsafe \cite{khrystyuk2025}; delayed-observation shield
+    ArduPilot Rover link-loss failsafe documentation \cite{ardupilot_rover_failsafe}; delayed-observation shield
     is complementary \cite{narasimhan2024}
   - Process supervision: recovery-oriented computing \cite{candea2004};
     microservices \cite{schrick2025}; robot vitals \cite{ramesh2022};
@@ -78,9 +78,9 @@
     text read; NR (not reported) distinguished from "(stated)" cells;
     Survivor Buddy included as the closest prior work on C3
   - Gap stated as a combination; no part claimed as a first
-  - Full texts of 12 of the 13 other rows read; Survivor Buddy rests on
-    abstracts and a related full text (see citation.md); NR cells of six
-    rows keyword-checked against the stored full texts in fulltext/
+  - Full texts read for all 13 other rows (Survivor Buddy: both Murphy
+    papers; srinivasan2012 abstract only); cells corrected 2026-10-23 where
+    the full text differed (see citation.md)
   - Full text: section2_related_work.md
 
 **3. Methodology**

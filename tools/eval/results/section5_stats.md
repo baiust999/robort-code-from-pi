@@ -139,7 +139,7 @@ First gps_fix 0 -> 1 in F9-gps-loss at t = 1306.57 s after the watch started (20
 
 ## E3 forward drive commands in P1's event logs (wire=F<pwm>)
 
-Sources: p1_events.log, p1_events.log.1, p1_events.log.2.gz; entries from 2026-09-25 to 2026-10-22.
+Sources: p1_events.log, p1_events.log.1, p1_events.log.2.gz, p1_events.log.3.gz; entries from 2026-09-25 to 2026-10-23.
 
 | date | PWM | commands |
 |---|---|---|
@@ -154,8 +154,11 @@ Sources: p1_events.log, p1_events.log.1, p1_events.log.2.gz; entries from 2026-0
 | 2026-10-02 | 120 | 25 |
 | 2026-10-21 | 120 | 27 |
 | 2026-10-21 | 180 | 12 |
-| 2026-10-22 | 120 | 3 |
-| any | 60 | 0 |
+| 2026-10-22 | 60 | 44 |
+| 2026-10-22 | 120 | 93 |
+| 2026-10-22 | 180 | 40 |
+| 2026-10-23 | 120 | 1 |
+| 2026-10-23 | 180 | 3 |
 
 ## E10-E12 cross-check against telemetry.log (2026-10-21)
 
