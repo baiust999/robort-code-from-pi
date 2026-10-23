@@ -30,54 +30,106 @@
 
 **2. Related Work**
 
-- (opening) Roadmap; literature-selection paragraph (non-systematic
-  OpenAlex search with query counts, a second round on Pi/ROS rescue robots,
+- (opening) Roadmap along C1-C4 (Sections 2.1-2.5 literature, 2.6 gap and
+  Table 2.1); literature-selection paragraph: non-systematic OpenAlex search
+  (query counts, no PRISMA claim), a second round on Pi/ROS rescue robots,
   link-loss failsafes, watchdog timers and fault tolerance, backward
-  citation, inclusion rule for Table 2.1)
+  citation from the 2.1 reviews; inclusion rule for Table 2.1 (peer-reviewed,
+  2022 onward, built or simulated SAR robot, full text read, one earlier
+  exception); no dead-man or command-timeout study for a teleoperated rescue
+  robot found among the results screened
 - 2.1 Prior Reviews and Levels of Operator Involvement
-  \cite{murphy2004hri,liu2013,queralta2020,delmerico2019,schneider2016,kareem2026,sinha2026,bakzadeh2026,tong2024,chitikena2023,daun2023,chen2007,isaacs2022}
-  - Reviews organise the field by control approach, deployment readiness,
-    architecture, platform class or design requirement
-  - Four levels of operator involvement along the LORA spectrum
-    \cite{beer2014,schneider2016}; this work is Teleoperation \cite{daun2023,chen2007}
+  - Reviews organise the field by domain theory \cite{murphy2004hri}, control
+    \cite{liu2013}, multi-robot coordination \cite{queralta2020}, deployment
+    readiness \cite{delmerico2019}, component requirements
+    \cite{schneider2016}, architecture \cite{kareem2026}, platform class
+    \cite{sinha2026}, perception \cite{tong2024}, ethics and design
+    \cite{chitikena2023}, mine-rescue design requirements
+    \cite{bakzadeh2026}; none organises the field by stop-path timing or the
+    cost of victim interaction
+  - Levels of operator involvement along the LORA spectrum \cite{beer2014}
+    (teleoperation, supervisory control, shared-collaborative control, full
+    autonomy); SAR robots are tele-operated or semi-autonomous
+    \cite{schneider2016}; this work is Teleoperation
+    \cite{daun2023,chen2007}; teleoperation as the DARPA SubT baseline
+    \cite{isaacs2022}; higher levels deferred to Section 8 as extensions
+    subordinate to the Section 3.5 stop guarantee
 - 2.2 Field Deployments, Benchmarks and Recent Platforms
   - Field deployments: WTC \cite{murphy2004,casper2003}; Fukushima wired
     link \cite{nagatani2013,kawatsuma2012}; Amatrice 2016
     \cite{kruijff2016}; link loss treated as an expected condition (C1, C2)
   - Benchmarks \cite{jacoff2012,chung2023}; Section 5 does not use the
-    standard test apparatus
-  - Recent platforms
-    \cite{megalingam2022,verano2022,pramono2024,khattab2025,manuel2022,cafolla2026,jia2025,yamauchi2022,kim2023,raghavan2026,cantizani2022,deshmukh2025,gehlot2025}
-  - Cost asserted without figures (C4)
+    standard test apparatus, so results are not comparable with benchmark
+    scores
+  - Recent platforms, contribution on mobility, detection or range rather
+    than the control path:
+    \cite{megalingam2022,verano2022,pramono2024,deshmukh2025,manuel2022,gehlot2025,cafolla2026,jia2025,yamauchi2022,kim2023,raghavan2026,khattab2025,cantizani2022}
+  - Cost asserted without figures: five designs call themselves low-cost,
+    none of the recent platforms states a build cost; only Survivor Buddy
+    does \cite{murphy2011}; Section 5.9 reports this robot's figure as an
+    estimate (C4)
 - 2.3 Fail-Safe and Fault-Tolerant Architectures for Low-Cost Mobile Robots
-  - Bounded stop: behaves like IEC 60204-1 stop category 0, no compliance
-    claim \cite{iec60204}; time-triggered
-    firmware \cite{pont2001}; safety functions moving into software
-    \cite{murray2022}; drone-processor watchdog \cite{madhushankara2024};
-    ArduPilot Rover link-loss failsafe documentation \cite{ardupilot_rover_failsafe}; delayed-observation shield
-    is complementary \cite{narasimhan2024}
-  - Process supervision: recovery-oriented computing \cite{candea2004};
-    microservices \cite{schrick2025}; robot vitals \cite{ramesh2022};
-    safety-engineering review \cite{koczi2025}; FMEA-based simulation of
-    hardware-failure mitigation \cite{sini2022}
+  - Bounded stop (C1): behaves like IEC 60204-1 stop category 0, no
+    compliance claim \cite{iec60204}; time-triggered firmware
+    \cite{pont2001} (Section 3.5); safety functions moving into software
+    \cite{murray2022}; drone-processor watchdog detects a hung processor, not
+    absent commands \cite{madhushankara2024}; ArduPilot Rover radio and
+    ground-station failsafe timeouts, documentation not measured stop times
+    \cite{ardupilot_rover_failsafe}; delayed-observation run-time monitor is
+    complementary \cite{narasimhan2024}
+  - Process supervision (C2): recovery-oriented computing
+    \cite{candea2004}; microservices and state machine \cite{schrick2025};
+    robot vitals \cite{ramesh2022}; humanoid safety review
+    \cite{koczi2025}; FMEA-based simulation of hardware-failure mitigation
+    \cite{sini2022}; none targets a single-board rescue robot; Section 3.7
+    applies recovery-oriented supervision; no platform in Table 2.1 reports a
+    hardware-level stop guarantee or supervised process recovery
 - 2.4 Human-Robot Interaction: Operator and Victim
-  - Operator side \cite{endsley1995,chen2007,kamtam2024,luz2023,bakzadeh2025,bakzadeh2026b,ruan2025,akgun2023}
-  - Victim side (C3): requirement \cite{schneider2016}; 4-10 h wait
-    \cite{srinivasan2012}; Survivor Buddy line
-    \cite{bethel2007,murphy2010,murphy2011}; two-way voice common on fielded
-    mine-rescue robots \cite{bakzadeh2026}; recent platforms treat victims
-    as detection targets \cite{sharma2022,deshmukh2025}; SERR victim audio
-    pending \cite{khattab2025}
+  - Operator side: situation awareness \cite{endsley1995}; bandwidth, lag and
+    frame-rate decrements \cite{chen2007}; network latency
+    \cite{kamtam2024,luz2023}; interface design and rescuer needs
+    \cite{bakzadeh2025,bakzadeh2026b}; attention cues and LED expressions
+    \cite{ruan2025,akgun2023}; addressed by the Section 3.6 dashboard
+  - Victim side (C3): audio-visual requirement \cite{schneider2016}; 4-10 h
+    between discovery and extrication \cite{srinivasan2012}; non-verbal
+    affect \cite{bethel2007}; Survivor Buddy and its evaluations
+    \cite{murphy2010,murphy2011,srinivasan2012}; two-way voice fundamental on
+    fielded mine-rescue robots, outside the low-cost scope \cite{bakzadeh2026}
+  - Recent platforms: victim as detection target
+    \cite{raghavan2026,khattab2025,kim2023,cantizani2022,deshmukh2025,sharma2022};
+    speech toward the victim described but not tested
+    \cite{cafolla2026,yamauchi2022}; one-way microphone \cite{verano2022};
+    speaker and microphone provisioned, not implemented \cite{khattab2025};
+    walkie-talkie, video recorded not streamed \cite{manuel2022}
+  - Conclusion: two-way victim communication is an established requirement,
+    not a first; what is not demonstrated is two-way audio and video on
+    single-board hardware and its CPU, power and bandwidth cost (C3)
 - 2.5 Real-Time Media and Computing on Edge Hardware
-  - WebRTC teleoperation \cite{shi2025webrtc,tiberkak2023}; Opus
-    \cite{valin2012}; glass-to-glass delay \cite{bachhuber2016}
-  - Cloud/edge placement \cite{militano2023,raghavan2026,cafolla2026,manuel2022,nagatani2013}
+  - WebRTC teleoperation \cite{shi2025webrtc,tiberkak2023}, both dependent on
+    external servers; multi-operator arbitration and floor control
+    (Sections 3.8, 3.9.4); TXRob one-way video without WebRTC
+    \cite{verano2022}; this robot runs both WebRTC endpoints and signalling
+    locally (Sections 3.2, 3.9)
+  - Opus frame sizes \cite{valin2012}; glass-to-glass delay measurement
+    \cite{bachhuber2016}; return in Sections 3.9.5 and 5.2
+  - Cloud/edge placement: cloud-to-edge-to-IoT continuum \cite{militano2023};
+    cloud-dependent platforms \cite{raghavan2026,cafolla2026}; infrastructure-
+    free alternatives \cite{manuel2022,nagatani2013}; control, two-way media
+    and supervision together on one single-board computer not characterised;
+    budget reported in Section 5.5
 - 2.6 Research Gap
-  - Table 2.1: 13 platforms plus this work; columns for platform/control,
+  - Table 2.1: 13 platforms plus this work; columns for platform and control,
     link and computing, C1-C4, code availability, evidence and conditions,
-    text read; NR (not reported) distinguished from "(stated)" cells;
-    Survivor Buddy included as the closest prior work on C3
-  - Gap stated as a combination; no part claimed as a first
+    text read; NR (not reported) distinguished from "(stated)" cells; all
+    other-platform C1 and C2 cells NR; Survivor Buddy included
+    \cite{murphy2010,murphy2011} as the closest prior work on C3 although it
+    predates 2022; mine-rescue robots \cite{bakzadeh2026} and field studies,
+    benchmarks and surveys not tabulated
+  - Gap stated as a combination (bounded stop C1, supervised recovery C2,
+    two-way victim audio/video with resource cost C3, stated cost C4); no
+    part claimed as a first; Section 3 combines established mechanisms on
+    commodity hardware, Section 5 reports which properties the measurements
+    support
   - Full texts read for all 13 other rows (Survivor Buddy: both Murphy
     papers; srinivasan2012 abstract only); cells corrected 2026-10-23 where
     the full text differed (see citation.md)
