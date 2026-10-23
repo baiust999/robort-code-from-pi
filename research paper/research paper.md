@@ -9,24 +9,45 @@
 
 **1. Introduction**
 
+- (opening) The robot in two sentences (Arduino UNO firmware, Raspberry Pi 4,
+  local Wi-Fi, no Internet uplink); two jobs: bounded stop on link or software
+  failure, and two-way contact with a trapped person; roadmap of 1.1-1.3
 - 1.1 Motivation
-  - Disaster burden and the time-critical "golden window" \cite{cred2026,tabib2024}
-  - Why teleoperation remains the operationally relevant mode for confined-space
-    victim contact: rescue robots are typically teleoperated in actual
-    disasters \cite{daun2023,casper2003}
+  - Disaster burden (2025: 358 disasters, 16,607 deaths, 110.2 million affected,
+    USD 169.68 billion) \cite{cred2026}; rapid SAR is critical to survival and
+    communications infrastructure cannot be assumed \cite{tabib2024}; the
+    phrase "golden window" is not used because the source does not name it
+  - Robots in disaster response since the WTC \cite{murphy2004}; rescue robots
+    are typically teleoperated \cite{daun2023}, expected to stay the default
+    mode \cite{chen2007}; link loss expected, Fukushima wired link
+    \cite{nagatani2013}
+  - Victim need: audio-visual link \cite{schneider2016}; 4-10 h to extrication
+    \cite{srinivasan2012}; two-way voice common on mine-rescue robots
+    \cite{bakzadeh2026}, not reported with its cost on low-cost platforms
 - 1.2 Problem Statement and Challenges
-  - C1: guaranteeing a bounded stop time on a non-real-time software stack
-  - C2: single points of failure in low-cost single-board deployments
+  - Design problem in one sentence; one paragraph per challenge, same order
+    as Sections 2, 6 and 8, each with the Section that answers it
+  - C1: bounded stop time on a non-real-time stack
+    \cite{ardupilot_rover_failsafe,madhushankara2024}
+  - C2: single points of failure in single-board deployments \cite{candea2004}
   - C3: two-way victim audio/video under CPU, power and bandwidth limits
-  - C4: affordability as a deployment constraint, not a marketing claim
-- 1.3 Contributions
-  - RQ1-RQ4 stated here (reconciled 2026-10-22 with actual usage in Sections 3
-    and 5, which cite RQ4 for both the two-way victim path and GPS/mapping;
-    the figure was previously given as RQ1-RQ3), each mapped to a contribution
-    and answered in Section 8.1
-  - Contributions mapped to C1-C4 and to the evaluation in Section 5, summarised
-    in Section 8.2
+  - C4: affordability as a deployment constraint; estimate only, no cost ratio
+  - Gap as a combination, never a first (Section 2.6)
+- 1.3 Research Questions and Contributions
+  - RQ1-RQ4 as questions; RQ4 covers both the two-way victim path and GPS and
+    mapping (as in Sections 3.0 and 5 and Table 8.1); each answered in
+    Section 8.1
+  - Four contributions mapped to C1-C4 and to Section 5, with the headline
+    figure and evidence class for each (2042 ms in 30 of 30 trials, mean
+    2022.5 ms, bound about 2060 ms; 30 of 30 SIGKILL recoveries, Wilson lower
+    bound 88.6% \cite{wilson1927}; about 63% of one core on P2, P1 near 4%;
+    about USD 320 ESTIMATE); no table, so Table 8.2 is not duplicated
+  - Limits paragraph: one robot, operator and access point; drive removal, not
+    wheel stop or distance (E3, E4); Wi-Fi latency, media quality, field trial
+    and usability [PENDING MEASUREMENT]; ablations not run; category 0 stop,
+    no compliance claim \cite{iec60204}; points to Section 6.3
   - (unnumbered closing paragraph: organization of the paper)
+  - Full text: section1_introduction.md
 
 **2. Related Work**
 
