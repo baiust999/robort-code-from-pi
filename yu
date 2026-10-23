@@ -1,0 +1,20 @@
+Resolve the nine outstanding issues in Section 2 using the current repository as the source of truth.
+
+For every change:
+1. Inspect the current files before editing.
+2. Verify claims against the correct primary paper, full text, DOI, or official documentation wherever possible.
+3. Do not invent data, citations, measurements, licence permissions, or experimental results.
+4. Preserve the distinction between measured results, reported specifications, simulation results, and unreported properties.
+
+Priorities:
+- Correct the Rescuer two-way victim communication claim and identify exactly what the source establishes.
+- Recheck the six older platform rows against their full papers and correct unsupported NR entries.
+- Verify Survivor Buddy's costs and features against the correct Murphy paper. Do not restore dollar figures without checking Table II.
+- Replace the weak failsafe source only if a stronger source supports the claim.
+- Document the LoRa robot's reported specifications without presenting them as measured results.
+- Verify the QUADRESCUE DOI against the PDF and Crossref.
+- Add the seven missing bibliography keys to the citation ledger.
+- Rerun the existing data audit against the current code, CSV files, logs, and research paper.
+- Correct the repository licensing statement. Do not claim the code is openly licensed unless a suitable licence file actually exists.
+
+After editing, provide a table with the issue, file changed, evidence checked, action taken, and remaining uncertainty. Run citation-key, bibliography, section-reference, and consistency checks. Do not mark any issue resolved unless the supporting evidence has actually been verified.
