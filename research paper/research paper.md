@@ -172,27 +172,34 @@
   added automated function; three priority levels
 - Table 7.1: future-work directions, limitation addressed, evidence section,
   priority level and dependencies
-- 7.1 Safety-Aware, Network-Adaptive Teleoperation
-- 7.2 Multi-Hop Mesh Networking
-- 7.3 Cross-Layer Fault Detection and Recovery
-- 7.4 Quantitative Safety and Fault-Injection Evaluation
-  - Table 7.2: fault-injection matrix
-- 7.5 Indoor Localization and Mapping
-- 7.6 Trajectory Tracking and Visualization
-- 7.7 Autonomous Return Navigation
-- 7.8 Localization-Aware and Obstacle-Aware Navigation
-- 7.9 Compact, Low-Profile Chassis Design
-- 7.10 Heat-Resistant Structural Protection
-- 7.11 Improved Disaster-Terrain Mobility
-- 7.12 Energy-Aware Operation
-- 7.13 Sensor Fusion for Hazard Assessment
-- 7.14 Edge-Based Victim Assistance
-- 7.15 Two-Way Communication Under Degraded Networks
-- 7.16 Secure Remote Control
-- 7.17 Communication-Aware Mission Planning
-- 7.18 Multi-Robot Cooperative Exploration
-- 7.19 Simulation-Based Validation
-- 7.20 Reproducible Experimental Benchmarking
+- 7.1 Network-Adaptive Teleoperation and Victim Communication
+  - 7.1.1 Safety-Aware, Network-Adaptive Teleoperation
+  - 7.1.2 Two-Way Communication Under Degraded Networks
+- 7.2 Communication Resilience
+  - 7.2.1 Multi-Hop Mesh Networking
+  - 7.2.2 Communication-Aware Mission Planning
+- 7.3 Fault Detection and Quantitative Fail-Safe Validation
+  - 7.3.1 Cross-Layer Fault Detection and Recovery
+  - 7.3.2 Quantitative Safety and Fault-Injection Evaluation
+    - Table 7.2: fault-injection matrix
+  - 7.3.3 Simulation-Based Validation
+- 7.4 GPS-Denied Localization and Return Navigation
+  - 7.4.1 Indoor Localization and Mapping
+  - 7.4.2 Trajectory Tracking and Visualization
+  - 7.4.3 Autonomous Return Navigation
+  - 7.4.4 Localization-Aware and Obstacle-Aware Navigation
+- 7.5 Platform: Mobility, Thermal Protection and Energy
+  - 7.5.1 Compact, Low-Profile Chassis Design
+  - 7.5.2 Heat-Resistant Structural Protection
+  - 7.5.3 Improved Disaster-Terrain Mobility
+  - 7.5.4 Energy-Aware Operation
+- 7.6 Hazard Sensing and Edge-Based Victim Assistance
+  - 7.6.1 Sensor Fusion for Hazard Assessment
+  - 7.6.2 Edge-Based Victim Assistance
+- 7.7 Security, Multi-Robot Scale and Reproducibility
+  - 7.7.1 Secure Remote Control
+  - 7.7.2 Multi-Robot Cooperative Exploration
+  - 7.7.3 Reproducible Experimental Benchmarking
 
 **8. Conclusion**
 

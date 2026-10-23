@@ -130,3 +130,21 @@ footnoted URLs rather than numbered references; decide per journal policy.
 | 3.4 | React 19, Vite, Tailwind CSS | dashboard frontend |
 | 3.4, 3.10 | Leaflet, PMTiles | offline map rendering |
 | 3.3, Table 3 | ServoTimer2Plus (Arduino) | servo PWM on Timer2 |
+
+## Section 7 re-check (2026-10-23)
+
+Full-text or abstract re-check of the keys cited in `section7_future_work.md`. Only what Section 7 states was checked.
+
+| BibKey | Statement in Section 7 | Checked against | Result |
+|--------|------------------------|-----------------|--------|
+| schneider2016 | Audio-visual link to trapped persons; supervised autonomy / semi-autonomous operation; wireless unreliable in buildings and radiation, cable spooling and snagging, wireless relays proposed | Full text (arXiv 1912.04693, section "Communication", "Autonomy and Tele-Operation", audio-visual requirement in the requirements section) | Supported in full text |
+| valin2012 | Opus operates over a wide, dynamically adjustable bitrate range | RFC 6716 Abstract and Sections 2, 2.1 (first 100,000 characters) | Supported: 6 to 510 kbit/s, controls changeable during operation |
+| beer2014 | Levels of robot autonomy from teleoperation to full autonomy | Abstract (via Semantic Scholar) | Supported (abstract); full text not read |
+| queralta2020 | Multi-robot SAR survey; open questions include heterogeneous coordination and interoperability | Abstract (Semantic Scholar record, IEEE Access title matches `references.bib`) | Supported (abstract); full text not read |
+| koczi2025 | Cybersecurity addressed less often than physical safety, in a humanoid-robot review | Abstract (Semantic Scholar) | Supported (abstract); scope is humanoids, not rescue robots |
+| manuel2022 | LoRa-based SAR communication architecture, tested in Gazebo and a lab setup | Abstract (Semantic Scholar) | Supported (abstract). LoRa data rate and video capability NOT checked (IEEE PDF blocked) |
+| jacoff2012 | Standard test methods for response robots developed through competitions | NIST/Curtin record summary | Supported (summary); full text not read |
+| bachhuber2016 | Method for measuring end-to-end video delay | arXiv 1510.01134 abstract | Supported in kind; the arXiv abstract says "end-to-end delay", not "glass-to-glass", and the arXiv title differs from the ICIP title in `references.bib` |
+| nagatani2013 | Wired communication link used on the Fukushima robots | Publisher page blocked (403); abstract not available | NOT verified against the paper. Indirect support only (search summary of a related Quince paper; schneider2016 on cable links). Re-read the full text before relying on the ledger's "wireless not possible" wording |
+| raghavan2026 | Deep-learning human detection on robotic systems for earthquake response | Title only (Semantic Scholar); abstract and full text unavailable | Title confirmed. YOLOv8 / Jetson Nano / cloud-alert details in the ledger NOT re-verified; Section 7 no longer states hardware |
+| wilson1927 | Wilson interval, 30 of 30 gives lower bound 88.6% | Computation (earlier) | Supported by computation; full text not read |
