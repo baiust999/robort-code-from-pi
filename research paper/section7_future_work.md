@@ -24,7 +24,7 @@ The directions are grouped under six themes (Sections 7.1 to 7.6) and are not eq
 | 7.4.1 | Compact, low-profile chassis design | 4WD skid-steer platform, indoor floors only | 3.3 | 3 | 7.4.3 |
 | 7.4.2 | Heat-resistant structural protection | Only SoC temperature measured (at most 52.6 deg C), under indoor loads | 5.5 | 3 | 7.4.4 |
 | 7.4.3 | Improved disaster-terrain mobility | No rubble, slope or standard-apparatus trials | 2.2, 3.3 | 3 | 7.6.3 |
-| 7.4.4 | Energy-aware operation | Battery capacity unspecified; no voltage or current sensing; original Pi supply under-volted under driving plus media | 3.3, 5.5 | 2 | new sensors |
+| 7.4.4 | Energy-aware operation | No in-situ voltage or current sensing; original Pi supply under-volted under driving plus media | 3.3, 5.5 | 2 | new sensors |
 | 7.5.1 | Sensor fusion for hazard assessment | Gas reading is uncalibrated ADC counts; DHT11 checked at one set-point | 5.6.3, 5.6.4 | 2 | reference instruments |
 | 7.5.2 | Edge-based victim assistance | No detection implemented; media path already uses about 63% of one core | 5.5 | 3 | 7.5.1 |
 | 7.6.1 | Secure remote control | Plain HTTP and WebSocket; one shared controller key; sequence check optional | 3.2, 3.8 | 1 | 7.2.2 |
@@ -105,7 +105,7 @@ No rubble, slope or standard-apparatus trials were run (Sections 2.2 and 3.3). T
 
 ### 7.4.4 Energy-Aware Operation
 
-The battery capacity is unspecified (Section 3.3), the robot has no voltage or current sensing, and the original Pi supply under-volted under driving plus media load (Section 5.5), which makes the supply a measured constraint. The proposed work specifies the pack, adds voltage and current sensing, profiles energy per subsystem, and then tests a return trigger at a validated remaining-energy threshold. The trigger would only raise an operator alert or start Section 7.3.3; it never acts on the motors directly. The baseline is the current supply. Metrics are energy per subsystem, endurance and return-trigger margin.
+The battery is a 4S3P 4.5 Ah Li-ion pack (Section 3.3), but the robot has no voltage or current sensing, and the original Pi supply under-volted under driving plus media load (Section 5.5), which makes the supply a measured constraint. The proposed work adds voltage and current sensing, profiles energy per subsystem, and then tests a return trigger at a validated remaining-energy threshold. The trigger would only raise an operator alert or start Section 7.3.3; it never acts on the motors directly. The baseline is the current supply. Metrics are energy per subsystem, endurance and return-trigger margin.
 
 ## 7.5 Hazard Sensing and Edge-Based Victim Assistance
 

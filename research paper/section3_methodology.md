@@ -117,7 +117,7 @@ The hardware is chosen so that the lowest tier can stop the robot by itself: the
 | Camera and microphone | USB webcam with built-in microphone | 640x480 video at 10 fps; 48 kHz audio |
 | Robot display | 7-inch HDMI display, 1024x600 | Victim-facing Robot Screen |
 | Speaker | Speaker | Operator voice to the victim |
-| Battery | 4S Li-ion pack, 14.8 V nominal, 16.8 V full, continuous discharge limited by the 4S 40 A BMS [NEEDS SPEC: nominal capacity Ah] | Motor and logic power |
+| Battery | 4S3P Li-ion pack (twelve 18650 cells, 1500 mAh each), 14.8 V nominal, 16.8 V full, 4.5 Ah nominal, continuous discharge limited by the 4S 40 A BMS | Motor and logic power |
 | Battery management | 4S 40 A BMS | Pack protection |
 | Buck converters | 2 x buck converter, 8 V and 5 V outputs | 8 V to the Arduino barrel jack; 5 V to the servos |
 | Pi supply | Remax 50000 mAh USB power bank | Separate supply for the Pi |
