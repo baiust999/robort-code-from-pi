@@ -17,9 +17,11 @@ import {
   type TelemetrySnapshot,
   type Role,
 } from '../lib/protocol';
+import { nextSignalLevel, SIGNAL_STALE_MS, type SignalLevel } from '../lib/signal';
 
 const RECONNECT_MIN_MS = 1000;
 const RECONNECT_MAX_MS = 30000;
+const SIGNAL_CHECK_MS = 250;
 
 export interface AlertLogEntry {
   id: number;
@@ -35,6 +37,10 @@ export interface ControlSocketState {
   /** Seconds left on a lockout, when auth is 'locked'. */
   retryAfterS: number | null;
   telemetry: TelemetrySnapshot | null;
+  /** No live telemetry: socket closed or no frame for SIGNAL_STALE_MS. */
+  telemetryStale: boolean;
+  /** Wi-Fi warning level; 'none' whenever telemetryStale or signal_dbm is null. */
+  signalLevel: SignalLevel;
   lastAckMs: number;
   alerts: AlertLogEntry[];
   sendMotor: (dir: 'F' | 'R' | 'L' | 'G', speed: number) => void;
@@ -57,6 +63,8 @@ export function useControlSocket(controllerKey: string | null): ControlSocketSta
   const [telemetry, setTelemetry] = useState<TelemetrySnapshot | null>(null);
   const [lastAckMs, setLastAckMs] = useState(0);
   const [alerts, setAlerts] = useState<AlertLogEntry[]>([]);
+  const [telemetryStale, setTelemetryStale] = useState(true);
+  const [signalLevel, setSignalLevel] = useState<SignalLevel>('none');
 
   const socketRef = useRef<WebSocket | null>(null);
   const seqRef = useRef(0);
@@ -68,6 +76,10 @@ export function useControlSocket(controllerKey: string | null): ControlSocketSta
   const keyRef = useRef(controllerKey);
   const roleRef = useRef<Role | null>(null);
   const mountedRef = useRef(true);
+  // Live frames only; 0 means none since the socket last opened.
+  const lastTelemetryAtRef = useRef(0);
+  const signalDbmRef = useRef<number | null>(null);
+  const signalLevelRef = useRef<SignalLevel | null>(null);
 
   const pushAlert = useCallback((message: string) => {
     alertIdRef.current += 1;
@@ -110,6 +122,7 @@ export function useControlSocket(controllerKey: string | null): ControlSocketSta
     socket.onclose = () => {
       if (!isCurrent() || !mountedRef.current) return;
       setConnected(false);
+      lastTelemetryAtRef.current = 0;
       setRole(null);
       roleRef.current = null;
       pushAlert('disconnected; reconnecting…');
@@ -132,6 +145,8 @@ export function useControlSocket(controllerKey: string | null): ControlSocketSta
         case MSG_TELEMETRY: {
           const frame = msg as unknown as TelemetrySnapshot;
           lastServerTsRef.current = frame.server_ts;
+          lastTelemetryAtRef.current = Date.now();
+          signalDbmRef.current = frame.signal_dbm ?? null;
           setTelemetry(frame);
           setLastAckMs(0);
           break;
@@ -216,6 +231,30 @@ export function useControlSocket(controllerKey: string | null): ControlSocketSta
     };
   }, [send]);
 
+  // The link is judged here, not by P1: when it drops, P1's last good
+  // signal_dbm is exactly what must not stay on screen. Recovery batches are
+  // old frames and don't count as live.
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      const last = lastTelemetryAtRef.current;
+      const stale = last === 0 || Date.now() - last > SIGNAL_STALE_MS;
+      setTelemetryStale(stale);
+
+      const dbm = stale ? null : signalDbmRef.current;
+      const prev = signalLevelRef.current;
+      const level = nextSignalLevel(prev, dbm);
+      // Before the first reading arrives there is nothing to report yet; the
+      // initial state already shows NO SIGNAL.
+      if (level === prev || (prev === null && level === 'none')) return;
+      signalLevelRef.current = level;
+      setSignalLevel(level);
+      // The first reading after load is not news unless it is already bad.
+      if (prev === null && level === 'ok') return;
+      pushAlert(signalAlert(level, dbm));
+    }, SIGNAL_CHECK_MS);
+    return () => window.clearInterval(timer);
+  }, [pushAlert]);
+
   const sendMotor = useCallback(
     (dir: 'F' | 'R' | 'L' | 'G', speed: number) => {
       seqRef.current += 1;
@@ -236,7 +275,33 @@ export function useControlSocket(controllerKey: string | null): ControlSocketSta
     send({ type: 'stop_all' });
   }, [send]);
 
-  return { connected, role, auth, retryAfterS, telemetry, lastAckMs, alerts, sendMotor, sendServo, sendStopAll };
+  return {
+    connected,
+    role,
+    auth,
+    retryAfterS,
+    telemetry,
+    telemetryStale,
+    signalLevel,
+    lastAckMs,
+    alerts,
+    sendMotor,
+    sendServo,
+    sendStopAll,
+  };
+}
+
+function signalAlert(level: SignalLevel, dbm: number | null): string {
+  switch (level) {
+    case 'low':
+      return `weak Wi-Fi signal (${dbm} dBm); turn back soon`;
+    case 'critical':
+      return `Wi-Fi signal critical (${dbm} dBm); bring the robot back`;
+    case 'none':
+      return 'NO SIGNAL: no live telemetry from the robot';
+    default:
+      return `Wi-Fi signal recovered (${dbm} dBm)`;
+  }
 }
 
 function helloMessage(key: string | null): ClientMessage {

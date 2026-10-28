@@ -126,6 +126,8 @@ export interface TelemetrySnapshot {
   turn_status: string;
   serial_ok: boolean;
   ws_clients: number;
+  /** Robot-side Wi-Fi RSSI in dBm; null when its link is down. */
+  signal_dbm: number | null;
 }
 
 export interface RecoveryBatchMessage {
@@ -209,6 +211,9 @@ export const DEFAULT_THRESHOLDS: Record<string, ThresholdLimits> = {
   // in arduino/config.h.
   gas_ppm: { warn: 450.0, crit: 600.0, direction: 'above' },
   range_cm: { warn: 30.0, crit: 20.0, direction: 'below' },
+  // Provisional until the distance walk (tools/eval/netsweep.py) shows where
+  // loss and latency start to climb.
+  signal_dbm: { warn: -70.0, crit: -80.0, direction: 'below' },
 };
 
 export function isAlertActive(

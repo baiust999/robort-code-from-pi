@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 import type { MissionState } from '../lib/protocol';
+import type { SignalLevel } from '../lib/signal';
+import { SignalIndicator } from './SignalIndicator';
 
 const MISSION_STYLES: Record<MissionState, string> = {
   STOP: 'bg-red-500/20 text-red-300 border-red-500/40',
@@ -14,10 +16,12 @@ export function ConnectionStatusBar(props: {
   missionState: MissionState;
   serialOk: boolean;
   gpsFix: boolean;
+  signalDbm: number | null;
+  signalLevel: SignalLevel;
   /** Controller-key box, shown at the right-hand end. */
   children?: ReactNode;
 }) {
-  const { connected, role, missionState, serialOk, gpsFix, children } = props;
+  const { connected, role, missionState, serialOk, gpsFix, signalDbm, signalLevel, children } = props;
   return (
     <div className="flex items-center gap-3 border-b border-white/10 bg-black/30 px-4 py-2 text-sm">
       <span
@@ -25,6 +29,7 @@ export function ConnectionStatusBar(props: {
       >
         {connected ? 'WS connected' : 'WS offline'}
       </span>
+      <SignalIndicator signalDbm={signalDbm} level={signalLevel} />
       {role === 'controller' ? (
         <span className="rounded-full border border-emerald-500/40 bg-emerald-500/20 px-2 py-0.5 font-semibold text-emerald-300">
           CONTROLLER

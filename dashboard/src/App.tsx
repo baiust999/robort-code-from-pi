@@ -3,6 +3,7 @@ import { useControlSocket } from './hooks/useControlSocket';
 import { useWebrtcVideo } from './hooks/useWebrtcVideo';
 import { useTalkback } from './hooks/useTalkback';
 import { ConnectionStatusBar } from './components/ConnectionStatusBar';
+import { SignalWarningBanner } from './components/SignalWarningBanner';
 import { MissionStateIndicator } from './components/MissionStateIndicator';
 import { DriveControl } from './components/DriveControl';
 import { ServoControl } from './components/ServoControl';
@@ -32,6 +33,7 @@ function App() {
     auth,
     retryAfterS,
     telemetry,
+    signalLevel,
     lastAckMs,
     alerts,
     sendMotor,
@@ -73,6 +75,8 @@ function App() {
         missionState={missionState}
         serialOk={telemetry?.serial_ok ?? false}
         gpsFix={telemetry?.gps_fix ?? false}
+        signalDbm={telemetry?.signal_dbm ?? null}
+        signalLevel={signalLevel}
       >
         <ControllerKeyBox
           controllerKey={controllerKey}
@@ -80,6 +84,7 @@ function App() {
           problem={keyProblem}
         />
       </ConnectionStatusBar>
+      <SignalWarningBanner level={signalLevel} signalDbm={telemetry?.signal_dbm ?? null} />
       {/* Top row: video and the readings beside it. Bottom row: one map spanning
           both, filling the rest of the height. The controls span both rows. */}
       <div className="grid flex-1 grid-cols-[22%_52%_26%] grid-rows-[auto_minmax(0,1fr)] gap-3 overflow-hidden p-3">

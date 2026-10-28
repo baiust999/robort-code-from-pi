@@ -309,7 +309,8 @@ def fixes(path: Path, lo: str, hi: str) -> list[dict]:
         next(handle)
         for line in handle:
             parts = line.rstrip("\n").split(",")
-            if len(parts) != len(TELEMETRY_COLUMNS):
+            # Logs after signal_dbm was appended carry one extra trailing column.
+            if len(parts) not in (len(TELEMETRY_COLUMNS), len(TELEMETRY_COLUMNS) + 1):
                 continue
             r = dict(zip(TELEMETRY_COLUMNS, parts))
             if lo <= r["iso_ts"][:19] <= hi and r["gps_fix"] in ("1", "True", "true"):

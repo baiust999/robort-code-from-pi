@@ -184,6 +184,9 @@ DEFAULT_THRESHOLDS: dict[str, dict[str, float]] = {
     # own alarm point, GAS_ALARM_THRESHOLD in arduino/config.h.
     "gas_ppm": {"warn": 450.0, "crit": 600.0, "direction": "above"},
     "range_cm": {"warn": 30.0, "crit": 20.0, "direction": "below"},
+    # Provisional until the distance walk (tools/eval/netsweep.py) shows where
+    # loss and latency start to climb.
+    "signal_dbm": {"warn": -70.0, "crit": -80.0, "direction": "below"},
 }
 
 # Bit positions for the alert_flags field in telemetry.log, Section 8.13.2.
@@ -196,6 +199,9 @@ ALERT_BITS = {
     "range_crit": 5,
     # Bit 6 was the PIR motion flag; left unused so older logs still decode.
     "gps_lost": 7,
+    "signal_warn": 8,
+    # Also set when signal_dbm is None: the robot's radio has no link.
+    "signal_crit": 9,
 }
 
 
@@ -228,6 +234,8 @@ class TelemetrySnapshot:
     turn_status: str = "unavailable"
     serial_ok: bool = False
     ws_clients: int = 0
+    # Robot-side Wi-Fi RSSI; None when the link is down.
+    signal_dbm: float | None = None
 
     def to_message(self) -> dict[str, Any]:
         payload = asdict(self)
@@ -347,5 +355,12 @@ def compute_alert_flags(snapshot: dict[str, Any], thresholds: dict[str, dict[str
 
     if not snapshot.get("gps_fix"):
         _set("gps_lost")
+
+    signal = snapshot.get("signal_dbm")
+    limits = thresholds.get("signal_dbm", {})
+    if signal is None or ("crit" in limits and signal <= limits["crit"]):
+        _set("signal_crit")
+    elif "warn" in limits and signal <= limits["warn"]:
+        _set("signal_warn")
 
     return flags

@@ -33,7 +33,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from common import access, protocol
+from common import access, protocol, wifi
 from common.config import P1Config
 from common.logging_setup import EventLogger, setup_logging
 from p1_control.gps_reader import GPSReader
@@ -54,6 +54,7 @@ LOCAL_HOSTS = {"127.0.0.1", "::1", "localhost"}
 
 ICE_RATE_LIMIT = 5  # requests per minute per client, Section 8.8.1.1
 ICE_RATE_WINDOW_S = 60.0
+SIGNAL_SAMPLE_PERIOD_S = 1.0
 
 
 class ControlServer:
@@ -82,6 +83,8 @@ class ControlServer:
         self._broadcast_task: asyncio.Task[None] | None = None
         self._ice_requests: dict[str, deque[float]] = {}
         self._last_command_ts = 0.0
+        self._signal_dbm: float | None = None
+        self._last_signal_read = float("-inf")
 
     # --- lifecycle ----------------------------------------------------------
 
@@ -143,6 +146,7 @@ class ControlServer:
         payload["server_ts"] = snapshot.server_ts
         payload["serial_ok"] = snapshot.serial_ok
         payload["ws_clients"] = snapshot.ws_clients
+        payload["signal_dbm"] = self._signal_dbm
         payload["type"] = protocol.MSG_TELEMETRY
         return payload
 
@@ -156,11 +160,20 @@ class ControlServer:
         except OSError:
             return "unavailable"
 
+    def _sample_signal(self) -> None:
+        """Refresh signal_dbm at 1Hz; RSSI does not move faster than that."""
+        now = time.monotonic()
+        if now - self._last_signal_read < SIGNAL_SAMPLE_PERIOD_S:
+            return
+        self._last_signal_read = now
+        self._signal_dbm = wifi.read_signal_dbm(self.config.wifi_iface)
+
     async def _broadcast_loop(self) -> None:
         period = protocol.TELEMETRY_PERIOD_MS / 1000.0
         next_tick = time.monotonic()
         while True:
             try:
+                self._sample_signal()
                 snapshot = self.build_snapshot()
                 self.buffer.append(snapshot)
                 self.telemetry_log.maybe_write(snapshot)

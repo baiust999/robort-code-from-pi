@@ -51,12 +51,19 @@ CURRENT_COLUMNS: tuple[str, ...] = (
     "iso_ts", "seq", "temperature_c", "humidity_pct", "gas_ppm", "range_cm",
     "pan_angle", "tilt_angle", "fw_state", "uptime_ms", "lat", "lon",
     "gps_fix", "gps_sats", "serial_ok", "ws_clients", "turn_status", "alert_flags",
+    "signal_dbm",
 )
 
 # The two earlier layouts this log has carried, from git history of
 # telemetry_log.py: 51962a2 (initial, with motion + ir_left/ir_right) and
-# b497cb4 (ir sensors dropped). 3a537de dropped motion, giving CURRENT_COLUMNS.
+# b497cb4 (ir sensors dropped). 3a537de dropped motion; signal_dbm was then
+# appended, giving CURRENT_COLUMNS.
 LEGACY_COLUMNS: tuple[tuple[str, ...], ...] = (
+    (
+        "iso_ts", "seq", "temperature_c", "humidity_pct", "gas_ppm", "range_cm",
+        "pan_angle", "tilt_angle", "fw_state", "uptime_ms", "lat", "lon",
+        "gps_fix", "gps_sats", "serial_ok", "ws_clients", "turn_status", "alert_flags",
+    ),
     (
         "iso_ts", "seq", "temperature_c", "humidity_pct", "gas_ppm", "motion",
         "range_cm", "ir_left", "ir_right", "pan_angle", "tilt_angle", "fw_state",

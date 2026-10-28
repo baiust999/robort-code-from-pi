@@ -41,6 +41,8 @@ CSV_COLUMNS: tuple[str, ...] = (
     "ws_clients",
     "turn_status",
     "alert_flags",
+    # Appended last so every earlier column keeps its position.
+    "signal_dbm",
 )
 
 

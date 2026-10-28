@@ -111,6 +111,8 @@ class P1Config:
     map_dir: Path | None
     telemetry_log_enabled: bool
     controller_key: str
+    # Interface whose RSSI is reported as telemetry signal_dbm.
+    wifi_iface: str = "wlan0"
 
     @classmethod
     def from_env(cls) -> "P1Config":
@@ -142,6 +144,7 @@ class P1Config:
             map_dir=map_dir if map_dir.is_dir() else None,
             telemetry_log_enabled=_env_bool("TELEMETRY_LOG", True),
             controller_key=_controller_key(),
+            wifi_iface=os.environ.get("WIFI_IFACE", "wlan0").strip() or "wlan0",
         )
 
 
