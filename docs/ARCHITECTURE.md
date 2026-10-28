@@ -127,6 +127,7 @@ flowchart LR
         ring["ring_buffer.py<br/>RingBuffer<br/>(300 entries, 60s)"]
         hub["websocket_hub.py<br/>WebSocketHub<br/>(role arbitration, fan-out)"]
         tlog["telemetry_log.py<br/>TelemetryLog<br/>(1Hz CSV)"]
+        wifi["common/wifi.py<br/>read_signal_dbm<br/>(wlan0 RSSI, 1Hz)"]
     end
 
     arduino[("Arduino UNO")]
@@ -140,11 +141,12 @@ flowchart LR
     sb --> ring
     sb --> tlog --> disk
     gps -.merged into.-> hub
+    wifi -.signal_dbm.-> hub
     ring -.recovery_batch.-> hub
     hub <--> clients
 
     classDef mod fill:#fff,stroke:#2F7C9E,color:#12181A;
-    class lock,sb,safety,gps,ring,hub,tlog mod;
+    class lock,sb,safety,gps,ring,hub,tlog,wifi mod;
 ```
 
 | Module | Type | Responsibility |
@@ -156,6 +158,10 @@ flowchart LR
 | `safety.py` | `CommandValidator` | Server-side clamp, sequence monotonicity |
 | `telemetry_log.py` | `TelemetryLog` | 1 Hz, 19-column CSV with packed alert bitfield |
 | `lockfile.py` | `ProcessLock` | Advisory `flock` enforcing the single-writer invariant |
+| `common/wifi.py` | `read_signal_dbm()` | Robot Wi-Fi RSSI for the `signal_dbm` field; `None` when the link is down |
+
+The last column of `telemetry.log` is `signal_dbm`, so a mission log records
+how the link changed along the route.
 
 ---
 
@@ -386,16 +392,19 @@ classDiagram
     }
 
     class TelemetrySnapshot_P1toDash {
-        <<20-key JSON, 200ms broadcast>>
-        ...9 Arduino fields
-        float gps_lat
-        float gps_lon
+        <<19-key JSON, 200ms broadcast>>
+        ...8 Arduino fields
+        str type
+        float lat
+        float lon
         bool gps_fix
+        int gps_sats
         int seq
         int server_ts
-        bool serial_connected
+        bool serial_ok
         int ws_clients
-        bool turn_active
+        str turn_status
+        float signal_dbm
     }
 
     class ClientMessage {
@@ -458,6 +467,7 @@ flowchart LR
         f7["Corrupt frame"]
         f8["Obstacle <= 20cm"]
         f9["Invariant violated"]
+        f10["Wi-Fi signal weakening"]
     end
 
     subgraph detect["DETECTION"]
@@ -470,6 +480,7 @@ flowchart LR
         d7["parse / range check"]
         d8["sonar Cat-2 poll"]
         d9["checkInvariants()"]
+        d10["signal_dbm <= -70 / -80 dBm,<br/>or no frame for 1s"]
     end
 
     subgraph recover["RECOVERY"]
@@ -482,6 +493,7 @@ flowchart LR
         r7["frame dropped, next in 200ms"]
         r8["warning/critical alert, operator decides"]
         r9["panic latch — reset only"]
+        r10["bars + banner (or NO SIGNAL),<br/>operator drives back"]
     end
 
     f1-->d1-->r1
@@ -493,13 +505,14 @@ flowchart LR
     f7-->d7-->r7
     f8-->d8-->r8
     f9-->d9-->r9
+    f10-->d10-->r10
 
     classDef auto fill:#fff,stroke:#3E7D4C;
     classDef manual fill:#fff,stroke:#C4392B,stroke-width:2px;
     classDef advisory fill:#fff,stroke:#2F7C9E;
     class r1,r2,r3,r4,r5,r6,r7 auto;
     class r9 manual;
-    class r8 advisory;
+    class r8,r10 advisory;
 ```
 
 Every fault recovers automatically except a panic latch — deliberately, since
@@ -556,7 +569,7 @@ flowchart LR
     subgraph resolved["Resolution"]
         r1["ttyUSB0<br/>(§8.7/8.8 authoritative)"]
         r4["software millis() check<br/>(Timer1 owned by Servo)"]
-        r6["20-key schema<br/>(§8.10.1.2 canonical)"]
+        r6["§8.10.1.2 schema canonical<br/>(19 keys as built)"]
         r7["Mode 2, Local network only<br/>(§8.11.6)"]
     end
     i1-->r1
@@ -569,7 +582,7 @@ flowchart LR
 |---|---|---|
 | Serial device `ttyUSB0` vs `ttyAMA0` | `ttyUSB0` (§8.7/8.8 authoritative) | `p1.env: SERIAL_PORT` |
 | Dead-man: `millis()` vs Timer1 ISR | Software check — Timer1 owned by Servo lib | `DEADMAN_MS` |
-| Telemetry field count (12/22/26) | 20-key schema of §8.10.1.2 | `pi/common/protocol.py` |
+| Telemetry field count (12/22/26) | Schema of §8.10.1.2; as built, 19 keys incl. `signal_dbm` | `pi/common/protocol.py` |
 | Operational mode count | Mode 2, Local network only (§8.11.6) | `p3.env: ENABLE_OVERLAY=0` |
 
 ---

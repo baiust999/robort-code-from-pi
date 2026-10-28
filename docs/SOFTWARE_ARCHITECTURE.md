@@ -232,6 +232,8 @@ Its concurrency structure comprises three asyncio tasks and one thread. The task
 
 The broadcast loop uses **absolute scheduling** — `next_tick += period` rather than sleeping a fixed interval — so that a slow iteration is absorbed rather than accumulating drift across a long mission. Its body is wrapped so that any exception is logged as `BROADCAST_FAIL` without terminating the loop, on the principle that the cadence must not stop.
 
+Each iteration also refreshes the robot's **Wi-Fi signal strength**, at most once per second. `common/wifi.py:read_signal_dbm()` reads the `wlan0` level from `/proc/net/wireless` (a file read, no subprocess) and returns `None` unless `/sys/class/net/wlan0/operstate` is `up`, because `/proc` can keep reporting the last level after the link has gone. The value goes out as the P1-owned `signal_dbm` field of every snapshot; `None` (JSON `null`) means "no usable link", never "unknown but probably fine". The interface is set by `WIFI_IFACE` (default `wlan0`).
+
 | **Module** | **Principal Type** | **Responsibility** |
 | --- | --- | --- |
 | `serial_bridge.py` | `SerialBridge` | Sole UART owner; handshake, frame ingest, command egress |
@@ -284,6 +286,10 @@ The dashboard is a React 19 single-page application in TypeScript, built by Vite
 
 **The map works offline and follows the robot.** `OfflineMapLayer` draws the operating area from `area.pmtiles`, a Protomaps vector map that P1 serves from `MAP_DIR` at `/maps`; the browser reads only the tiles it shows through HTTP range requests, and the layer is limited to the file's bounds so the online OpenStreetMap layer still shows outside it. Its libraries (`protomaps-leaflet`, `pmtiles`) load as a separate chunk after the dashboard starts, which keeps the first load over the local network unchanged, and if P1 has no map file the layer adds nothing. `LocateRobotButton` is a Leaflet control with follow mode: on by default, so a dashboard opened before the first fix moves to the robot once it arrives; turned off by the operator dragging the map; turned back on by the button, which flies to the robot. Panning waits for that fly-to to finish so a fix arriving mid-flight cannot cut it short. The live path takes a point only once the robot has moved 10 m, mirroring `MIN_TRACK_STEP_M` in `gps_reader.py`, so GPS drift around a stationary robot does not scribble the map.
 
+**The Wi-Fi signal indicator warns before the link breaks.** `SignalIndicator` sits in the status bar next to the WebSocket chip and shows the robot's `signal_dbm` as four phone-style bars and a percentage (linear from −90 dBm = 0 % to −30 dBm = 100 %; 4 bars at −60 dBm or better, then −67, −75 and −82 dBm for 3, 2 and 1). `SignalWarningBanner` adds a full-width banner under the status bar: amber *Weak signal — turn back soon* at or below −70 dBm, flashing red *Signal critical — bring the robot back* at or below −80 dBm. Leaving a worse level needs a 3 dB margin, so the warning does not flicker at the edge. Each change of level is also written to the alert log. The pure mapping lives in `lib/signal.ts`; the thresholds are the `signal_dbm` entry of `DEFAULT_THRESHOLDS` and are provisional until the distance sweep (Section 5.3 of the paper) sets them from measured loss and latency.
+
+The indicator never shows an old value as current. P1 cannot report a link that has failed, so `useControlSocket()` judges the link itself: it records when the last live `telemetry` frame arrived and checks four times a second. If the socket is closed or no frame has arrived for 1 s (five missed frames), `telemetryStale` is set and the level becomes `none`. The status bar then shows grey bars and **NO SIGNAL**, and a red *NO SIGNAL* banner appears. The same happens when P1 reports `signal_dbm: null`. Frames replayed in a `recovery_batch` are old and do not count as live. This catches a dead link about 1 s after the last frame, well before the socket's close event.
+
 **A documented divergence from the original design.** The original methodology specified "no Redux — context providers per state slice," and `dashboard/src/context/` exists in the tree. It is empty. The implemented architecture uses **no context providers at all**: all shared state lives in a single `useControlSocket()` hook invoked once in `App.tsx` and threaded to children as explicit props. For a dashboard of this size the simpler structure is defensible — every component's data dependencies are visible in its props, and there is no indirection between the socket and the render. The empty directory should be removed to prevent it from implying a structure that does not exist.
 
 `useControlSocket()` owns the entire control path. State that drives rendering is held in `useState`; values that must persist across renders without triggering them — the socket, the command sequence counter, the last server timestamp, the backoff interval, and timer handles — are held in `useRef`. On connection it sends `hello` with the controller key (if the operator has entered one, kept in the browser's `localStorage`) to claim the controller role, then `resume_from` with its last-seen timestamp if this is a reconnection. Reconnection backs off exponentially from 1 second to a 30-second ceiling. An idle heartbeat every 500 ms keeps the Arduino's dead-man armed while the operator is not driving; only the controller sends it. A key the robot refuses is dropped from storage at once, since every automatic reconnect would otherwise resend it and count toward the lockout.
@@ -297,6 +303,8 @@ The hook contains a guard worth documenting because it addresses a genuinely sub
 `pi/common/` holds what all Pi processes share. `config.py` defines four frozen dataclasses — `Paths`, `P1Config`, `P2Config`, `P3Config` — each constructed from environment variables with defaults. `_default_root()` returns `/` when `/opt/robot` exists and `./var` otherwise, which is the single mechanism that lets the identical code run as a Pi service and as a developer process without root.
 
 `logging_setup.py` implements the methodology's event format, `[TS][PROC][LEVEL][EVENT_CODE][MSG]{k=v ...}`, with UTC timestamps at millisecond precision. Each record is written in a single append-mode call so that concurrent processes never interleave partial lines — a property that matters because P1, P2, and P3 all log independently during a mission.
+
+`wifi.py` reads the robot's Wi-Fi signal level for P1 (Section A.5.2).
 
 `mock_hardware.py` is discussed in full in Section A.10, as its significance is architectural rather than merely convenient.
 
@@ -323,7 +331,7 @@ Field order is load-bearing — parsing is by index, not by name — which is th
 
 **Downstream, dashboard to P1 to Arduino**, commands are single-character opcodes with optional numeric arguments — `F120\n` is forward at PWM 120. The dashboard speaks JSON WebSocket messages; P1 validates and lowers them to the wire grammar. Six client message types (`hello`, `motor`, `servo`, `heartbeat`, `stop_all`, `resume_from`) and five server types (`telemetry`, `recovery_batch`, `ack`, `error`, `role`) constitute the entire application protocol.
 
-**P1 outward to the dashboard**, the unit of exchange is the 20-key `TelemetrySnapshot`: the 9 Arduino fields, plus GPS position and fix quality merged from the reader thread, plus server metadata — sequence number, server timestamp, serial health, client count, and TURN status. `build_snapshot()` re-asserts the P1-owned fields *last*, after merging, so that a malformed or hostile frame can never overwrite the server's own view of its health.
+**P1 outward to the dashboard**, the unit of exchange is the `TelemetrySnapshot` (19 keys as sent): the 8 Arduino fields, plus GPS position and fix quality merged from the reader thread, plus server metadata — message type, sequence number, server timestamp, serial health, client count, TURN status, and the robot's Wi-Fi signal `signal_dbm`. `build_snapshot()` re-asserts the P1-owned fields *last*, after merging, so that a malformed or hostile frame can never overwrite the server's own view of its health.
 
 | **Store** | **Medium** | **Retention** | **Purpose** |
 | --- | --- | --- | --- |
@@ -336,7 +344,7 @@ Field order is load-bearing — parsing is by index, not by name — which is th
 
 The two telemetry rates are deliberately decoupled. Broadcast runs at 200 ms because the operator needs a responsive interface; disk logging samples at 1 Hz because the full stream would consume roughly 3.2 MB per hour to record data whose post-mission value is trend-level. The ring buffer holds 60 seconds, which bounds the worst case for a reconnecting dashboard: 60 seconds of history against a P1 restart of approximately 8 seconds. When a client's `last_ts` predates the oldest buffered entry, `gap_ms()` reports the shortfall and the dashboard renders an explicit gap marker on the map rather than interpolating across data it never received.
 
-`compute_alert_flags()` packs seven boolean conditions — temperature warn and critical, gas warn and critical, range warn and critical, and GPS loss — into a single integer bitfield per log row, keeping the CSV compact while preserving the full alert history.
+`compute_alert_flags()` packs nine boolean conditions — temperature warn and critical, gas warn and critical, range warn and critical, GPS loss, and Wi-Fi signal warn and critical (bits 8 and 9; critical is also set when `signal_dbm` is null) — into a single integer bitfield per log row, keeping the CSV compact while preserving the full alert history.
 
 ---
 
@@ -380,6 +388,7 @@ The triple stop is the step most worth understanding. If P1 crashed while the ve
                    build_snapshot()
                      +-- _latest_frame      (Arduino fields)
                      +-- gps.snapshot()     (thread-safe merge)
+                     +-- signal_dbm         (wlan0 RSSI, read at 1Hz)
                      +-- server metadata    (re-asserted last)
                         |
           +-------------+-------------+
@@ -428,6 +437,8 @@ Safety in this system is not a subsystem but a property distributed across every
 | P1 wedged | 3 health misses (~30 s) | SIGKILL, then respawn | Automatic |
 | P1 misconfigured | Exit code 3 | Logged as config fault, not a crash | Manual — deliberately not looped |
 | Camera failure | Capture exception | Synthetic track substituted | Mission continues in `DRIVING_LIMITED` |
+| Wi-Fi signal weakening | `signal_dbm` ≤ −70 / ≤ −80 dBm | Amber / red banner, bars change colour, alert logged | Operator drives back; clears 3 dB above the threshold |
+| Telemetry stops arriving | No frame for 1 s, or socket closed | Indicator shows NO SIGNAL; last value never shown | Automatic on next live frame |
 | Wi-Fi network outage | Telemetry gap, ack timeout | Mission state → `STOP` | Backoff reconnect + replay |
 | Corrupt frame | Parse or range check | Frame discarded silently | Next frame within 200 ms |
 | Obstacle distance ≤ 20 cm | HC-SR04, Category 2 poll | Range warning/critical alert; operator decides movement | N/A — not a fault, no recovery needed |
@@ -491,7 +502,7 @@ The methodology's two source documents disagreed in several places. The implemen
 | --- | --- | --- |
 | Serial device `ttyUSB0` vs `ttyAMA0` | `ttyUSB0` (Sections 8.7/8.8 authoritative) | `p1.env: SERIAL_PORT` |
 | Dead-man: `millis()` vs Timer1 ISR | Software check — Timer1 belongs to Servo | `DEADMAN_MS` |
-| Telemetry field count (12/22/26) | 20-key schema of §8.10.1.2 | `pi/common/protocol.py` |
+| Telemetry field count (12/22/26) | Schema of §8.10.1.2; as built, 19 keys incl. `signal_dbm` (A.6) | `pi/common/protocol.py` |
 | Operational mode count | Build Mode 2, Local network only (§8.11.6) | `p3.env: ENABLE_OVERLAY=0` |
 
 ***Table A.10 — Specification Contradictions and Their Resolutions***
@@ -515,7 +526,7 @@ Recorded plainly, as the architecture's own account of where it is incomplete:
 5. **Controller authentication is a shared key over plain HTTP.** A dashboard must present `CONTROLLER_KEY` to drive, stop or talk (A.3, Driver 6), but the key travels unencrypted over `ws://` and `http://`, so anyone who can capture Wi-Fi traffic can read it; confidentiality rests on WPA2/WPA3 at the link layer. A short key (a few digits) is easy to guess, so the 5-tries/5-minute lockout is what makes guessing slow (about 17 hours to try all 1,000 three-digit keys against one service); P1 and P2 count failures separately and in memory, so a restart clears them. There is one key, not per-operator accounts, and logs identify a controller only by IP address.
 6. **The logrotate policy names logs no code writes**, and the empty `src/context/` directory implies a structure that does not exist. Both are housekeeping defects that mislead a reader of the deployment configuration.
 7. **Talk-to-victim is only partly tested on hardware and needs a secure context.** Both audio directions work on the robot, but operator video, images and text have not been shown on a physical display. Mic/camera capture on the operator laptop requires HTTPS or a per-laptop Chrome flag, and a VNC viewer left open can switch the display to VNC mode by accident (Section A.11).
-8. **Wi-Fi link quality is not measured.** The dashboard enters `DRIVING_LIMITED` when the WebRTC video link drops, but no process reports Wi-Fi signal strength or loss. A degraded but still-connected link shows up only indirectly, as frozen video or, once replies stop for 3 s, as `STOP`.
+8. **The Wi-Fi warning uses robot-side signal strength only, with provisional thresholds.** Since 2026-10-28 the dashboard shows the robot's RSSI as bars and a percentage, warns at −70 and −80 dBm, and shows NO SIGNAL when telemetry stops (A.5.5). The signal is what the robot hears; the laptop's side of the link can be weaker, and a wall or door can drop the link faster than any warning — the 1 s staleness check and the Arduino dead-man cover that case. The −70/−80 dBm thresholds are not yet calibrated: the distance sweep that relates RSSI to loss and latency has not been run.
 
 ---
 

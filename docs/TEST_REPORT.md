@@ -75,6 +75,29 @@ environment-dependency explanation for an earlier, incomplete-venv rerun that
 showed fewer passes, and the raw output. The 116-test, 2026-10-08 result above
 is left as originally recorded.
 
+**Addendum, 2026-10-28 (Wi-Fi signal indicator).** `test_wifi_signal.py`
+(9 tests) was added with the signal-strength feature: the robot's RSSI is
+read from `/proc/net/wireless`; a link whose `operstate` is not `up`, a
+missing interface, or an interface absent from `/proc` gives `None` rather
+than the last level; alert bit 8 (`signal_warn`) is set at -70 dBm or weaker
+and bit 9 (`signal_crit`) at -80 dBm or weaker or when there is no reading;
+`signal_dbm` is the last `telemetry.log` column and is empty when there is
+no reading. Full suite on 2026-10-28 (same command): **130 passed, 0 failed
+(5.9 s)** = the 121 above plus these 9. A second run the same day gave
+the same 130 passed (4.84 s); its output is saved in
+`research-analysis/output/rerun_full_venv_2026-10-28.txt`.
+
+The same day the dashboard side was checked off the live service: a test P1
+on port 18080 (mock hardware, own log folder) sent the Pi's real RSSI
+(-50 to -52 dBm, matching `/proc/net/wireless`, refreshed about once a
+second) and its dashboard showed 4 green bars and 62 %. A scripted stand-in
+server then sent chosen values and screenshots confirmed each state:
+-52 dBm -> 4 green bars, 63 %, no banner; -72 dBm -> 2 amber bars, amber
+banner; -85 dBm -> 0 bars, red banner; `null` -> NO SIGNAL; -68 dBm straight
+after NO SIGNAL -> stays amber (3 dB hysteresis); -60 dBm -> green again;
+frames stopped with the socket still open -> NO SIGNAL within about 1 s.
+These are software checks; the on-robot tests are I20-I22 and N1-N5 below.
+
 **Limitation:** these tests use simulated hardware. They prove the software
 logic, not the real motors, sensors or radio link, which are covered in the
 sections below.
@@ -133,6 +156,9 @@ ending: Newline), or test through the dashboard where noted.
 | I17b | Follow mode | Open the dashboard, drive; drag the map away; click the locate button. | Map follows the robot (button blue); dragging stops following (button white); the click flies back and follows again. | | | |
 | I17c | No drift lines | Leave the robot standing outdoors with a fix for 5 minutes. | No new path lines appear, apart from an occasional short one when the fix jumps. | | | |
 | I18 | Video-loss warning | While READY, stop P2 (`sudo pkill -9 -f p2_media`). | Mission state turns amber DRIVING_LIMITED; after P2 restarts, clicking **Retry video** returns it to READY. | | | |
+| I20 | Wi-Fi bars | Open the dashboard; hover over the bars; compare with `grep wlan0 /proc/net/wireless` on the Pi. | Bars and % shown next to `WS connected`; tooltip dBm matches the Pi within a few dB. | | | |
+| I21 | Weak-signal warning | Drive (or carry) the robot away from the router until the signal passes -70 dBm, then -80 dBm; come back. | Amber banner at -70 dBm, red at -80 dBm, each logged in Alerts; both clear on the way back. | | | |
+| I22 | NO SIGNAL | While connected, stop P1 (`sudo pkill -f p1_control`) or switch off the router. | Within about 1 s the bars turn grey and show `NO SIGNAL` with a red banner; the old value is not shown. | | | |
 | I19 | Robot audio | Click **Listen** and speak near the robot for a minute. | Voice is heard clearly on the dashboard, without dropouts, and stays in step with the video. | | | |
 
 ---
@@ -140,15 +166,19 @@ ending: Newline), or test through the dashboard where noted.
 ## 6. Network performance tests
 
 Move the robot away from the Wi-Fi router and measure at increasing distances.
-Use `ping <pi-ip>` from the operator laptop for latency and loss.
+Use `ping <pi-ip>` from the operator laptop for latency and loss, or
+`tools/eval/netsweep.py`, which records these with the robot's RSSI. Measure
+distance with a tape or marked spots, not GPS (the log's 4 decimal places
+are about 11 m). Read the signal from the dashboard tooltip or the
+`signal_dbm` column of `telemetry.log`.
 
-| ID | Setup | Distance / obstacles | Latency avg (ms) | Packet loss (%) | Video quality (good / choppy / lost) | Control responsive? | Notes |
+| ID | Setup | Distance / obstacles | Signal (dBm) | Latency avg (ms) | Packet loss (%) | Video quality (good / choppy / lost) | Control responsive? | Notes |
 |---|---|---|---|---|---|---|---|
-| N1 | Robot near the Wi-Fi router | ___ m, line of sight | | | | | |
-| N2 | Robot at medium distance from the Wi-Fi router | ___ m | | | | | |
-| N3 | Robot far from the Wi-Fi router | ___ m | | | | | |
-| N4 | Through walls | ___ walls | | | | | |
-| N5 | Maximum working range | ___ m | | | | | |
+| N1 | Robot near the Wi-Fi router | ___ m, line of sight | | | | | | |
+| N2 | Robot at medium distance from the Wi-Fi router | ___ m | | | | | | |
+| N3 | Robot far from the Wi-Fi router | ___ m | | | | | | |
+| N4 | Through walls | ___ walls | | | | | | |
+| N5 | Maximum working range | ___ m | | | | | | |
 
 | ID | Measurement | Method | Result |
 |---|---|---|---|
@@ -216,9 +246,9 @@ List every failure or unexpected behaviour found during testing.
 
 | Area | Tests | Passed | Failed | Not run |
 |---|---|---|---|---|
-| Unit tests | 116 | 116 | 0 | 0 |
+| Unit tests | 130 | 130 | 0 | 0 |
 | Hardware | 15 | | | |
-| Integration | 21 | | | |
+| Integration | 24 | | | |
 | Network | 8 | | | |
 | Failure / recovery | 10 | | | |
 | Field test | 1 | | | |

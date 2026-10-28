@@ -43,6 +43,7 @@ Work through this list before the robot is sent in.
 | Indicator | Good | Problem |
 |---|---|---|
 | Connection | `WS connected` (green) | `WS offline` (red): the dashboard can't reach the robot. It retries automatically. |
+| Wi-Fi signal | Green bars and a percentage, e.g. `▂▄▆█ 63%` | Amber or red bars, or `NO SIGNAL`: see [Section 5, Wi-Fi signal](#wi-fi-signal). |
 | Role | `CONTROLLER` (green) | `OBSERVER — view only` (amber): you haven't entered the controller key. You can watch everything but control nothing. |
 | Mission state | `READY` (green) | `STOP` (red): see [Section 4](#4-mission-states). |
 | Serial | `serial ok` | `serial down`: the Pi can't talk to the Arduino. Motion is disabled. |
@@ -71,7 +72,8 @@ removes it.
 
 ```
 ┌────────────────────────────────────────────────────────────────────┐
-│ Status bar: connection · role · mission state · serial · GPS       │
+│ Status bar: connection · Wi-Fi bars % · role · mission · serial · GPS│
+│ (Wi-Fi warning banner, only when the signal is weak or lost)       │
 ├──────────────┬──────────────────────────────────┬──────────────────┤
 │ Mission state│                                  │ Sensor cards     │
 │ Drive pad    │  Live video from robot           │ GPS card         │
@@ -119,6 +121,28 @@ You can drive with the on-screen pad or the keyboard.
   typing a message won't move the robot.
 - Watch the **Range** sensor card when driving forward. It turns amber
   under 30 cm and red under 20 cm from an obstacle.
+
+### Wi-Fi signal
+
+The bars next to `WS connected` show how strong the robot's Wi-Fi is, like
+the bars on a phone. Hover over them to see the exact value in dBm. Watch
+them as you drive away from the router: **turn back while you still have
+bars**, before video freezes and the controls stop answering.
+
+| You see | Signal | What to do |
+|---|---|---|
+| 3–4 green bars | Better than −70 dBm | Drive normally. |
+| Amber bars + amber banner *"Weak signal — turn back soon"* | −70 dBm or weaker | Stop going further. Start bringing the robot back towards the router. |
+| Red bars + flashing red banner *"Signal critical — bring the robot back"* | −80 dBm or weaker | Drive back now, slowly. The link may drop at any moment. |
+| Grey bars, `NO SIGNAL`, red banner | No live data from the robot for 1 second | The link is lost. The robot stops on its own within 2 seconds. Wait for the bars to return; move your laptop closer to the router if they don't. |
+
+- A warning stays on until the signal is clearly better (3 dB above the
+  limit), so it doesn't flicker on and off at the edge.
+- Every change is also written to the **Alerts** log.
+- The bars show what the **robot** hears. A wall or door can cut the link
+  suddenly with no warning, so don't drive to the very edge of the range.
+- The −70 and −80 dBm limits are a first setting. They will be adjusted
+  after the robot's range has been measured.
 
 ### Built-in safety
 
@@ -251,6 +275,8 @@ Always switch back to **Robot Display** before a mission.
 | Problem | Likely cause | What to do |
 |---|---|---|
 | Page won't load | Laptop not on the robot's Wi-Fi network, or robot still starting. | Check you're connected to the same Wi-Fi network as the robot. Wait 30 s and reload. |
+| Amber or red Wi-Fi banner | Robot is getting far from the router, or something is in the way. | Turn back towards the router until the bars are green again. See [Wi-Fi signal](#wi-fi-signal). |
+| `NO SIGNAL` | No live data from the robot for 1 second. | Same as `WS offline`: the robot stops on its own. Wait, or bring your laptop closer to the router. |
 | `WS offline` | Wi-Fi link to the robot lost. | The dashboard reconnects on its own (retrying for up to 30 s). Move the robot closer to the Wi-Fi router. |
 | `OBSERVER — view only` | No controller key entered, or another dashboard took over. | Enter the key and click **Unlock**. |
 | "Wrong controller key." | Key mistyped. | Type it again. Ask whoever set up the robot if you don't have it. |

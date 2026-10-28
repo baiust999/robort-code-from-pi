@@ -550,8 +550,9 @@ tests N1–N8 in `TEST_REPORT.md`.
 
 ## 11.1 Link Quality Guide
 
-These are general Wi-Fi planning figures, used for site survey; the system
-does not measure them itself (Section 40.3).
+These are general Wi-Fi planning figures, used for site survey. Since
+2026-10-28 the robot also reports its own RSSI live on the dashboard
+(Section 13.2).
 
 | Link Quality | RSSI | Status |
 |--------------|------|--------|
@@ -603,6 +604,11 @@ ping -c 20 <pi-ip>                # the Pi
 
 ## 13.1 Planning Figures (not yet measured on this robot)
 
+The dashboard's warning thresholds below (−70 / −80 dBm) are a first
+setting taken from these figures; they will be replaced by values from the
+distance sweep (tests N1–N5).
+
+
 | Metric | Good | Acceptable | Poor |
 |--------|------|-----------|------|
 | **RSSI (dBm)** | > −65 | −65 to −75 | −75 to −80 |
@@ -611,12 +617,34 @@ ping -c 20 <pi-ip>                # the Pi
 
 ## 13.2 What the Operator Sees When the Link Degrades
 
-The system has **no signal-strength warning** (Section 40.3). Link problems
-show up as:
+P1 reads the robot's Wi-Fi level (`/proc/net/wireless`, `wlan0`) once a
+second and sends it as `signal_dbm` in every telemetry frame; it sends
+`null` when the interface is not up, never the last good value. The
+dashboard shows it as phone-style bars and a percentage next to
+`WS connected`:
+
+| Signal | Bars | Percentage | Warning |
+|--------|------|------------|---------|
+| −60 dBm or better | 4 | linear: −90 dBm = 0 %, −30 dBm = 100 % | none |
+| −61 to −67 dBm | 3 | | none |
+| −68 to −75 dBm | 2 | | amber banner at ≤ −70 dBm, *"Weak signal — turn back soon"* |
+| −76 to −82 dBm | 1 | | red banner at ≤ −80 dBm, *"Signal critical — bring the robot back"* |
+| below −82 dBm | 0 | | red |
+| no live reading | grey | `NO SIGNAL` | red *NO SIGNAL* banner |
+
+A warning clears only 3 dB above its threshold, so it does not flicker, and
+each change is written to the alert log. **NO SIGNAL** is decided by the
+dashboard itself: if the socket is closed or no telemetry frame has arrived
+for 1 s (5 frames), it never shows the last value. The signal is the
+robot's side of the link only; a sudden obstruction can still cut the link
+without warning.
+
+Link problems also show up as:
 
 | Symptom | Cause | Dashboard |
 |---------|-------|-----------|
 | Video freezes or drops | Media path lost | `DRIVING_LIMITED` (amber) once the WebRTC connection leaves `connected` |
+| No telemetry for > 1 s | Control path stalled | `NO SIGNAL` on the bars, red banner |
 | No telemetry for > 3 s | Control path stalled | `STOP` (red) |
 | WebSocket closes | Control path lost | `WS offline`, `STOP`; automatic reconnect with backoff 1-30 s |
 
@@ -772,7 +800,8 @@ P1 turns these into serial commands: `motor` → `F/R/L/G<speed>`,
   "gps_sats": 8,
   "turn_status": "unavailable",
   "serial_ok": true,
-  "ws_clients": 1
+  "ws_clients": 1,
+  "signal_dbm": -52.0        // robot Wi-Fi RSSI; null when its link is down
 }
 
 // Recovery batch (reply to resume_from)
@@ -1430,7 +1459,7 @@ only, as before.
 
 | File | Writer | Content | Rate |
 |------|--------|---------|------|
-| `telemetry.log` | P1 | CSV, 18 columns (`iso_ts, seq`, the 8 Arduino fields, `lat, lon, gps_fix, gps_sats, serial_ok, ws_clients, turn_status, alert_flags`) | 1 line/s (~93 bytes) |
+| `telemetry.log` | P1 | CSV, 19 columns (`iso_ts, seq`, the 8 Arduino fields, `lat, lon, gps_fix, gps_sats, serial_ok, ws_clients, turn_status, alert_flags, signal_dbm`); `signal_dbm` was appended last on 2026-10-28 and is empty when there is no reading | 1 line/s (~97 bytes) |
 | `p1_events.log` | P1 | Events: session, handshake, WebSocket, every serial line in/out (`DEBUG_RX`/`DEBUG_TX`) | Per event |
 | `p2_events.log` | P2 | Events: WebRTC sessions, floor, display mode, device errors | Per event |
 | `p3_events.log` | P3 | Events: spawn, crash, health misses, kills | Per event |
@@ -1444,7 +1473,8 @@ Event line format:
 ```
 
 `alert_flags` packs threshold crossings into bits: 0 temp_warn, 1
-temp_crit, 2 gas_warn, 3 gas_crit, 4 range_warn, 5 range_crit, 7 gps_lost
+temp_crit, 2 gas_warn, 3 gas_crit, 4 range_warn, 5 range_crit, 7 gps_lost,
+8 signal_warn (≤ −70 dBm), 9 signal_crit (≤ −80 dBm, or no reading)
 (bit 6 unused).
 
 ## 28.2 Rotation (`deploy/logrotate/robot`)
@@ -1462,7 +1492,7 @@ installed by `install.sh`. Both are listed in Section 40.3.
 ## 28.3 Storage Estimate
 
 ```
-telemetry.log: 93 bytes × 86,400 s ≈ 8 MB/day before compression
+telemetry.log: 97 bytes × 86,400 s ≈ 8.4 MB/day before compression
 p1_events.log: dominated by DEBUG_RX/DEBUG_TX lines — every Arduino
                ACK and HB line and every command is logged, so it grows
                faster than telemetry.log while a dashboard is connected
@@ -1649,11 +1679,14 @@ the firmware (Section 6.2).
 | **WARNING** | Amber card border and tint | Temp ≥ 50 °C, gas ≥ 450, range ≤ 30 cm |
 | **CRITICAL** | Red card border and tint | Temp ≥ 70 °C, gas ≥ 600, range ≤ 20 cm |
 | **GPS** | GPS card "no fix", status bar "GPS no fix" | gps_fix = false |
+| **WI-FI** | Bars turn amber / red; amber or flashing red banner; grey bars and `NO SIGNAL` | signal_dbm ≤ −70 / ≤ −80 dBm; no live telemetry for 1 s |
 | **TRANSPORT** | Status bar "WS offline" / "serial down"; mission state colour | WebSocket, serial or video loss |
 
 There are no audible alarms. The **alert log** panel lists connection
 events ("connected to control server", "disconnected; reconnecting…"),
-recovered telemetry and server rejections.
+Wi-Fi signal changes ("weak Wi-Fi signal", "Wi-Fi signal critical",
+"NO SIGNAL", "Wi-Fi signal recovered"), recovered telemetry and server
+rejections.
 
 ## 32.2 Alert Response
 
@@ -1672,6 +1705,11 @@ Gas (advisory only, never motor-blocking):
 ├─ Dashboard: amber ≥ 450, red ≥ 600 (raw ADC)
 ├─ Firmware: GALM flag set at ≥ 1000 (telemetry only, no motor action)
 └─ Operator decides whether to issue S
+
+Wi-Fi signal (advisory only, never motor-blocking):
+├─ ≤ −70 dBm → amber banner "turn back soon"; ≤ −80 dBm → red banner
+├─ No live telemetry for 1 s → NO SIGNAL
+└─ Operator drives back towards the router
 
 Transport:
 └─ Mission state → STOP or DRIVING_LIMITED (Section 31)
@@ -1934,7 +1972,8 @@ OPERATOR LAPTOP:
 
 3. ROBOT SYSTEMS VERIFICATION:
    ☐ Open http://<pi-ip>:8080
-   ☐ Status bar: WS connected, role: controller, serial ok; mission READY
+   ☐ Status bar: WS connected, Wi-Fi bars green, role: controller,
+     serial ok; mission READY
    ☐ Sensor cards update; GPS card shows a fix outdoors
    ☐ Video visible (640×480)
    ☐ "Listen to robot mic": robot microphone audible
@@ -2079,8 +2118,10 @@ CRITICAL PATH (Motor Safety):
 
 ## 40.3 Known Limitations
 
-1. **No Wi-Fi link-quality monitoring.** No process measures signal
-   strength or loss.
+1. **Wi-Fi warning is robot-side and not yet calibrated.** Since
+   2026-10-28 the dashboard shows the robot's RSSI and warns at −70 /
+   −80 dBm (Section 13.2), but packet loss is not measured live, the laptop's
+   side of the link is not shown, and the thresholds wait for tests N1–N5.
 2. **Serial loss needs a P1 restart.** If the Arduino is unplugged, P1 marks
    `serial_ok=false` but does not reopen the port, and `/health` still
    returns 200, so P3 does not restart it.

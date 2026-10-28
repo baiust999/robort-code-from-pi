@@ -13,7 +13,7 @@ The directions are grouped under six themes (Sections 7.1 to 7.6) and are not eq
 | Section | Direction | Limitation in the current system | Evidence | Priority | Depends on |
 |---|---|---|---|---|---|
 | 7.1.1 | Multi-hop mesh networking | One 802.11n cell; range sweep partial (16 line-of-sight stations, 5 to 250 m, no failure point reached, no obstacle condition) | 3.2, 5.3 | 2 | 7.6.3 |
-| 7.1.2 | Communication-aware mission planning | No route planning; link quality not mapped | 3.10, 5.3 | 3 | 7.1.1, 7.3.1 |
+| 7.1.2 | Communication-aware mission planning | No route planning; the robot's signal level is logged at 1 Hz with GPS but not mapped, and the warning thresholds are not calibrated | 3.6.2, 3.7.3, 3.10, 5.3 | 3 | 7.1.1, 7.3.1 |
 | 7.2.1 | Cross-layer fault detection and recovery | Supervisor sees process liveness and an HTTP health check only; Arduino removal needs a P1 restart | 3.7, 5.4 | 1 | 7.2.2 |
 | 7.2.2 | Quantitative safety and fault-injection evaluation | SIGKILL only (10 trials per process); hangs, sensor loss and network faults not injected; ablations not run | 4.3, 5.4 | 1 | - |
 | 7.2.3 | Simulation-based validation | Heartbeat-loss model assumes independent loss; the hardware mock differed from the firmware until patched | 5.1a, 5.1b | 3 | 7.2.2 |
@@ -43,7 +43,7 @@ The proposed work places relay nodes running IEEE 802.11s with HWMP routing alon
 
 ### 7.1.2 Communication-Aware Mission Planning
 
-There is no route planning and link quality is not mapped. The proposed work uses measured link quality as a cost in route selection so that a planned route trades length against time spent outside coverage. It requires a map (Section 7.3.1) and a link-quality survey (Section 7.1.1). The baseline is the shortest-distance route. Metrics are route length, connectivity interruptions, control availability and mission completion.
+There is no route planning and link quality is not mapped. Since 2026-10-28 the robot logs its received signal level once per second next to its GPS position and warns the operator at fixed thresholds (Section 3.7.3), which gives the raw data for a coverage map but not the map itself, and covers only the robot's side of the link. The proposed work uses measured link quality as a cost in route selection so that a planned route trades length against time spent outside coverage. It requires a map (Section 7.3.1) and a link-quality survey (Section 7.1.1). The baseline is the shortest-distance route. Metrics are route length, connectivity interruptions, control availability and mission completion.
 
 ## 7.2 Fault Detection and Quantitative Fail-Safe Validation
 

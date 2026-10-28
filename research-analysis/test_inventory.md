@@ -59,6 +59,13 @@ recorded in `research-analysis/output/rerun_full_venv_2026-10-22.txt`).
 Section 2. Every one of the 116 historically-named test files and tests
 still passes; nothing regressed.
 
+**Addendum, 2026-10-28.** Nine tests were added in `pi/tests/test_wifi_signal.py`
+with the dashboard's Wi-Fi signal indicator (signal reading, no stale value
+when the link is down, alert bits 8/9, `signal_dbm` as the last log column).
+Same command: **130 passed, 0 failed, 4.84 s** = 121 + 9, raw output in
+`research-analysis/output/rerun_full_venv_2026-10-28.txt`. The 121-test
+figure above is left as recorded.
+
 This is a genuine fresh execution performed in this task, on 2026-10-22, not
 a restatement of the 2026-10-08 result. It is reported separately from the
 historical figure per the task's explicit instruction never to claim the
@@ -120,11 +127,12 @@ count.
 |---|---|---|---|
 | Historical unit tests (reported) | 116 passed, 0 failed | `docs/TEST_REPORT.md` | 2026-10-08 |
 | Fresh rerun, full suite, full venv | 121 passed, 0 failed | this task | 2026-10-22 |
+| Rerun with `test_wifi_signal.py` (9 added) | 130 passed, 0 failed | `research-analysis/output/rerun_full_venv_2026-10-28.txt` | 2026-10-28 |
 | Rerun, incomplete `pi/.venv`, forced through | 86 passed, 7 errors (env-caused) | this task | 2026-10-22 |
 | New boundary unit tests, this task | 17 passed, 0 failed | `research-analysis/tests/` | 2026-10-22 |
 | Native firmware tests (real, compiled `arduino/*.cpp`), this task | 10 test functions / 27 checks, 10 passed, 0 failed | `research-analysis/native/` | 2026-10-22 |
 | Hardware checklist (H1-H15) | 0 run | `docs/TEST_REPORT.md` Section 4 | not run -- needs physical hardware access, out of scope (software-only task) |
-| Integration checklist (I1-I19) | 0 run | `docs/TEST_REPORT.md` Section 5 | not run -- needs the live dashboard/operator in the loop |
+| Integration checklist (I1-I22) | 0 run | `docs/TEST_REPORT.md` Section 5 | not run -- needs the live dashboard/operator in the loop |
 | Network tests (N1-N8) | 0 run | `docs/TEST_REPORT.md` Section 6 | not run -- needs physical distance trials |
 | Field test | 0 run | `docs/TEST_REPORT.md` Section 8 | not run -- needs a physical rescue scenario |
 

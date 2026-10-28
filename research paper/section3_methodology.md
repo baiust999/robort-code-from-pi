@@ -7,7 +7,7 @@ This section describes the design from the overall architecture down to the indi
 This chapter describes the system design: the structure, mechanisms and design choices that realise the stop guarantee stated above. The procedures and metrics that validate the design belong to Section 4 (Experimental Setup) and the measurements to Section 5 (Results); this chapter does not repeat them, but cross-references the relevant Section 4 and Section 5 subsection, and the raw data under tools/eval/, at each point where a design choice has an empirical test. Each design pillar below is traced to the research question that motivates it and to the Section 5 subsection that evaluates it, with the state of that evidence. The research questions RQ1 to RQ4 are stated in Section 1.3; RQ4 covers both the two-way victim path and GPS and mapping.
 
 - Firmware dead-man and ramp-stop (Section 3.5.2) -> RQ1 -> Section 5.1: the firmware-side stop interval is measured from logs (Table 5.2b); the physical wheel-stop time (E4) is [PENDING MEASUREMENT]; the heartbeat-loss margin (Section 5.1b) is SIMULATED
-- P1 single-writer serial link and session resume (Section 3.6) -> RQ2 -> Sections 5.1 and 5.3: control-plane latency is a robot-internal upper bound with no Wi-Fi figure, the range sweep is partial, and session resume was not measured
+- P1 single-writer serial link and session resume (Section 3.6) -> RQ2 -> Sections 5.1 and 5.3: control-plane latency is a robot-internal upper bound with no Wi-Fi figure, the range sweep is partial, and session resume was not measured; the link-quality warning (Section 3.7.3) has software checks only and its thresholds are not calibrated
 - P3 process isolation and supervision (Section 3.7) -> RQ3 -> Section 5.4: automated SIGKILL recovery, 30 of 30 trials, plus single manual injections
 - WebRTC two-way victim path (Section 3.9) -> RQ4 -> Section 5.5 for the measured processor cost and isolation of the media process; video and audio delay and quality (Section 5.2, E5) and the end-to-end rescue run (Section 5.7, E13) are [PENDING MEASUREMENT]
 - GPS and offline map (Section 3.10) -> RQ4 -> Section 5.6.1: static precision is measured but resolution-limited, and the 10 m track filter admitted drift
@@ -90,6 +90,7 @@ Control and media use different transports for different reasons. Commands and t
 | Steady-state load per operator | Under 1 Mbit/s | Sum of the rows above |
 | Hard delivery deadline | 2000 ms since the last arming command | Dead-man, Section 3.5.2 |
 | Operator-side link timeout | 3000 ms without telemetry gives mission state STOP, counted in 500 ms steps | Table 10 |
+| Signal-indicator staleness | 1000 ms without a live snapshot gives NO SIGNAL, checked every 250 ms | Section 3.7.3 |
 | Socket keep-alive | Ping every 20 s, 20 s timeout | P1 WebSocket server |
 | Reconnect back-off | 1 s, doubling, capped at 30 s | Section 3.7.2 |
 
@@ -291,7 +292,7 @@ The dashboard is a single-page React application served by P1 (Figure 7). Its in
 ```mermaid
 flowchart TB
   subgraph UI["Interface components"]
-    DC["Drive, servo, emergency stop"] --- SC["Sensor cards, mission state, alerts"]
+    DC["Drive, servo, emergency stop"] --- SC["Sensor cards, mission state, Wi-Fi signal, alerts"]
     VS["Video and talk panel"] --- MP["Map panel"]
   end
   subgraph HK["Hooks and API layer"]
@@ -444,7 +445,7 @@ sequenceDiagram
 
 ### 3.6.2 Telemetry Pipeline and Session Resume
 
-The firmware sends a frame every 500 ms; P1 broadcasts a snapshot of the latest valid frame every 200 ms on an absolute schedule, merged with GPS and link status (Figure 12). A frame is dropped if any field fails the checks in Table 8; there is no retransmission.
+The firmware sends a frame every 500 ms; P1 broadcasts a snapshot of the latest valid frame every 200 ms on an absolute schedule, merged with GPS, link status and the robot's Wi-Fi signal level (Figure 12). A frame is dropped if any field fails the checks in Table 8; there is no retransmission.
 
 ```mermaid
 flowchart LR
@@ -452,6 +453,7 @@ flowchart LR
   R --> V["Validate frame"]
   V --> L["Latest frame"]
   G["GPS fix"] --> S["Snapshot, 200 ms"]
+  W["Wi-Fi signal, 1 Hz"] --> S
   L --> S
   S --> WS["WebSocket to all clients"]
   S --> RB["Ring buffer, 300 entries"]
@@ -472,6 +474,8 @@ flowchart LR
 | Tilt angle | deg | 0 to 180 |
 | Firmware state | - | 1 to 3 |
 | Uptime | ms | 0 to 2^32 - 1 |
+
+P1 also reads the robot's received signal level, in dBm, from the kernel's wireless statistics for the wlan0 interface (/proc/net/wireless) once per second and adds it to every snapshot as signal_dbm (pi/common/wifi.py). The value is null whenever the interface is not up, because the kernel can keep reporting the last level after the link has gone; P1 never substitutes a cached value. The 1 Hz CSV log carries the same field as its last column, and two alert bits mark a weak signal (at or below -70 dBm) and a critical one (at or below -80 dBm, or no reading), so a mission log records how the link changed along the route. The level is the robot's receive side only; the operator laptop's side of the link is not measured.
 
 Because the P1 broadcast runs on an absolute schedule with period TELEMETRY_PERIOD_MS = 200 ms (pi/common/protocol.py), the control-plane latency probe in Section 4 jitters its send phase; a phase-locked sender produces a biased, deceptively tight distribution, as recorded in tools/eval/README.md and discussed in Section 6.4.
 
@@ -535,6 +539,7 @@ P1 reports why it exited through its process exit code, which the watchdog reads
 | Camera fails to open | Media server | Synthetic test pattern sent | Next session |
 | Microphone lost | Media server | Silence sent | Reopen tried every 2 s |
 | GPS port error | P1 | No fix; GPS-lost alert bit set | Port reopened after 2 s |
+| Wi-Fi signal weakening | Dashboard, from signal_dbm | Amber or red warning; drive unaffected | Operator drives back; warning clears 3 dB above its threshold |
 | Robot Screen browser exits | Kiosk launcher | Victim screen blank | Relaunch after 3 s |
 | P3 crash | systemd | P1 and P2 stop with it; dead-man stops robot | Restart after 5 s, then P1 and P2 respawn |
 
@@ -576,6 +581,21 @@ The dashboard reduces link and firmware status to one of four mission states, ev
 | 2 | DRIVING LIMITED | Video link down |
 | 3 | DRIVING | Firmware reports driving |
 | 4 | READY | Otherwise |
+
+The mission state reports a link that has already failed. To warn the operator before that point, the dashboard also shows the robot's signal level as four bars and a percentage next to the connection status, and a banner below it when the level is low (Table 10a). The percentage is linear between -90 dBm (0%) and -30 dBm (100%). A warning clears only when the level is 3 dB better than the threshold that set it, so a level near a threshold does not make the warning flicker, and each change of level is written to the dashboard's alert log. The robot keeps moving under every level; the warning is advisory, like the range sensor (Section 3.5.3), and the stop guarantee stays with the dead-man.
+
+**Table 10a.** Wi-Fi signal indicator (dashboard/src/lib/signal.ts; thresholds in thresholds.json).
+
+| Signal level | Bars | Warning |
+|---|---|---|
+| -60 dBm or better | 4 | None |
+| -61 to -67 dBm | 3 | None |
+| -68 to -75 dBm | 2 | Amber "weak signal, turn back soon" at or below -70 dBm |
+| -76 to -82 dBm | 1 | Red "signal critical, bring the robot back" at or below -80 dBm |
+| Below -82 dBm | 0 | Red |
+| No live reading | Grey, "NO SIGNAL" | Red "NO SIGNAL" |
+
+The NO SIGNAL row is decided by the dashboard, not by P1, because P1 cannot report a link that has failed and the last value it sent is exactly what must not stay on screen. The dashboard records when the last live snapshot arrived; if the control socket is closed or no snapshot has arrived for 1000 ms (five broadcast periods), the indicator shows NO SIGNAL instead of a level, well before the 3000 ms STOP rule of Table 10. Snapshots replayed after a reconnect (Section 3.6.2) are old and do not count as live. The -70 and -80 dBm thresholds are provisional planning values, not measured tolerances of this robot; Section 5.3 compares them with the range sweep.
 
 ## 3.8 Access Control and Multi-Operator Arbitration
 
