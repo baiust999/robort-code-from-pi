@@ -1,6 +1,6 @@
 /** REST client for P1's control-server endpoints, Section 8.8.1.1. */
 
-import type { Auth, Role } from './protocol';
+import type { Auth, Role, VictimMark } from './protocol';
 
 const ROBOT_HOST = import.meta.env.VITE_ROBOT_HOST ?? window.location.hostname ?? 'localhost';
 const P1_PORT = import.meta.env.VITE_P1_PORT ?? '8080';
@@ -47,6 +47,27 @@ export const fetchHealth = () => getJson<HealthResponse>(`${P1_HTTP_BASE}/health
 export const fetchIceConfig = () => getJson<IceConfigResponse>(`${P1_HTTP_BASE}/api/ice-config`);
 export const fetchSession = () => getJson<SessionResponse>(`${P1_HTTP_BASE}/api/session`);
 export const fetchGpsTrack = () => getJson<GpsTrackResponse>(`${P1_HTTP_BASE}/api/gps-track`);
+
+export const fetchVictims = () => getJson<{ marks: VictimMark[] }>(`${P1_HTTP_BASE}/api/victims`);
+
+export const victimSnapshotUrl = (id: string) => `${P1_HTTP_BASE}/api/victims/${id}.jpg`;
+
+/** Only the controller key may mark; P1 stamps position and servo angles itself. */
+export async function postVictim(
+  key: string | null,
+  body: { note: string; ai_score: number | null; snapshot_b64: string | null },
+): Promise<VictimMark> {
+  const resp = await fetch(`${P1_HTTP_BASE}/api/victims`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Controller-Key': key ?? '' },
+    body: JSON.stringify(body),
+  });
+  if (!resp.ok) {
+    const detail = await resp.json().then((j: { detail?: string }) => j.detail).catch(() => null);
+    throw new Error(detail ?? `save failed: ${resp.status}`);
+  }
+  return (await resp.json()) as VictimMark;
+}
 
 export async function fetchMediaHealth(): Promise<{
   status: string;

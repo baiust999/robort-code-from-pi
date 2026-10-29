@@ -45,6 +45,8 @@ export const MSG_ACK = 'ack';
 export const MSG_ERROR = 'error';
 /** P1 -> dashboard: this client's role changed after hello (another dashboard took over). */
 export const MSG_ROLE = 'role';
+/** Broadcast by P1 when the operator marks a victim. */
+export const MSG_VICTIM_MARK = 'victim_mark';
 
 export const ROLE_CONTROLLER = 'controller';
 export const ROLE_OBSERVER = 'observer';
@@ -224,4 +226,24 @@ export function isAlertActive(
   if (!limits || limits[level] === undefined) return false;
   const threshold = limits[level] as number;
   return limits.direction === 'above' ? value >= threshold : value <= threshold;
+}
+
+/** Where the operator found someone; stored on the robot by P1. */
+export interface VictimMark {
+  id: string;
+  /** Unix ms, P1's clock. */
+  ts: number;
+  note: string;
+  /** P1's GPS at the moment of the mark; null without a fix. */
+  lat: number | null;
+  lon: number | null;
+  gps_fix: boolean;
+  gps_sats: number | null;
+  /** Last point of the GPS track, [lat, lon], for marks made without a fix. */
+  last_fix: [number, number] | null;
+  pan_angle: number | null;
+  tilt_angle: number | null;
+  /** The AI's best person score when the mark was made, if it saw one. */
+  ai_score: number | null;
+  snapshot: boolean;
 }

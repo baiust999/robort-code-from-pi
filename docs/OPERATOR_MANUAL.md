@@ -75,15 +75,18 @@ removes it.
 │ Status bar: connection · Wi-Fi bars % · role · mission · serial · GPS│
 │ (Wi-Fi warning banner, only when the signal is weak or lost)       │
 ├──────────────┬──────────────────────────────────┬──────────────────┤
-│ Mission state│                                  │ Sensor cards     │
-│ Drive pad    │  Live video from robot           │ GPS card         │
-│ Speed slider │                                  │ Alerts log       │
+│ Mission state│  Live video from robot           │ Sensor cards     │
+│ Drive pad    │  (AI person boxes on top)        │ GPS card         │
+│ Speed slider │  [Mark victim here] button       │ Victims found    │
+│              │                                  │ Alerts log       │
 │ Camera pan/  ├──────────────────────────────────┴──────────────────┤
 │   tilt       │                                                     │
 │ EMERGENCY    │  Map (across the middle and right columns)          │
 │   STOP       │                                                     │
-│ Talk to      │                                                     │
-│   victim     │                                                     │
+│ Talk to      │  (red + markers = victims found)                    │
+│   victim,    │                                                     │
+│   Call out,  │                                                     │
+│   mic meter  │                                                     │
 └──────────────┴─────────────────────────────────────────────────────┘
 ```
 
@@ -98,7 +101,7 @@ The large mission state on the left tells you whether it is safe to drive.
 | **READY** (green) | Everything working, robot idle. | Drive normally. |
 | **DRIVING** (blue) | The robot is moving. | — |
 | **DRIVING_LIMITED** (amber) | Video link from the robot lost. You can still drive, but you can't see. | Stop. Click **Retry video** on the video panel; if it fails, wait a few seconds for the media service to restart and try again. |
-| **STOP** (red) | Connection lost, Arduino not responding, or no reply from the robot for over 3 seconds. Motion is disabled. | Stop and wait. See [Troubleshooting](#10-troubleshooting). |
+| **STOP** (red) | Connection lost, Arduino not responding, or no reply from the robot for over 3 seconds. Motion is disabled. | Stop and wait. See [Troubleshooting](#11-troubleshooting). |
 
 ---
 
@@ -270,7 +273,82 @@ Always switch back to **Robot Display** before a mission.
 
 ---
 
-## 10. Troubleshooting
+## 10. Finding victims
+
+Three tools help you notice a person and record where they are. They help
+you look; **you** decide. Keep watching the video yourself.
+
+### AI person detection
+
+While video is on, the dashboard looks for people in the picture. This runs
+on your laptop, not on the robot.
+
+- A red box labelled **Person 87%** appears around anyone it sees.
+- **POSSIBLE PERSON** flashes at the top left once someone has been seen
+  in several frames in a row. The Alerts log notes it (at most once every
+  30 s).
+- **🤖 AI: on / off** at the bottom right of the video turns it on or off.
+  It starts on, and the laptop remembers your choice.
+
+**It misses people.** It was trained on ordinary photos, so it often fails
+on someone who is lying down, partly buried, covered in dust, in the dark,
+or far away. No box doesn't mean no one is there.
+
+If a yellow line under the video says *"AI turned off: too slow on this
+computer"*, the laptop can't run it without slowing the drive and stop
+buttons, so it switched itself off. *"AI needs WebGL"* means the browser's
+graphics acceleration is off; turn on *Use graphics acceleration* in
+Chrome's settings.
+
+### Call out and listen
+
+In the **Talk to victim** panel:
+
+1. Click **📢 Call out**. The robot speaker plays the recorded message
+   (*"This is the rescue team. If you can hear me, shout, or knock three
+   times."*). It works without HTTPS because it doesn't use your laptop mic.
+2. While it plays, the **Robot mic level** meter shows *(speaker playing)*:
+   the robot hears its own speaker, so nothing is judged then.
+3. For 10 s afterwards the meter turns amber, *"Listening for a reply…"*.
+   If the sound gets about 10 dB louder than just before the call-out,
+   the Alerts log shows *"sound after call-out"*. Click **🔇 Listen to robot
+   mic** under the video and listen carefully.
+
+The meter also works at any other time. A faint knock you might not hear
+still shows as a jump in the bar. If it says *"click anywhere to enable
+meter"*, click once anywhere on the page.
+
+The 10 dB threshold is a first guess and still needs tuning in real
+conditions.
+
+**Installing the message:** record about 5 s of clear English speech
+(phone or laptop), save it as an MP3 named `callout-en.mp3`, and put it in
+`dashboard/public/audio/` before building the dashboard. Until then the
+button reads *"No call-out clip installed"*.
+
+### Mark victim here
+
+When you find someone, click **📍 Mark victim here** under the video.
+
+1. The current picture, with any AI boxes, is captured the moment you click.
+2. Type a short note: where and in what condition, for example
+   *"2nd room, under the table, responding"*. GPS is weak indoors, so the
+   note is often the most useful part.
+3. Click **Save**.
+
+The robot stores the mark with its own GPS position, the camera angles,
+the time and the snapshot. Every connected dashboard then shows it:
+
+- in **Victims found** on the right, with a **snapshot** link;
+- on the map as a red **+**. A faded **+** means there was no GPS fix and
+  it sits at the robot's last known position.
+
+Only the controller can save marks. Marks are kept on the robot, so they
+survive reloading the page or a laptop crash.
+
+---
+
+## 11. Troubleshooting
 
 | Problem | Likely cause | What to do |
 |---|---|---|
@@ -289,10 +367,14 @@ Always switch back to **Robot Display** before a mission.
 | `robot screen offline` | The robot's display app isn't running, or the robot is in VNC mode. | Select **Robot Display**. If it stays offline, the robot display needs a restart. |
 | Victim can't see messages | VNC mode is on. | Switch to **Robot Display**. |
 | `GPS no fix` | Indoors or no sky view. | Normal indoors. Driving is unaffected. |
+| "AI: error" / "AI needs WebGL" | The browser's graphics acceleration is off. | Turn on *Use graphics acceleration* in Chrome settings and reload. |
+| "AI turned off: too slow" | The laptop is too slow to run detection without slowing the controls. | Use a faster laptop, or carry on without AI. |
+| "No call-out clip installed" | `callout-en.mp3` missing from the dashboard build. | See [Call out and listen](#call-out-and-listen). |
+| "Mark victim here" greyed out | You're an observer. | Enter the controller key. |
 
 ---
 
-## 11. After the mission
+## 12. After the mission
 
 1. Drive the robot back or wait for recovery.
 2. Click **Release screen** if you were talking to the victim.
@@ -300,4 +382,5 @@ Always switch back to **Robot Display** before a mission.
    click **Forget key** first.
 4. Power off the robot and charge the battery.
 5. Save the mission logs if needed. They are on the Pi in `/var/log/robot/`,
-   and include telemetry and the GPS track.
+   and include telemetry, the GPS track, and the victim marks with their
+   snapshots (`victims/`).

@@ -5,6 +5,7 @@ import {
   type TalkbackState,
   type VideoSource,
 } from '../hooks/useTalkback';
+import { LEVEL_FLOOR_DB, type SoundLevelState } from '../hooks/useSoundLevel';
 
 const DISPLAY_MODES: { id: DisplayMode; label: string }[] = [
   { id: 'robot', label: '🖥 Robot Display' },
@@ -18,9 +19,43 @@ const SOURCES: { id: VideoSource; label: string }[] = [
   { id: 'screen', label: 'My screen' },
 ];
 
+/** Meter range: LEVEL_FLOOR_DB (silence) to 0 dBFS (clipping). */
+const meterPercent = (db: number) => Math.min(100, Math.max(0, ((db - LEVEL_FLOOR_DB) / -LEVEL_FLOOR_DB) * 100));
+
+/** Loudness of the robot mic, so a faint knock or voice shows even when it's hard to hear. */
+function RobotMicMeter(props: { sound: SoundLevelState; linkUp: boolean; callingOut: boolean; listening: boolean }) {
+  const { sound, linkUp, callingOut, listening } = props;
+  let caption = `${Math.round(sound.levelDb)} dB`;
+  if (!linkUp) caption = 'no robot audio';
+  else if (sound.needsGesture) caption = 'click anywhere to enable meter';
+  else if (callingOut) caption = '(speaker playing)';
+  else if (listening) caption = 'Listening for a reply…';
+  return (
+    <div className={`flex flex-col gap-1 rounded p-1 ${listening ? 'bg-amber-500/20 ring-1 ring-amber-400' : ''}`}>
+      <div className="flex justify-between text-xs text-white/50">
+        <span>Robot mic level</span>
+        <span className={listening ? 'font-semibold text-amber-300' : ''}>{caption}</span>
+      </div>
+      <div className="relative h-2 w-full overflow-hidden rounded bg-white/10">
+        <div
+          className={`h-full ${callingOut ? 'bg-white/30' : 'bg-green-500'}`}
+          style={{ width: `${meterPercent(sound.levelDb)}%` }}
+        />
+        <div className="absolute top-0 h-full w-0.5 bg-white" style={{ left: `${meterPercent(sound.peakDb)}%` }} />
+      </div>
+    </div>
+  );
+}
+
 /** Talk to the victim through the robot's speaker and display, Section 16. */
-export function TalkPanel(props: { talk: TalkbackState; linkUp: boolean; isController: boolean }) {
-  const { talk, linkUp, isController } = props;
+export function TalkPanel(props: {
+  talk: TalkbackState;
+  linkUp: boolean;
+  isController: boolean;
+  sound: SoundLevelState;
+  listening: boolean;
+}) {
+  const { talk, linkUp, isController, sound, listening } = props;
   // Both must agree: P1 says this dashboard is the controller, and P2 accepts it.
   const canControl = isController && talk.canControl;
   const [text, setText] = useState('');
@@ -122,6 +157,24 @@ export function TalkPanel(props: { talk: TalkbackState; linkUp: boolean; isContr
         >
           {talk.talking ? '🎤 Talking…' : talk.micReady ? '🎤 Hold to talk' : '🎤 Enable mic'}
         </button>
+
+        <button
+          type="button"
+          disabled={blocked || talk.talking || talk.callingOut || talk.callOutAvailable !== true}
+          onClick={talk.callOut}
+          title="Plays the recorded message on the robot speaker, then listens for a reply"
+          className={`w-full rounded-md px-3 py-2 font-semibold disabled:opacity-40 ${
+            talk.callingOut ? 'bg-amber-600 text-white' : 'bg-white/10 hover:bg-white/20'
+          }`}
+        >
+          {talk.callingOut
+            ? '📢 Calling out…'
+            : talk.callOutAvailable === false
+              ? 'No call-out clip installed'
+              : '📢 Call out'}
+        </button>
+
+        <RobotMicMeter sound={sound} linkUp={linkUp} callingOut={talk.callingOut} listening={listening} />
 
         <div className="flex flex-col gap-1">
           <span className="text-xs text-white/50">Show on robot display</span>

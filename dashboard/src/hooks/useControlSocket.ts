@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { P1_WS_URL } from '../lib/api';
+import { fetchVictims, P1_WS_URL } from '../lib/api';
 import {
   MSG_HELLO,
   MSG_HEARTBEAT,
@@ -9,6 +9,7 @@ import {
   MSG_ACK,
   MSG_ERROR,
   MSG_ROLE,
+  MSG_VICTIM_MARK,
   ROLE_CONTROLLER,
   ROLE_OBSERVER,
   HEARTBEAT_PERIOD_MS,
@@ -16,6 +17,7 @@ import {
   type ClientMessage,
   type TelemetrySnapshot,
   type Role,
+  type VictimMark,
 } from '../lib/protocol';
 import { nextSignalLevel, SIGNAL_STALE_MS, type SignalLevel } from '../lib/signal';
 
@@ -43,6 +45,11 @@ export interface ControlSocketState {
   signalLevel: SignalLevel;
   lastAckMs: number;
   alerts: AlertLogEntry[];
+  pushAlert: (message: string) => void;
+  /** Every victim mark on the robot, oldest first. */
+  victimMarks: VictimMark[];
+  /** Adds a mark this dashboard just saved, ahead of P1's broadcast. */
+  addVictimMark: (mark: VictimMark) => void;
   sendMotor: (dir: 'F' | 'R' | 'L' | 'G', speed: number) => void;
   sendServo: (axis: 'pan' | 'tilt', angle: number) => void;
   sendStopAll: () => void;
@@ -65,6 +72,7 @@ export function useControlSocket(controllerKey: string | null): ControlSocketSta
   const [alerts, setAlerts] = useState<AlertLogEntry[]>([]);
   const [telemetryStale, setTelemetryStale] = useState(true);
   const [signalLevel, setSignalLevel] = useState<SignalLevel>('none');
+  const [victimMarks, setVictimMarks] = useState<VictimMark[]>([]);
 
   const socketRef = useRef<WebSocket | null>(null);
   const seqRef = useRef(0);
@@ -84,6 +92,10 @@ export function useControlSocket(controllerKey: string | null): ControlSocketSta
   const pushAlert = useCallback((message: string) => {
     alertIdRef.current += 1;
     setAlerts((prev) => [...prev.slice(-49), { id: alertIdRef.current, ts: Date.now(), message }]);
+  }, []);
+
+  const addVictimMark = useCallback((mark: VictimMark) => {
+    setVictimMarks((prev) => (prev.some((m) => m.id === mark.id) ? prev : [...prev, mark]));
   }, []);
 
   const send = useCallback((message: ClientMessage) => {
@@ -117,6 +129,12 @@ export function useControlSocket(controllerKey: string | null): ControlSocketSta
         socket.send(JSON.stringify({ type: MSG_RESUME_FROM, last_ts: lastServerTsRef.current }));
       }
       pushAlert('connected to control server');
+      // Marks saved while this dashboard was away arrive with the full list.
+      fetchVictims()
+        .then(({ marks }) => {
+          if (isCurrent()) setVictimMarks(marks);
+        })
+        .catch(() => pushAlert('could not load victim marks'));
     };
 
     socket.onclose = () => {
@@ -179,6 +197,14 @@ export function useControlSocket(controllerKey: string | null): ControlSocketSta
           }
           break;
         }
+        case MSG_VICTIM_MARK: {
+          const mark = msg.mark as VictimMark | undefined;
+          if (mark?.id) {
+            addVictimMark(mark);
+            pushAlert(`victim marked${mark.note ? `: ${mark.note}` : ''}`);
+          }
+          break;
+        }
         case MSG_ERROR: {
           pushAlert(`error: ${msg.message ?? msg.code ?? 'unknown'}`);
           break;
@@ -187,7 +213,7 @@ export function useControlSocket(controllerKey: string | null): ControlSocketSta
           break;
       }
     };
-  }, [pushAlert]);
+  }, [pushAlert, addVictimMark]);
 
   const scheduleReconnect = useCallback(() => {
     if (reconnectTimerRef.current !== null) return;
@@ -285,6 +311,9 @@ export function useControlSocket(controllerKey: string | null): ControlSocketSta
     signalLevel,
     lastAckMs,
     alerts,
+    pushAlert,
+    victimMarks,
+    addVictimMark,
     sendMotor,
     sendServo,
     sendStopAll,

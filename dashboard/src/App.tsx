@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useControlSocket } from './hooks/useControlSocket';
 import { useWebrtcVideo } from './hooks/useWebrtcVideo';
 import { useTalkback } from './hooks/useTalkback';
+import { usePersonDetection } from './hooks/usePersonDetection';
+import { useReplyListener, useSoundLevel } from './hooks/useSoundLevel';
 import { ConnectionStatusBar } from './components/ConnectionStatusBar';
 import { SignalWarningBanner } from './components/SignalWarningBanner';
 import { MissionStateIndicator } from './components/MissionStateIndicator';
@@ -15,8 +17,13 @@ import { SensorCardGrid } from './components/SensorCardGrid';
 import { GpsStatusCard } from './components/GpsStatusCard';
 import { AlertLog } from './components/AlertLog';
 import { ControllerKeyBox } from './components/ControllerKeyBox';
+import { MarkVictimButton } from './components/MarkVictimButton';
+import { VictimList } from './components/VictimList';
 import { describeAuth, deriveMissionState, FW_STATE_DRIVING } from './lib/protocol';
 import { loadControllerKey, saveControllerKey } from './lib/controllerKey';
+
+/** At most one "possible person" alert per this long, so a person in view doesn't flood the log. */
+const PERSON_ALERT_COOLDOWN_MS = 30_000;
 
 function App() {
   const [controllerKey, setControllerKey] = useState(loadControllerKey);
@@ -36,6 +43,9 @@ function App() {
     signalLevel,
     lastAckMs,
     alerts,
+    pushAlert,
+    victimMarks,
+    addVictimMark,
     sendMotor,
     sendServo,
     sendStopAll,
@@ -52,6 +62,22 @@ function App() {
     setKeyProblem(problem);
   }, [auth, retryAfterS, controllerKey]);
   const talk = useTalkback(video.talkLink);
+  const detection = usePersonDetection(video.videoRef, video.connected);
+  const sound = useSoundLevel(video.videoRef, video.connected);
+  const { listening } = useReplyListener(talk.callingOut, sound, (rise) =>
+    pushAlert(`sound after call-out (+${rise} dB): listen to the robot mic`),
+  );
+
+  // Log when a person comes into view, not every frame they stay in it.
+  const lastPersonAlert = useRef(0);
+  const { personPresent, bestScore } = detection;
+  useEffect(() => {
+    if (!personPresent || Date.now() - lastPersonAlert.current < PERSON_ALERT_COOLDOWN_MS) return;
+    lastPersonAlert.current = Date.now();
+    pushAlert(`AI: possible person in view (${Math.round((bestScore ?? 0) * 100)}%)`);
+    // bestScore changes every frame; only the rising edge matters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [personPresent, pushAlert]);
 
   const missionState = useMemo(
     () =>
@@ -99,16 +125,31 @@ function App() {
             disabled={controlsDisabled}
           />
           <EmergencyStop onStop={sendStopAll} disabled={controlsDisabled} />
-          <TalkPanel talk={talk} linkUp={video.connected} isController={!controlsDisabled} />
+          <TalkPanel
+            talk={talk}
+            linkUp={video.connected}
+            isController={!controlsDisabled}
+            sound={sound}
+            listening={listening}
+          />
         </aside>
 
-        <main className="flex flex-col">
-          <VideoSurface video={video} />
+        <main className="flex flex-col gap-2">
+          <VideoSurface video={video} detection={detection} />
+          <MarkVictimButton
+            videoRef={video.videoRef}
+            boxes={detection.boxes}
+            bestScore={detection.bestScore}
+            controllerKey={controllerKey}
+            disabled={controlsDisabled}
+            onSaved={addVictimMark}
+          />
         </main>
 
         <aside className="flex flex-col gap-3 overflow-y-auto rounded-lg border border-white/10 bg-white/5 p-3">
           <SensorCardGrid telemetry={telemetry} />
           <GpsStatusCard telemetry={telemetry} />
+          <VictimList marks={victimMarks} />
           <div className="flex-1">
             <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-white/50">
               Alerts
@@ -118,7 +159,7 @@ function App() {
         </aside>
 
         <div className="col-span-2 min-h-0 overflow-hidden rounded-lg border border-white/10">
-          <MapPanel telemetry={telemetry} />
+          <MapPanel telemetry={telemetry} victims={victimMarks} />
         </div>
       </div>
     </div>

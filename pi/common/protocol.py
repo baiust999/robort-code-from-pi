@@ -159,6 +159,8 @@ MSG_ACK = "ack"
 MSG_ERROR = "error"
 # Sent when a client's role changes after hello (another dashboard took over).
 MSG_ROLE = "role"
+# Broadcast when the operator marks a victim (see /api/victims).
+MSG_VICTIM_MARK = "victim_mark"
 
 CLIENT_MESSAGE_TYPES = frozenset(
     {MSG_MOTOR, MSG_SERVO, MSG_HEARTBEAT, MSG_STOP_ALL, MSG_HELLO, MSG_RESUME_FROM}

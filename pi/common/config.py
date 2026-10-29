@@ -64,6 +64,7 @@ class Paths:
     run_dir: Path
     config_dir: Path
     gps_track_dir: Path
+    victims_dir: Path
 
     @classmethod
     def from_env(cls) -> "Paths":
@@ -84,10 +85,13 @@ class Paths:
             run_dir=run_dir,
             config_dir=config_dir,
             gps_track_dir=log_dir / "gps_track",
+            victims_dir=log_dir / "victims",
         )
 
     def ensure(self) -> None:
-        for directory in (self.log_dir, self.run_dir, self.config_dir, self.gps_track_dir):
+        for directory in (
+            self.log_dir, self.run_dir, self.config_dir, self.gps_track_dir, self.victims_dir
+        ):
             directory.mkdir(parents=True, exist_ok=True)
 
 
