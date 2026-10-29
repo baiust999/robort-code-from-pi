@@ -215,7 +215,8 @@ export function usePersonDetection(
       if (!present && hits >= FRAMES_TO_RAISE) present = true;
       if (present && misses >= FRAMES_TO_CLEAR) present = false;
 
-      setBoxes(found);
+      // No one in view, frame after frame: keep the same array so nothing re-renders.
+      setBoxes((prev) => (found.length === 0 && prev.length === 0 ? prev : found));
       setPersonPresent(present);
       setBestScore(found.length > 0 ? Math.max(...found.map((b) => b.score)) : null);
     };

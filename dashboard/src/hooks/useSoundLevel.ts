@@ -1,13 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
 
 const SAMPLE_MS = 100;
+/**
+ * The meter redraws at most this often, showing the loudest sample since the
+ * last redraw, so a short knock still shows. Redrawing on every sample cost
+ * the dashboard about as much as everything else on the page put together.
+ */
+const DISPLAY_MS = 250;
+/** Skip a redraw that would move the meter by less than this. */
+const DISPLAY_STEP_DB = 1;
 /** The quietest level shown; silence reads as this, not -Infinity. */
 export const LEVEL_FLOOR_DB = -80;
 /** How fast the peak tick falls back, in dB per second. */
 const PEAK_DECAY_DB_PER_S = 10;
 
 export interface SoundLevelState {
-  /** Robot mic loudness in dBFS, sampled every 100 ms; LEVEL_FLOOR_DB when silent. */
+  /** Robot mic loudness in dBFS, the loudest of the last 250 ms; LEVEL_FLOOR_DB when silent. */
   levelDb: number;
   peakDb: number;
   /** The browser holds audio until the operator clicks somewhere on the page. */
@@ -48,6 +56,10 @@ export function useSoundLevel(
     source.connect(analyser);
     const samples = new Float32Array(analyser.fftSize);
     let peak = LEVEL_FLOOR_DB;
+    let loudest = LEVEL_FLOOR_DB;
+    let shownLevel = LEVEL_FLOOR_DB;
+    let shownPeak = LEVEL_FLOOR_DB;
+    let lastShown = 0;
 
     // Chrome starts an AudioContext suspended until the page has been clicked.
     const resume = () => {
@@ -67,8 +79,18 @@ export function useSoundLevel(
       peak = Math.max(db, peak - (PEAK_DECAY_DB_PER_S * SAMPLE_MS) / 1000);
       history.current.push(db);
       if (history.current.length > 50) history.current.shift();
-      setLevelDb(db);
-      setPeakDb(peak);
+
+      loudest = Math.max(loudest, db);
+      const now = performance.now();
+      if (now - lastShown < DISPLAY_MS) return;
+      lastShown = now;
+      if (Math.abs(loudest - shownLevel) >= DISPLAY_STEP_DB || Math.abs(peak - shownPeak) >= DISPLAY_STEP_DB) {
+        shownLevel = loudest;
+        shownPeak = peak;
+        setLevelDb(loudest);
+        setPeakDb(peak);
+      }
+      loudest = LEVEL_FLOOR_DB;
     }, SAMPLE_MS);
 
     return () => {
@@ -98,10 +120,16 @@ function median(values: number[]): number {
   return sorted[Math.floor(sorted.length / 2)];
 }
 
+/** Without a baseline from before the call-out, judge only after this many meter updates (over 1 s). */
+const MIN_WINDOW_SAMPLES = 5;
+
 /**
  * After a call-out, watches the robot mic for a reply: anything REPLY_RISE_DB
- * louder than the 2 s before the call-out. Nothing is judged while the clip
- * plays, since the robot mic hears its own speaker.
+ * louder than the 2 s before the call-out. If there was no sound before it
+ * (the meter only starts once the page has been clicked, and the call-out
+ * click may be the first), the quietest moment of the window stands in.
+ * Nothing is judged while the clip plays, since the robot mic hears its own
+ * speaker.
  */
 export function useReplyListener(
   callingOut: boolean,
@@ -110,20 +138,26 @@ export function useReplyListener(
 ): { listening: boolean } {
   const [listening, setListening] = useState(false);
   const baseline = useRef<number | null>(null);
+  const windowMin = useRef(Infinity);
+  const windowSamples = useRef(0);
   const until = useRef(0);
   const replied = useRef(false);
   const wasCalling = useRef(false);
   const onReplyRef = useRef(onReply);
-  onReplyRef.current = onReply;
+  useEffect(() => {
+    onReplyRef.current = onReply;
+  }, [onReply]);
 
   useEffect(() => {
     if (callingOut && !wasCalling.current) {
       const recent = sound.history.current.slice(-BASELINE_SAMPLES);
       baseline.current = recent.length > 0 ? median(recent) : null;
       setListening(false);
-    } else if (!callingOut && wasCalling.current && baseline.current !== null) {
+    } else if (!callingOut && wasCalling.current) {
       until.current = Date.now() + LISTEN_WINDOW_MS;
       replied.current = false;
+      windowMin.current = Infinity;
+      windowSamples.current = 0;
       setListening(true);
     }
     wasCalling.current = callingOut;
@@ -135,7 +169,14 @@ export function useReplyListener(
       setListening(false);
       return;
     }
-    const rise = sound.levelDb - (baseline.current ?? LEVEL_FLOOR_DB);
+    windowSamples.current += 1;
+    windowMin.current = Math.min(windowMin.current, sound.levelDb);
+    let reference = baseline.current;
+    if (reference === null) {
+      if (windowSamples.current < MIN_WINDOW_SAMPLES) return;
+      reference = windowMin.current;
+    }
+    const rise = sound.levelDb - reference;
     if (!replied.current && rise >= REPLY_RISE_DB) {
       replied.current = true;
       onReplyRef.current(Math.round(rise));

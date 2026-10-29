@@ -10,7 +10,7 @@ from fastapi import HTTPException
 from common import protocol
 from common.config import P1Config
 from common.logging_setup import EventLogger
-from p1_control.main import ControlServer, VictimMarkRequest
+from p1_control.main import VICTIM_BODY_MAX_BYTES, ControlServer, VictimMarkRequest, read_body_limited
 from p1_control.victim_log import SNAPSHOT_MAX_BYTES, VictimLog
 
 KEY = "test-key"
@@ -138,3 +138,46 @@ def test_bad_requests_are_refused(server, body):
         mark(server, body)
     assert exc.value.status_code == 400
     assert server.victims.list() == []
+
+
+# --- request size limit ---------------------------------------------------------
+
+
+async def _chunks(*parts: bytes):
+    for part in parts:
+        yield part
+
+
+def read(content_length, *parts, limit=100):
+    return asyncio.run(read_body_limited(content_length, _chunks(*parts), limit))
+
+
+def test_body_within_limit_is_returned():
+    assert read("10", b"0123456789") == b"0123456789"
+    assert read(None, b"abc", b"def") == b"abcdef"
+
+
+@pytest.mark.parametrize(
+    "content_length, parts",
+    [
+        ("101", [b"x"]),  # refused on the header alone, before reading
+        (None, [b"x" * 60, b"x" * 60]),  # chunked with no length: refused while reading
+        ("10", [b"x" * 200]),  # a length header that lies
+    ],
+    ids=["declared", "chunked", "lying-header"],
+)
+def test_oversized_body_is_refused(content_length, parts):
+    with pytest.raises(HTTPException) as exc:
+        read(content_length, *parts)
+    assert exc.value.status_code == 413
+
+
+def test_bad_content_length_is_refused():
+    with pytest.raises(HTTPException) as exc:
+        read("lots", b"x")
+    assert exc.value.status_code == 400
+
+
+def test_limit_fits_a_full_size_snapshot():
+    body = VictimMarkRequest(note="x" * 280, snapshot_b64=b64(b"\xff" * SNAPSHOT_MAX_BYTES)).model_dump_json()
+    assert len(body) <= VICTIM_BODY_MAX_BYTES

@@ -3,7 +3,6 @@ import { useControlSocket } from './hooks/useControlSocket';
 import { useWebrtcVideo } from './hooks/useWebrtcVideo';
 import { useTalkback } from './hooks/useTalkback';
 import { usePersonDetection } from './hooks/usePersonDetection';
-import { useReplyListener, useSoundLevel } from './hooks/useSoundLevel';
 import { ConnectionStatusBar } from './components/ConnectionStatusBar';
 import { SignalWarningBanner } from './components/SignalWarningBanner';
 import { MissionStateIndicator } from './components/MissionStateIndicator';
@@ -63,10 +62,6 @@ function App() {
   }, [auth, retryAfterS, controllerKey]);
   const talk = useTalkback(video.talkLink);
   const detection = usePersonDetection(video.videoRef, video.connected);
-  const sound = useSoundLevel(video.videoRef, video.connected);
-  const { listening } = useReplyListener(talk.callingOut, sound, (rise) =>
-    pushAlert(`sound after call-out (+${rise} dB): listen to the robot mic`),
-  );
 
   // Log when a person comes into view, not every frame they stay in it.
   const lastPersonAlert = useRef(0);
@@ -129,8 +124,8 @@ function App() {
             talk={talk}
             linkUp={video.connected}
             isController={!controlsDisabled}
-            sound={sound}
-            listening={listening}
+            videoRef={video.videoRef}
+            onReply={(rise) => pushAlert(`sound after call-out (+${rise} dB): listen to the robot mic`)}
           />
         </aside>
 

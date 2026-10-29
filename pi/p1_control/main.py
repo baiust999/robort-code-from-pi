@@ -24,7 +24,7 @@ import time
 import uuid
 from collections import deque
 from pathlib import Path
-from typing import Any
+from typing import Any, AsyncIterator
 
 # Allow `python p1_control/main.py` as well as `python -m p1_control.main`.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -34,7 +34,7 @@ from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconn
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from common import access, protocol, wifi
 from common.config import P1Config
@@ -66,6 +66,34 @@ class VictimMarkRequest(BaseModel):
     note: str = ""
     ai_score: float | None = None
     snapshot_b64: str | None = None
+
+
+# A base64 snapshot at the size limit plus the note and JSON around it.
+VICTIM_BODY_MAX_BYTES = SNAPSHOT_MAX_BYTES * 4 // 3 + 16_384
+
+
+async def read_body_limited(
+    content_length: str | None, chunks: AsyncIterator[bytes], limit: int
+) -> bytes:
+    """The request body, refused with 413 once it passes ``limit`` bytes.
+
+    Checked before parsing and before the key: parsing a huge JSON body
+    blocks P1's event loop, which stalls telemetry and the dead-man
+    heartbeat for every dashboard. Anyone on the network could send one.
+    """
+    if content_length is not None:
+        try:
+            declared = int(content_length)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="bad Content-Length") from None
+        if declared > limit:
+            raise HTTPException(status_code=413, detail="request too large")
+    body = bytearray()
+    async for chunk in chunks:
+        body += chunk
+        if len(body) > limit:
+            raise HTTPException(status_code=413, detail="request too large")
+    return bytes(body)
 
 
 class ControlServer:
@@ -437,7 +465,14 @@ def create_app(server: ControlServer) -> FastAPI:
         return {"marks": server.victims.list()}
 
     @app.post("/api/victims")
-    async def add_victim(request: Request, body: VictimMarkRequest) -> dict[str, Any]:
+    async def add_victim(request: Request) -> dict[str, Any]:
+        raw = await read_body_limited(
+            request.headers.get("content-length"), request.stream(), VICTIM_BODY_MAX_BYTES
+        )
+        try:
+            body = VictimMarkRequest.model_validate_json(raw)
+        except ValidationError:
+            raise HTTPException(status_code=400, detail="malformed victim mark") from None
         host = request.client.host if request.client else "unknown"
         return await server.add_victim(host, request.headers.get(CONTROLLER_KEY_HEADER), body)
 

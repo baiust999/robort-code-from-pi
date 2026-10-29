@@ -5,7 +5,7 @@ import {
   type TalkbackState,
   type VideoSource,
 } from '../hooks/useTalkback';
-import { LEVEL_FLOOR_DB, type SoundLevelState } from '../hooks/useSoundLevel';
+import { LEVEL_FLOOR_DB, useReplyListener, useSoundLevel } from '../hooks/useSoundLevel';
 
 const DISPLAY_MODES: { id: DisplayMode; label: string }[] = [
   { id: 'robot', label: '🖥 Robot Display' },
@@ -22,26 +22,47 @@ const SOURCES: { id: VideoSource; label: string }[] = [
 /** Meter range: LEVEL_FLOOR_DB (silence) to 0 dBFS (clipping). */
 const meterPercent = (db: number) => Math.min(100, Math.max(0, ((db - LEVEL_FLOOR_DB) / -LEVEL_FLOOR_DB) * 100));
 
-/** Loudness of the robot mic, so a faint knock or voice shows even when it's hard to hear. */
-function RobotMicMeter(props: { sound: SoundLevelState; linkUp: boolean; callingOut: boolean; listening: boolean }) {
-  const { sound, linkUp, callingOut, listening } = props;
+/**
+ * Loudness of the robot mic, so a faint knock or voice shows even when it's
+ * hard to hear, and the reply check after a call-out. It owns the 10 Hz level
+ * state so that only this meter re-renders, not the whole dashboard.
+ */
+function RobotMicMeter(props: {
+  videoRef: React.RefObject<HTMLVideoElement | null>;
+  linkUp: boolean;
+  callingOut: boolean;
+  onReply: (riseDb: number) => void;
+}) {
+  const { videoRef, linkUp, callingOut, onReply } = props;
+  const sound = useSoundLevel(videoRef, linkUp);
+  const { listening } = useReplyListener(callingOut, sound, onReply);
   let caption = `${Math.round(sound.levelDb)} dB`;
   if (!linkUp) caption = 'no robot audio';
   else if (sound.needsGesture) caption = 'click anywhere to enable meter';
   else if (callingOut) caption = '(speaker playing)';
   else if (listening) caption = 'Listening for a reply…';
   return (
-    <div className={`flex flex-col gap-1 rounded p-1 ${listening ? 'bg-amber-500/20 ring-1 ring-amber-400' : ''}`}>
+    // It changes 10 times a second: `contain` keeps each update from re-laying
+    // out the rest of the page, and the bars move by transform, not width.
+    <div
+      className={`flex flex-col gap-1 rounded p-1 ${listening ? 'bg-amber-500/20 ring-1 ring-amber-400' : ''}`}
+      style={{ contain: 'layout paint' }}
+    >
       <div className="flex justify-between text-xs text-white/50">
         <span>Robot mic level</span>
-        <span className={listening ? 'font-semibold text-amber-300' : ''}>{caption}</span>
+        <span className={`tabular-nums ${listening ? 'font-semibold text-amber-300' : ''}`}>{caption}</span>
       </div>
       <div className="relative h-2 w-full overflow-hidden rounded bg-white/10">
         <div
-          className={`h-full ${callingOut ? 'bg-white/30' : 'bg-green-500'}`}
-          style={{ width: `${meterPercent(sound.levelDb)}%` }}
+          className={`h-full w-full origin-left ${callingOut ? 'bg-white/30' : 'bg-green-500'}`}
+          style={{ transform: `scaleX(${meterPercent(sound.levelDb) / 100})` }}
         />
-        <div className="absolute top-0 h-full w-0.5 bg-white" style={{ left: `${meterPercent(sound.peakDb)}%` }} />
+        <div
+          className="absolute top-0 left-0 h-full w-full"
+          style={{ transform: `translateX(${meterPercent(sound.peakDb)}%)` }}
+        >
+          <div className="h-full w-0.5 bg-white" />
+        </div>
       </div>
     </div>
   );
@@ -52,10 +73,11 @@ export function TalkPanel(props: {
   talk: TalkbackState;
   linkUp: boolean;
   isController: boolean;
-  sound: SoundLevelState;
-  listening: boolean;
+  videoRef: React.RefObject<HTMLVideoElement | null>;
+  /** Called when the robot mic picks up a likely reply after a call-out. */
+  onReply: (riseDb: number) => void;
 }) {
-  const { talk, linkUp, isController, sound, listening } = props;
+  const { talk, linkUp, isController, videoRef, onReply } = props;
   // Both must agree: P1 says this dashboard is the controller, and P2 accepts it.
   const canControl = isController && talk.canControl;
   const [text, setText] = useState('');
@@ -143,7 +165,7 @@ export function TalkPanel(props: {
       <div className="flex flex-col gap-2">
         <button
           type="button"
-          disabled={blocked || !talk.mediaDevicesAvailable}
+          disabled={blocked || talk.callingOut || !talk.mediaDevicesAvailable}
           onPointerDown={(e) => {
             e.currentTarget.setPointerCapture(e.pointerId);
             talk.startTalking();
@@ -174,7 +196,7 @@ export function TalkPanel(props: {
               : '📢 Call out'}
         </button>
 
-        <RobotMicMeter sound={sound} linkUp={linkUp} callingOut={talk.callingOut} listening={listening} />
+        <RobotMicMeter videoRef={videoRef} linkUp={linkUp} callingOut={talk.callingOut} onReply={onReply} />
 
         <div className="flex flex-col gap-1">
           <span className="text-xs text-white/50">Show on robot display</span>
