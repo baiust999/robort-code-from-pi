@@ -260,7 +260,9 @@ def create_app(server: MediaServer) -> FastAPI:
 
     @app.get("/screen")
     async def screen_page() -> FileResponse:
-        return FileResponse(SCREEN_PAGE, media_type="text/html")
+        # Revalidated on every load: without this the kiosk's Chromium kept
+        # serving a cached page from before an update.
+        return FileResponse(SCREEN_PAGE, media_type="text/html", headers={"Cache-Control": "no-cache"})
 
     @app.get("/screen/mode", response_model=DisplayMode)
     async def get_display_mode() -> DisplayMode:
