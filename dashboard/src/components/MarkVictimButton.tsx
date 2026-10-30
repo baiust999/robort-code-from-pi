@@ -3,12 +3,13 @@ import { postVictim } from '../lib/api';
 import type { VictimMark } from '../lib/protocol';
 import type { PersonBox } from '../hooks/usePersonDetection';
 import { drawPersonBoxes } from '../lib/drawPersonBoxes';
+import { downloadVictimPhoto, downloadVictimRecord, saveVictimToDevice } from '../lib/saveVictim';
 
 const NOTE_MAX = 280;
 const JPEG_QUALITY = 0.8;
 
-/** The current video frame, with the AI boxes drawn on, as base64 JPEG (no data: prefix). */
-async function captureSnapshot(video: HTMLVideoElement, boxes: PersonBox[]): Promise<string | null> {
+/** The current video frame, with the AI boxes drawn on, as a JPEG. */
+async function captureSnapshot(video: HTMLVideoElement, boxes: PersonBox[]): Promise<Blob | null> {
   if (!video.videoWidth) return null;
   const canvas = document.createElement('canvas');
   canvas.width = video.videoWidth;
@@ -17,25 +18,21 @@ async function captureSnapshot(video: HTMLVideoElement, boxes: PersonBox[]): Pro
   if (!ctx) return null;
   ctx.drawImage(video, 0, 0);
   drawPersonBoxes(ctx, boxes, 1, 0, 0);
-  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', JPEG_QUALITY));
-  if (!blob) return null;
-  const bytes = new Uint8Array(await blob.arrayBuffer());
-  let binary = '';
-  for (let i = 0; i < bytes.length; i += 0x8000) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-  }
-  return btoa(binary);
+  return new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', JPEG_QUALITY));
 }
 
-function savedMessage(mark: VictimMark): string {
-  if (mark.gps_fix) return 'Saved ✓ (with GPS fix)';
-  if (mark.last_fix) return 'Saved ✓, no GPS fix: map shows the last known position. Add a location note.';
-  return 'Saved ✓, no GPS position at all. Describe the location in the note.';
+function savedMessage(mark: VictimMark, photo: boolean, stored: boolean): string {
+  let where = ' Details sent to Downloads.';
+  if (photo) where = stored ? ' Photo kept on this device and sent to Downloads.' : ' Photo sent to Downloads (not kept after a reload).';
+  if (mark.gps_fix) return `Saved ✓ (with GPS fix).${where}`;
+  if (mark.last_fix) return `Saved ✓, no GPS fix: map shows the last known position. Add a location note.${where}`;
+  return `Saved ✓, no GPS position at all. Describe the location in the note.${where}`;
 }
 
 /**
  * "Mark victim here": saves the moment on the robot with P1's own GPS and
- * servo angles, a note, and a snapshot of what the camera sees.
+ * servo angles and a note, then downloads the snapshot of what the camera
+ * sees, with a text record, to this device. The robot never gets the image.
  */
 export function MarkVictimButton(props: {
   videoRef: React.RefObject<HTMLVideoElement | null>;
@@ -49,9 +46,9 @@ export function MarkVictimButton(props: {
   const [open, setOpen] = useState(false);
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
-  const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null);
+  const [status, setStatus] = useState<{ ok: boolean; text: string; mark?: VictimMark; photo?: boolean } | null>(null);
   // Taken when the form opens, so the snapshot is what made the operator click.
-  const [pending, setPending] = useState<{ snapshot: string | null; score: number | null } | null>(null);
+  const [pending, setPending] = useState<{ snapshot: Blob | null; score: number | null } | null>(null);
 
   async function start() {
     setStatus(null);
@@ -69,10 +66,11 @@ export function MarkVictimButton(props: {
       const mark = await postVictim(controllerKey, {
         note: note.trim(),
         ai_score: pending.score,
-        snapshot_b64: pending.snapshot,
       });
+      const stored = await saveVictimToDevice(mark, pending.snapshot);
       onSaved(mark);
-      setStatus({ ok: true, text: savedMessage(mark) });
+      const photo = pending.snapshot !== null;
+      setStatus({ ok: true, text: savedMessage(mark, photo, stored), mark, photo });
       setOpen(false);
       setNote('');
       setPending(null);
@@ -125,6 +123,19 @@ export function MarkVictimButton(props: {
         </form>
       )}
       {status && <span className={`text-xs ${status.ok ? 'text-green-400' : 'text-red-400'}`}>{status.text}</span>}
+      {status?.mark && (
+        <span className="text-xs text-white/60">
+          No files in Downloads? Click:{' '}
+          {status.photo && (
+            <button type="button" onClick={() => downloadVictimPhoto(status.mark!)} className="text-sky-400 hover:underline">
+              download photo
+            </button>
+          )}{' '}
+          <button type="button" onClick={() => downloadVictimRecord(status.mark!)} className="text-sky-400 hover:underline">
+            download details
+          </button>
+        </span>
+      )}
     </div>
   );
 }

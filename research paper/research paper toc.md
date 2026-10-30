@@ -181,6 +181,10 @@
   - 3.9.4 Operator-to-Robot Relay and Floor Control
   - 3.9.5 Low-Latency Audio on a Constrained CPU
 - 3.10 GPS Localisation and Offline Mapping
+- 3.11 Victim-Finding Aids
+  - Person detection in the operator's browser (advisory, not evaluated)
+  - Call-out and reply cue
+  - Victim marks (snapshot kept on the operator's device)
 
 **4. Experimental Setup**
 

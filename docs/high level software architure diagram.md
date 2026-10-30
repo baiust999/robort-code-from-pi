@@ -27,9 +27,11 @@ flowchart TB
             P1_GPS["gps_reader\npynmea2 thread"]
             P1_RING["ring_buffer\n300-slot recovery"]
             P1_WS["websocket_hub\n/control/ws — broadcast telemetry\n+ resume_from → recovery_batch"]
-            P1_API["REST api.py\n/health · /api/ice-config"]
+            P1_API["REST (main.py)\n/health · /api/ice-config\n/api/gps-track · /api/victims"]
+            P1_VIC["victim_log\nvictims.jsonl (no images)"]
             P1_SB --> P1_SAF --> P1_WS
             P1_GPS --> P1_WS --> P1_RING
+            P1_API --> P1_VIC
         end
 
         subgraph P2["P2 · Media Server — aiortc :8443"]
@@ -67,9 +69,11 @@ flowchart TB
         D_ALERT["Alert engine\ntemp/gas/range thresholds"]
         D_MSTATE["Mission state\nSTOP / LIMITED / READY / DRIVING"]
         D_UI["3-region UI\nDriveControl+EStop | Video+Map | Sensors+Alerts"]
+        D_FIND["Victim finding (on the laptop)\nAI person detection · call-out + mic meter\nMark victim → snapshot kept on laptop"]
         D_WS --> D_MSTATE --> D_UI
         D_WS --> D_ALERT --> D_UI
         D_RTC --> D_UI
+        D_RTC --> D_FIND --> D_UI
     end
 
     GPSHW[("GPS module")] --> P1_GPS
@@ -90,7 +94,7 @@ flowchart TB
     class P3,P3_SUP,P3_HLT,D_ALERT safety
     class LAN,WIFI net
     classDef talk fill:#fff,color:#12181A,stroke:#B7791F,stroke-dasharray:5 4
-    class P2_RLY,SCREEN,DISPHW talk
+    class P2_RLY,SCREEN,DISPHW,D_FIND,P1_VIC talk
 ```
 
 ## Legend
@@ -101,7 +105,7 @@ flowchart TB
 | 🟦 Indigo | Application services (control, media, dashboard) |
 | 🟧 Rust | Safety & supervision (watchdog, dead-man, alerts) |
 | ⬜ Grey | Local Wi-Fi network |
-| ⬚ Dashed | Talk-to-victim path (operator → robot display + speaker) |
+| ⬚ Dashed | Victim-facing features: talk-to-victim path (operator → robot display + speaker) and victim-finding tools (AI, call-out, victim marks) |
 
 **Data path:** Sensors/commands ↔ Arduino ↔ UART ↔ P1 (Pi) ↔ WebSocket/WebRTC ↔ Wi-Fi ↔ Dashboard. P3 supervises P1/P2 independently of the data path.
 

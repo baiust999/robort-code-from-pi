@@ -139,6 +139,7 @@ This chapter describes the system design: the structure, mechanisms and design c
 - P3 process isolation and supervision (Section 3.7) -> RQ3 -> Section 5.4: automated SIGKILL recovery, 30 of 30 trials, plus single manual injections
 - WebRTC two-way victim path (Section 3.9) -> RQ4 -> Section 5.5 for the measured processor cost and isolation of the media process; video and audio delay and quality (Section 5.2, E5) and the end-to-end rescue run (Section 5.7, E13) are [PENDING MEASUREMENT]
 - GPS and offline map (Section 3.10) -> RQ4 -> Section 5.6.1: static precision is measured but resolution-limited, and the 10 m track filter admitted drift
+- Victim-finding aids (Section 3.11) -> no research question -> not evaluated: they were added after the measurements, and Section 6.3 states the limit
 
 ## 3.1 System Architecture
 
@@ -382,7 +383,7 @@ The GPS uses the Pi's primary UART with the serial login console disabled.
 
 ## 3.4 Software Architecture
 
-The software is organised around the same tiers as the hardware in Section 3.3. This section gives its structure; Sections 3.5 to 3.10 describe each part in detail.
+The software is organised around the same tiers as the hardware in Section 3.3. This section gives its structure; Sections 3.5 to 3.11 describe each part in detail.
 
 The software forms three layers, each written in the language that suits its hardware, over a shared module that the three Pi processes have in common (Table 5). The three layers share no code and talk only through three defined interfaces: the serial command protocol between firmware and P1, the control WebSocket between the dashboard and P1, and WebRTC between the dashboard and P2. Each layer can therefore be built, tested and replaced on its own.
 
@@ -391,9 +392,9 @@ The software forms three layers, each written in the language that suits its har
 | Layer | Runs on | Language | Main frameworks | Main modules |
 |---|---|---|---|---|
 | Firmware | Arduino UNO | C++ | Arduino core, no RTOS | scheduler, command_parser, motors, servos, sensors, telemetry |
-| Backend | Raspberry Pi 4 | Python 3, asyncio | FastAPI and uvicorn (P1, P2), aiortc and PyAV (P2), aiohttp (P3) | serial_bridge, safety, websocket_hub, gps_reader, signaling, talkback, supervisor |
+| Backend | Raspberry Pi 4 | Python 3, asyncio | FastAPI and uvicorn (P1, P2), aiortc and PyAV (P2), aiohttp (P3) | serial_bridge, safety, websocket_hub, gps_reader, victim_log, signaling, talkback, supervisor |
 | Common | Raspberry Pi 4, inside P1, P2 and P3 | Python 3 | standard library only | protocol, config, access, logging_setup, mock_hardware |
-| Frontend | Operator browser | TypeScript | React 19, Vite, Tailwind CSS, Leaflet with PMTiles | useControlSocket, useWebrtcVideo, useTalkback, DriveControl, EmergencyStop, MapPanel |
+| Frontend | Operator browser | TypeScript | React 19, Vite, Tailwind CSS, Leaflet with PMTiles | useControlSocket, useWebrtcVideo, useTalkback, usePersonDetection, DriveControl, EmergencyStop, MapPanel |
 
 On the Pi, systemd starts only the watchdog, which spawns the control and media servers as child processes (Figure 6). P1 holds every interface that can move the robot; P2 holds every media device; the Robot Screen kiosk runs in the desktop session.
 
@@ -433,7 +434,7 @@ flowchart TB
   VS --> WV
   MP --> API
   CS <-- "WebSocket" --> P1["P1 Control"]
-  API <-- "HTTP: session, GPS track, map tiles" --> P1
+  API <-- "HTTP: session, GPS track, map tiles, victim marks" --> P1
   WV <-- "HTTP offer, WebRTC media + data channel" --> P2["P2 Media"]
 ```
 
@@ -914,6 +915,16 @@ flowchart LR
 
 **Figure 20.** GPS and map data flow. Online map tiles, when reachable, show outside the offline map area.
 
+## 3.11 Victim-Finding Aids
+
+Three operator aids help the operator notice a person and record where they are: person detection on the robot video, a recorded call-out with a reply cue, and victim marks. All three are advisory. None acts on the motors, none confirms that a person is present, and none has been evaluated (Section 6.3), so no detection rate, false-alarm rate or reply-cue accuracy is claimed. They were added after the measurements of Section 5.
+
+**Person detection in the operator's browser.** Detection runs in the dashboard on the operator's computer, not on the Pi, because the media process already uses about 63% of one core (Section 5.5). The dashboard runs the MediaPipe Tasks object detector (version 0.10.21) with the EfficientDet-Lite0 model, a mobile variant of EfficientDet [@tan2020efficientdet] trained on the COCO dataset [@lin2014coco], restricted to the person class, with a score threshold of 0.4 and at most five boxes per frame. The model (4.6 MB) and the WebAssembly runtime are bundled with the dashboard, so detection needs no Internet. It samples the received video at most five times a second, half the camera rate, and draws boxes scoring 0.7 or more in red and lower ones in orange. A "possible person" banner is raised after three consecutive frames with a person and cleared after five frames without one, which suppresses single-frame flicker; the alert log records it at most once every 30 s. Inference shares the browser's main thread with the drive and stop controls, so the dashboard times each inference, waits at least twice the last inference time before the next frame, and switches detection off when the mean of five frames exceeds 150 ms. The CPU delegate is used: in a software check in headless Chromium with a software renderer, the GPU delegate returned no detections, and no error, on two images of a person on which the CPU delegate scored 0.95 and 0.98. This was a functional check, not an accuracy measurement, and the GPU behaviour was not confirmed on a hardware GPU. Because the detector was trained on everyday photographs, it is expected to miss people who are lying down, partly covered, dust-covered, poorly lit or distant, as is typical in a collapsed structure; the dashboard states that a missing box does not mean that nobody is present.
+
+**Call-out and reply cue.** A call-out button plays a short recorded message on the robot speaker that asks the person to shout or knock three times. The clip is decoded in the browser and attached to the same audio sender as the operator's voice (Section 3.9.4), so it reaches the speaker over the existing relay and floor control and adds no new path on the Pi; it needs no secure context because it does not open the laptop microphone. The clip is supplied by the deploying team as an MP3 file in the dashboard build, and the button stays disabled until the file is present. The dashboard measures the loudness of the robot microphone from the received audio track (root mean square over 2048 samples every 100 ms, in dBFS, floored at -80 dBFS) and shows it as a meter, also while the operator has the robot audio muted. For 10 s after the clip ends it compares the level with the median of the 2 s before the call-out and raises a reply cue when the level rises by 10 dB or more; when there is no level history from before the call-out, the quietest level in the window serves as the reference after 1 s. Nothing is judged while the clip plays, because the robot microphone hears its own speaker. The cue tells the operator to listen; it does not classify the sound, and the 10 dB threshold is a first estimate that has not been calibrated against real responses or background noise.
+
+**Victim marks.** The controller can mark a victim with a note of at most 280 characters. The browser sends only the note and the detector's best score at that moment to P1 (POST /api/victims, controller key required, as for driving in Section 3.8). P1 adds its own readings rather than values from the browser: its GPS fix and satellite count, the last track point for a mark made without a fix, and the camera's pan and tilt angles from the latest telemetry. It appends the mark as one JSON line to a file in the robot's log folder and broadcasts it to every dashboard on the control WebSocket (message type victim_mark); a dashboard that connects later loads the full list with GET /api/victims. Each dashboard lists the marks and shows them on the map, with a faded marker at the last track point when there was no fix. The recorded position inherits the GPS error of Section 3.10 and is absent indoors without a fix, so the operator's note is often the more useful location record. The snapshot, taken when the operator opens the mark form and with the detector boxes drawn on it, is never sent to the robot: it is kept in the browser's IndexedDB storage on the operator's computer and downloaded there together with a plain-text record of the mark. Images of victims therefore stay off the robot, at the cost that only the computer that took a snapshot holds it. The marking handler shares P1's event loop but is kept small: P1 refuses a request body larger than 16 KiB before parsing it, so an oversized request cannot stall the loop that serves telemetry and heartbeats, and each mark costs one bounded parse and one file append.
+
 # 4. Experimental Setup
 
 This section defines the test environment, the experiment matrix, the measurement and validity rules, and the baselines that apply across all fifteen experiments. Each subsection of Section 5 opens with its own procedure paragraph; shared conditions stated here are not repeated there. The hardware, network and software are specified in Sections 3.2-3.4 and are referenced, not restated. Because several experiments could not be run as planned, Table 4.1 gives the planned design and the design actually achieved side by side, and Section 4.4 lists every deviation; Section 5 reports only what was achieved.
@@ -1010,6 +1021,7 @@ The deviations below are collected here so that a reader of Section 5 can see at
 - **Reduced or changed designs:** E3 has 23 rows, not 60; E6 is a single-burst, line-of-sight, no-obstacle sweep that never reached a failure point; E8 has six conditions of unequal length, one of which (`driving+media`) is two overlapping logger runs and one of which (`driving+media-16kbps`) is confounded by a P2 restart; E9 uses an archived static window rather than a fresh 30-minute run.
 - **Narrow fault and sensor coverage:** E7 injected only SIGKILL crashes automatically (no hangs, camera loss, microphone loss or Robot Screen exit). The manual faults F6 (Arduino unplug) and F7 (Wi-Fi drop) are single injections whose injection instants were not logged, and F9 (GPS loss) is not a valid measurement. E11 covers one set-point (about 31 degC, 77% RH) with five non-independent readings, not the five planned set-points; E12 is five puffs in one session.
 - **Configuration and cost records:** the 16 kbit/s Opus setting of the E8 ablation was applied by an uncommitted change and is not in version control. The replacement Pi supply is not identified, and the E15 bill of materials, now taken from the authors' itemised receipts (in BDT, converted at an indicative exchange rate), omits a few parts (the USB webcam, the speaker and the Pi power bank).
+- **Features added after the measurements:** the victim-finding aids of Section 3.11 (person detection in the operator's browser, the call-out with its reply cue, and victim marks) were added after the experiments of Table 4.1 were run, and no experiment covers them. The E8 processor figures were recorded without them. By design, detection runs on the operator's computer and the call-out uses the push-to-talk path of Section 3.9.4, but neither design property has been measured.
 - **Software-only checks:** the dead-man boundary and arming behaviour, the command validator and the key lockout were checked by unit tests and by a native build of the firmware sources (Section 5.1a), and the heartbeat-loss analysis (Section 5.1b) is SIMULATED. None is a measurement on the assembled robot.
 - **Hand-entered data:** E3, E10, E11 and E12 were transcribed after the session. E3 and E10 are contradicted by the robot's own logs and are [VERIFICATION REQUIRED]; the E11 error columns are also [VERIFICATION REQUIRED].
 - **Uncontrolled environment (E6):** the two range sessions differ by about 17 dB in signal level at the same distances, the access point changed channel between them, the router position and neighbouring networks were not recorded, and the 2.4 GHz band is shared. Range and loss figures are properties of this access point and site, not of the robot.
@@ -1773,6 +1785,7 @@ The limitations that determine what a reader may cite are the following. Section
 5. **Weak or unverified sensor evidence.** The ultrasonic accuracy (E10) and the E11 error columns are [VERIFICATION REQUIRED] and support no claim; the DHT11 was checked at one set-point and the gas sensor reports uncalibrated counts.
 6. **Software-only checks are not hardware results.** The unit tests, the native firmware test and the heartbeat-loss analysis (SIMULATED) are not measurements on the assembled robot.
 7. **Cost is receipt-backed but incomplete.** The total of about USD 310 (37,158 BDT, Table 5.19) is taken from the authors' itemised receipts and converted at an indicative exchange rate. The USB webcam, the speaker and the Pi's power bank are not in the receipts, the sensors were bought as one grouped lot and cannot be priced per part, and the replacement Pi supply is not recorded, so the build as evaluated is not fully priced.
+8. **Victim-finding aids are not evaluated.** Person detection, the call-out reply cue and victim marks (Section 3.11) were added after the experiments and have no measurements: no detection or false-alarm rate on disaster-like scenes, no calibration of the 10 dB reply threshold against real responses or noise, and no measurement of the load on the operator's computer or on P1. Their only checks are 16 unit tests of the marking endpoint and a functional check of the detector on two images. They are described as operator aids, not as results, and the paper claims no victim-finding performance.
 
 What the data do support, within the bounds of Table 6.1, is the claim of Section 5.10: a firmware-enforced stop time, measured process recovery, and a measured processor cost for one operator media session, all on one robot.
 
@@ -1824,7 +1837,7 @@ The directions are grouped under six themes (Sections 7.1 to 7.6) and are not eq
 | 7.4.3 | Improved disaster-terrain mobility | No rubble, slope or standard-apparatus trials | 2.2, 3.3 | 3 | 7.6.3 |
 | 7.4.4 | Energy-aware operation | No in-situ voltage or current sensing; original Pi supply under-volted under driving plus media | 3.3, 5.5 | 2 | new sensors |
 | 7.5.1 | Sensor fusion for hazard assessment | Gas reading is uncalibrated ADC counts; DHT11 checked at one set-point | 5.6.3, 5.6.4 | 2 | reference instruments |
-| 7.5.2 | Edge-based victim assistance | No detection implemented; media path already uses about 63% of one core | 5.5 | 3 | 7.5.1 |
+| 7.5.2 | Edge-based victim assistance | Person detector in the operator's browser not evaluated; no on-robot detection, since the media path already uses about 63% of one core | 3.11, 5.5 | 3 | 7.5.1 |
 | 7.6.1 | Secure remote control | Plain HTTP and WebSocket; one shared controller key; sequence check optional | 3.2, 3.8 | 1 | 7.2.2 |
 | 7.6.2 | Multi-robot cooperative exploration | Single robot; one controller slot | 3.8 | 3 | 7.1.1, 7.3.1, 7.6.1 |
 | 7.6.3 | Reproducible experimental benchmarking | Small N per experiment; rotating logs; no standard test apparatus | 4.2 (Table 4.1), 5.0 | 1 | - |
@@ -1915,7 +1928,7 @@ The gas channel reports raw ADC counts, and the MQ-136 also responds to gases ot
 
 ### 7.5.2 Edge-Based Victim Assistance
 
-No victim detector is implemented. The media process already uses about 63% of one core (Section 5.5), so there is little CPU headroom for inference on the present Pi. Published work on rubble-scene human detection with YOLOv8-s on a Jetson Nano, with alerts sent to a mobile application [@raghavan2026], is a starting point for the literature review. Its camera, dataset and board differ from this robot, so its figures are not a baseline for the Pi. The proposed work tests lightweight detection models on the Pi and on an attached accelerator against a labelled test set, using a public detector as the baseline. Metrics are precision, recall, inference latency, memory, energy and the effect on media frame rate. Detector output is shown to the operator as decision support and is never presented as confirmation of a victim's presence or condition. No detection capability can be claimed until it has been validated on data representative of the target scenes.
+The robot carries no victim detector. The dashboard runs a general-purpose person detector on the operator's computer (Section 3.11), but it has not been evaluated, and the media process already uses about 63% of one core (Section 5.5), so there is little CPU headroom for inference on the present Pi. Published work on rubble-scene human detection with YOLOv8-s on a Jetson Nano, with alerts sent to a mobile application [@raghavan2026], is a starting point for the literature review. Its camera, dataset and board differ from this robot, so its figures are not a baseline for the Pi. The proposed work first evaluates the existing browser-side detector on a labelled test set of disaster-like scenes, which makes it the baseline, and then tests lightweight detection models on the Pi, on an attached accelerator and on the operator's computer against the same set, including models trained for partly covered or lying people. The same evaluation calibrates the reply cue of Section 3.11 against recorded responses and background noise. Metrics are precision, recall, inference latency, memory, energy, the effect on media frame rate and, for detection in the browser, the effect on the responsiveness of the drive and stop controls. Detector output is shown to the operator as decision support and is never presented as confirmation of a victim's presence or condition. No detection capability can be claimed until it has been validated on data representative of the target scenes.
 
 ## 7.6 Security, Multi-Robot Scale and Reproducibility
 
@@ -2005,7 +2018,7 @@ The authors declare that they have no known competing financial interests or per
 
 ## References
 
-[REFERENCE LIST ADDED AS A HEADING ONLY: the bibliography is generated by pandoc from `references.bib` (70 entries). In this Markdown master the in-text citations remain as pandoc keys `[@key]` and resolve here on build; the list is not transcribed by hand so that `references.bib` stays the single source.]
+[REFERENCE LIST ADDED AS A HEADING ONLY: the bibliography is generated by pandoc from `references.bib` (72 entries). In this Markdown master the in-text citations remain as pandoc keys `[@key]` and resolve here on build; the list is not transcribed by hand so that `references.bib` stays the single source.]
 
 ## Appendix A: Bill of Materials
 

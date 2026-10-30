@@ -1,14 +1,14 @@
 """Victim marks: where the operator found someone.
 
-Each mark is one JSON line in ``victims.jsonl`` plus a JPEG snapshot named
-after its id, both in the robot's log folder, so they survive a dashboard
-reload or a laptop crash and stay with the mission logs.
+Each mark is one JSON line in ``victims.jsonl`` in the robot's log folder, so
+it survives a dashboard reload or a laptop crash and stays with the mission
+logs. The snapshot is never sent here: the dashboard saves it on the
+operator's device.
 """
 
 from __future__ import annotations
 
 import json
-import re
 import secrets
 import threading
 import time
@@ -18,9 +18,6 @@ from typing import Any
 from common.logging_setup import EventLogger
 
 NOTE_MAX = 280
-SNAPSHOT_MAX_BYTES = 1_000_000
-JPEG_MAGIC = b"\xff\xd8"
-MARK_ID_RE = re.compile(r"^\d{8}-\d{6}-[0-9a-f]{4}$")
 
 
 class VictimLog:
@@ -30,7 +27,7 @@ class VictimLog:
         self._index = directory / "victims.jsonl"
         self._lock = threading.Lock()
 
-    def add(self, note: str, snapshot_jpeg: bytes | None, fields: dict[str, Any]) -> dict[str, Any]:
+    def add(self, note: str, fields: dict[str, Any]) -> dict[str, Any]:
         """Store one mark; ``fields`` are the server-side readings (GPS, servos)."""
         now = time.time()
         mark_id = f"{time.strftime('%Y%m%d-%H%M%S', time.localtime(now))}-{secrets.token_hex(2)}"
@@ -39,12 +36,9 @@ class VictimLog:
             "ts": int(now * 1000),
             "note": note[:NOTE_MAX],
             **fields,
-            "snapshot": snapshot_jpeg is not None,
         }
         with self._lock:
             self.directory.mkdir(parents=True, exist_ok=True)
-            if snapshot_jpeg is not None:
-                (self.directory / f"{mark_id}.jpg").write_bytes(snapshot_jpeg)
             with self._index.open("a", encoding="utf-8") as fh:
                 fh.write(json.dumps(mark) + "\n")
         return mark
@@ -67,10 +61,3 @@ class VictimLog:
             if isinstance(mark, dict):
                 marks.append(mark)
         return marks
-
-    def snapshot_path(self, mark_id: str) -> Path | None:
-        """The snapshot file for ``mark_id``, or None for a bad id or no file."""
-        if not MARK_ID_RE.match(mark_id):
-            return None
-        path = self.directory / f"{mark_id}.jpg"
-        return path if path.is_file() else None

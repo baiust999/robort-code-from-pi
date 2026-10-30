@@ -11,6 +11,7 @@ This chapter describes the system design: the structure, mechanisms and design c
 - P3 process isolation and supervision (Section 3.7) -> RQ3 -> Section 5.4: automated SIGKILL recovery, 30 of 30 trials, plus single manual injections
 - WebRTC two-way victim path (Section 3.9) -> RQ4 -> Section 5.5 for the measured processor cost and isolation of the media process; video and audio delay and quality (Section 5.2, E5) and the end-to-end rescue run (Section 5.7, E13) are [PENDING MEASUREMENT]
 - GPS and offline map (Section 3.10) -> RQ4 -> Section 5.6.1: static precision is measured but resolution-limited, and the 10 m track filter admitted drift
+- Victim-finding aids (Section 3.11) -> no research question -> not evaluated: they were added after the measurements, and Section 6.3 states the limit
 
 ## 3.1 System Architecture
 
@@ -254,7 +255,7 @@ The GPS uses the Pi's primary UART with the serial login console disabled.
 
 ## 3.4 Software Architecture
 
-The software is organised around the same tiers as the hardware in Section 3.3. This section gives its structure; Sections 3.5 to 3.10 describe each part in detail.
+The software is organised around the same tiers as the hardware in Section 3.3. This section gives its structure; Sections 3.5 to 3.11 describe each part in detail.
 
 The software forms three layers, each written in the language that suits its hardware, over a shared module that the three Pi processes have in common (Table 5). The three layers share no code and talk only through three defined interfaces: the serial command protocol between firmware and P1, the control WebSocket between the dashboard and P1, and WebRTC between the dashboard and P2. Each layer can therefore be built, tested and replaced on its own.
 
@@ -263,9 +264,9 @@ The software forms three layers, each written in the language that suits its har
 | Layer | Runs on | Language | Main frameworks | Main modules |
 |---|---|---|---|---|
 | Firmware | Arduino UNO | C++ | Arduino core, no RTOS | scheduler, command_parser, motors, servos, sensors, telemetry |
-| Backend | Raspberry Pi 4 | Python 3, asyncio | FastAPI and uvicorn (P1, P2), aiortc and PyAV (P2), aiohttp (P3) | serial_bridge, safety, websocket_hub, gps_reader, signaling, talkback, supervisor |
+| Backend | Raspberry Pi 4 | Python 3, asyncio | FastAPI and uvicorn (P1, P2), aiortc and PyAV (P2), aiohttp (P3) | serial_bridge, safety, websocket_hub, gps_reader, victim_log, signaling, talkback, supervisor |
 | Common | Raspberry Pi 4, inside P1, P2 and P3 | Python 3 | standard library only | protocol, config, access, logging_setup, mock_hardware |
-| Frontend | Operator browser | TypeScript | React 19, Vite, Tailwind CSS, Leaflet with PMTiles | useControlSocket, useWebrtcVideo, useTalkback, DriveControl, EmergencyStop, MapPanel |
+| Frontend | Operator browser | TypeScript | React 19, Vite, Tailwind CSS, Leaflet with PMTiles | useControlSocket, useWebrtcVideo, useTalkback, usePersonDetection, DriveControl, EmergencyStop, MapPanel |
 
 On the Pi, systemd starts only the watchdog, which spawns the control and media servers as child processes (Figure 6). P1 holds every interface that can move the robot; P2 holds every media device; the Robot Screen kiosk runs in the desktop session.
 
@@ -305,7 +306,7 @@ flowchart TB
   VS --> WV
   MP --> API
   CS <-- "WebSocket" --> P1["P1 Control"]
-  API <-- "HTTP: session, GPS track, map tiles" --> P1
+  API <-- "HTTP: session, GPS track, map tiles, victim marks" --> P1
   WV <-- "HTTP offer, WebRTC media + data channel" --> P2["P2 Media"]
 ```
 
@@ -785,3 +786,13 @@ flowchart LR
 ```
 
 **Figure 20.** GPS and map data flow. Online map tiles, when reachable, show outside the offline map area.
+
+## 3.11 Victim-Finding Aids
+
+Three operator aids help the operator notice a person and record where they are: person detection on the robot video, a recorded call-out with a reply cue, and victim marks. All three are advisory. None acts on the motors, none confirms that a person is present, and none has been evaluated (Section 6.3), so no detection rate, false-alarm rate or reply-cue accuracy is claimed. They were added after the measurements of Section 5.
+
+**Person detection in the operator's browser.** Detection runs in the dashboard on the operator's computer, not on the Pi, because the media process already uses about 63% of one core (Section 5.5). The dashboard runs the MediaPipe Tasks object detector (version 0.10.21) with the EfficientDet-Lite0 model, a mobile variant of EfficientDet [@tan2020efficientdet] trained on the COCO dataset [@lin2014coco], restricted to the person class, with a score threshold of 0.4 and at most five boxes per frame. The model (4.6 MB) and the WebAssembly runtime are bundled with the dashboard, so detection needs no Internet. It samples the received video at most five times a second, half the camera rate, and draws boxes scoring 0.7 or more in red and lower ones in orange. A "possible person" banner is raised after three consecutive frames with a person and cleared after five frames without one, which suppresses single-frame flicker; the alert log records it at most once every 30 s. Inference shares the browser's main thread with the drive and stop controls, so the dashboard times each inference, waits at least twice the last inference time before the next frame, and switches detection off when the mean of five frames exceeds 150 ms. The CPU delegate is used: in a software check in headless Chromium with a software renderer, the GPU delegate returned no detections, and no error, on two images of a person on which the CPU delegate scored 0.95 and 0.98. This was a functional check, not an accuracy measurement, and the GPU behaviour was not confirmed on a hardware GPU. Because the detector was trained on everyday photographs, it is expected to miss people who are lying down, partly covered, dust-covered, poorly lit or distant, as is typical in a collapsed structure; the dashboard states that a missing box does not mean that nobody is present.
+
+**Call-out and reply cue.** A call-out button plays a short recorded message on the robot speaker that asks the person to shout or knock three times. The clip is decoded in the browser and attached to the same audio sender as the operator's voice (Section 3.9.4), so it reaches the speaker over the existing relay and floor control and adds no new path on the Pi; it needs no secure context because it does not open the laptop microphone. The clip is supplied by the deploying team as an MP3 file in the dashboard build, and the button stays disabled until the file is present. The dashboard measures the loudness of the robot microphone from the received audio track (root mean square over 2048 samples every 100 ms, in dBFS, floored at -80 dBFS) and shows it as a meter, also while the operator has the robot audio muted. For 10 s after the clip ends it compares the level with the median of the 2 s before the call-out and raises a reply cue when the level rises by 10 dB or more; when there is no level history from before the call-out, the quietest level in the window serves as the reference after 1 s. Nothing is judged while the clip plays, because the robot microphone hears its own speaker. The cue tells the operator to listen; it does not classify the sound, and the 10 dB threshold is a first estimate that has not been calibrated against real responses or background noise.
+
+**Victim marks.** The controller can mark a victim with a note of at most 280 characters. The browser sends only the note and the detector's best score at that moment to P1 (POST /api/victims, controller key required, as for driving in Section 3.8). P1 adds its own readings rather than values from the browser: its GPS fix and satellite count, the last track point for a mark made without a fix, and the camera's pan and tilt angles from the latest telemetry. It appends the mark as one JSON line to a file in the robot's log folder and broadcasts it to every dashboard on the control WebSocket (message type victim_mark); a dashboard that connects later loads the full list with GET /api/victims. Each dashboard lists the marks and shows them on the map, with a faded marker at the last track point when there was no fix. The recorded position inherits the GPS error of Section 3.10 and is absent indoors without a fix, so the operator's note is often the more useful location record. The snapshot, taken when the operator opens the mark form and with the detector boxes drawn on it, is never sent to the robot: it is kept in the browser's IndexedDB storage on the operator's computer and downloaded there together with a plain-text record of the mark. Images of victims therefore stay off the robot, at the cost that only the computer that took a snapshot holds it. The marking handler shares P1's event loop but is kept small: P1 refuses a request body larger than 16 KiB before parsing it, so an oversized request cannot stall the loop that serves telemetry and heartbeats, and each mark costs one bounded parse and one file append.

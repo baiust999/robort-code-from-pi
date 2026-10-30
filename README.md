@@ -3,7 +3,9 @@
 A teleoperated rescue robot. An operator drives it over the local Wi-Fi
 network from a browser dashboard, watches live video, reads environmental
 sensors (gas, temperature/humidity, sonar range, GPS), and talks two-way with
-a victim through a screen and speaker mounted on the robot.
+a victim through a screen and speaker mounted on the robot. Victim-finding
+aids help the operator search: AI person detection on the video (run in the
+browser), a recorded call-out with a reply cue, and victim marks on the map.
 
 ![Hardware diagram](hardware%20diagram.drawio.png)
 
@@ -102,6 +104,7 @@ npm run dev
    `/etc/robot/p1.env` (P2 reads it too). Only a dashboard that enters this
    key can drive, stop or talk to the victim; without it every dashboard is
    view-only. Keep the real key out of git.
+   The same key is needed to mark a victim.
 6. **Connect to the network.** Put the Pi and the operator laptop on the same
    Wi-Fi network. Give the Pi a fixed address in your Wi-Fi router's settings
    so it does not change.
@@ -142,12 +145,24 @@ laptop and add `http://raspberrypi.local:8080`. Use the hostname rather than
 the IP address: the flag matches on the exact origin, so an address issued by
 DHCP would silently stop matching after the robot joins another network, and
 push-to-talk and the operator camera would fail while the rest of the
-dashboard kept working. Video, images and text messages work without this.
+dashboard kept working. Video, images, text messages and the call-out work
+without this. AI person detection needs Chrome's *Use graphics acceleration*
+setting on (WebGL).
+
+### Call-out clip
+
+The **Call out** button plays `dashboard/public/audio/callout-en.mp3`, which
+is not in the repository. Record about 5 s of clear speech (for example
+*"This is the rescue team. If you can hear me, shout, or knock three
+times."*), save it under that name and rebuild the dashboard. Until then the
+button reads *No call-out clip installed*.
 
 ## Logs
 
 - Service: `journalctl -u robot-watchdog.service -f`
 - Application logs and telemetry: `/var/log/robot/` (rotated by `deploy/logrotate/robot`)
+- Victim marks: `/var/log/robot/victims/victims.jsonl` (not rotated; no
+  images: victim snapshots stay on the operator's device)
 
 
 

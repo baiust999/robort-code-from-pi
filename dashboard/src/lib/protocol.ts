@@ -228,7 +228,7 @@ export function isAlertActive(
   return limits.direction === 'above' ? value >= threshold : value <= threshold;
 }
 
-/** Where the operator found someone; stored on the robot by P1. */
+/** Where the operator found someone; stored on the robot by P1, without the snapshot. */
 export interface VictimMark {
   id: string;
   /** Unix ms, P1's clock. */
@@ -245,5 +245,4 @@ export interface VictimMark {
   tilt_angle: number | null;
   /** The AI's best person score when the mark was made, if it saw one. */
   ai_score: number | null;
-  snapshot: boolean;
 }

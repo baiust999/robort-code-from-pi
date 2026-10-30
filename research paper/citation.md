@@ -79,6 +79,8 @@ Status values: `VERIFIED` = in references.bib, safe to cite.
 | beer2014 | 2.1 | Levels of robot autonomy range from teleoperation to full autonomy | Beer, Fisk, Rogers, J. Human-Robot Interaction, 2014 | 10.5898/JHRI.3.2.Beer | VERIFIED (pages 74-99 per Scholar Commons record) |
 | kruijff2016 | 2.2, 2.6 | Amatrice (Italy) August 2016 earthquake: ground and aerial robots collected data for 3D models of two damaged churches | Kruijff-Korbayova et al., IEEE SSRR, 2016 | 10.1109/SSRR.2016.7784314 | VERIFIED |
 | endsley1995 | 2.4 | Theory of situation awareness and its role in dynamic decision making | Endsley, Human Factors, 1995 | 10.1518/001872095779049543 | VERIFIED |
+| tan2020efficientdet | 3.11 | Architecture family of the EfficientDet-Lite0 person detector run in the operator dashboard | Tan, Pang, Le, CVPR 2020 | 10.1109/CVPR42600.2020.01079 | VERIFIED (Crossref, 2026-10-30) |
+| lin2014coco | 3.11 | Dataset the bundled EfficientDet-Lite0 model was trained on (everyday photographs, person class used) | Lin et al., ECCV 2014, LNCS | 10.1007/978-3-319-10602-1_48 | VERIFIED (Crossref, 2026-10-30) |
 
 ## Pending / needed citations
 

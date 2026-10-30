@@ -243,8 +243,11 @@ Each iteration also refreshes the robot's **Wi-Fi signal strength**, at most onc
 | `safety.py` | `CommandValidator` | Server-side clamp, sequence monotonicity |
 | `telemetry_log.py` | `TelemetryLog` | 1 Hz, 19-column CSV with packed alert bitfield |
 | `lockfile.py` | `ProcessLock` | Advisory `flock` enforcing the single-writer invariant |
+| `victim_log.py` | `VictimLog` | Victim marks as JSON lines in `victims/victims.jsonl`; a corrupt line is skipped, not fatal (A.12) |
 
 ***Table A.5.2 — P1 Module Responsibilities***
+
+P1 also stores **victim marks** (A.12). `POST /api/victims` takes only a note and the AI score from the controller's browser, stamps the mark with P1's own GPS fix, last track point and servo angles, appends it to `victims.jsonl` and broadcasts it to every dashboard as a `victim_mark` message; `GET /api/victims` returns the list to a dashboard that connects later. The body is read through `read_body_limited()`, which refuses anything over 16 KiB with 413 *before* parsing or checking the key, because parsing a huge JSON body would block the event loop that also runs the 200 ms broadcast and the heartbeat path — and anyone on the network could send one.
 
 The **startup handshake** is a fixed sequence whose ordering encodes hard-won operational knowledge. The port is opened with `exclusive=True`, which sets `O_EXCL` so the kernel rejects a second opener. Opening the port toggles DTR and resets the Arduino, so P1 then waits 2.0 seconds for the board to boot. It flushes both buffers, sends three `S` stop commands at 200 ms intervals — because if the board survived a previous P1 crash while driving, this halts it before anything slower is attempted — then sends `?` and awaits `READY` for up to 5 seconds, accepting either the token or any parseable telemetry frame as evidence of a live board. Handshake failure exits with code 2, which P3 interprets as a crash.
 
@@ -282,7 +285,7 @@ The feature that most distinguishes this supervisor from a naive restart loop is
 
 ### **A.5.5  Operator Dashboard — Hook-Owned State and Two Independent Transports**
 
-The dashboard is a React 19 single-page application in TypeScript, built by Vite, styled with Tailwind, and rendering GPS data through Leaflet. Fourteen components are arranged in a grid of three columns — controls at 22%, video at 52%, telemetry and alerts at 26% — with the controls spanning the full height and one map filling the bottom of the middle and right columns together.
+The dashboard is a React 19 single-page application in TypeScript, built by Vite, styled with Tailwind, and rendering GPS data through Leaflet. Eighteen components are arranged in a grid of three columns — controls at 22%, video at 52%, telemetry and alerts at 26% — with the controls spanning the full height and one map filling the bottom of the middle and right columns together.
 
 **The map works offline and follows the robot.** `OfflineMapLayer` draws the operating area from `area.pmtiles`, a Protomaps vector map that P1 serves from `MAP_DIR` at `/maps`; the browser reads only the tiles it shows through HTTP range requests, and the layer is limited to the file's bounds so the online OpenStreetMap layer still shows outside it. Its libraries (`protomaps-leaflet`, `pmtiles`) load as a separate chunk after the dashboard starts, which keeps the first load over the local network unchanged, and if P1 has no map file the layer adds nothing. `LocateRobotButton` is a Leaflet control with follow mode: on by default, so a dashboard opened before the first fix moves to the robot once it arrives; turned off by the operator dragging the map; turned back on by the button, which flies to the robot. Panning waits for that fly-to to finish so a fix arriving mid-flight cannot cut it short. The live path takes a point only once the robot has moved 10 m, mirroring `MIN_TRACK_STEP_M` in `gps_reader.py`, so GPS drift around a stationary robot does not scribble the map.
 
@@ -290,11 +293,13 @@ The dashboard is a React 19 single-page application in TypeScript, built by Vite
 
 The indicator never shows an old value as current. P1 cannot report a link that has failed, so `useControlSocket()` judges the link itself: it records when the last live `telemetry` frame arrived and checks four times a second. If the socket is closed or no frame has arrived for 1 s (five missed frames), `telemetryStale` is set and the level becomes `none`. The status bar then shows grey bars and **NO SIGNAL**, and a red *NO SIGNAL* banner appears. The same happens when P1 reports `signal_dbm: null`. Frames replayed in a `recovery_batch` are old and do not count as live. This catches a dead link about 1 s after the last frame, well before the socket's close event.
 
-**A documented divergence from the original design.** The original methodology specified "no Redux — context providers per state slice," and `dashboard/src/context/` exists in the tree. It is empty. The implemented architecture uses **no context providers at all**: all shared state lives in a single `useControlSocket()` hook invoked once in `App.tsx` and threaded to children as explicit props. For a dashboard of this size the simpler structure is defensible — every component's data dependencies are visible in its props, and there is no indirection between the socket and the render. The empty directory should be removed to prevent it from implying a structure that does not exist.
+**A documented divergence from the original design.** The original methodology specified "no Redux — context providers per state slice," and an empty `dashboard/src/context/` directory once stood for it. The implemented architecture uses **no context providers at all**: all shared state lives in a single `useControlSocket()` hook invoked once in `App.tsx` and threaded to children as explicit props. For a dashboard of this size the simpler structure is defensible — every component's data dependencies are visible in its props, and there is no indirection between the socket and the render. The empty directory has since been removed.
 
 `useControlSocket()` owns the entire control path. State that drives rendering is held in `useState`; values that must persist across renders without triggering them — the socket, the command sequence counter, the last server timestamp, the backoff interval, and timer handles — are held in `useRef`. On connection it sends `hello` with the controller key (if the operator has entered one, kept in the browser's `localStorage`) to claim the controller role, then `resume_from` with its last-seen timestamp if this is a reconnection. Reconnection backs off exponentially from 1 second to a 30-second ceiling. An idle heartbeat every 500 ms keeps the Arduino's dead-man armed while the operator is not driving; only the controller sends it. A key the robot refuses is dropped from storage at once, since every automatic reconnect would otherwise resend it and count toward the lockout.
 
 The hook contains a guard worth documenting because it addresses a genuinely subtle failure. Under React StrictMode, effects are double-invoked in development. Without protection, the abandoned first socket would open moments later, claim the single controller slot, and permanently strand the live hook as an observer — the dashboard would appear connected but every command would be rejected. The hook therefore closes any prior socket before connecting and uses an `isCurrent()` closure to ignore events from superseded sockets.
+
+The victim-finding tools (A.12) add three hooks that never touch the control path: `usePersonDetection()` runs the AI on the received video element, `useSoundLevel()` / `useReplyListener()` meter the robot microphone from the received audio track, and `useTalkback().callOut()` plays the recorded call-out on the existing talk sender. `useControlSocket()` gains only the list of victim marks, loaded with `GET /api/victims` on every connect and extended by `victim_mark` broadcasts.
 
 `useWebrtcVideo()` is entirely separate, self-contained within `VideoSurface`, and notably has **no automatic reconnection once video has connected** — a later loss is reported, the video panel shows its error state, and the operator reconnects with its *Retry video* button. Before the first successful connection it does retry every 3 seconds, because P2 starts several seconds after P1 and a dashboard opened during boot would otherwise be stuck on an error. This asymmetry with the control socket is correct by the architecture's own logic: control must be restored automatically because the vehicle is unsafe without it, whereas video is a convenience whose loss degrades the mission to `DRIVING_LIMITED` and is properly surfaced to the operator as a decision rather than papered over by silent retries.
 
@@ -329,7 +334,7 @@ Field order is load-bearing — parsing is by index, not by name — which is th
 
 **The discard-don't-retransmit rule is the single most characteristic decision in the data architecture.** There is no retransmission, no sequence numbering, and no acknowledgement on the UART link. A corrupted frame is dropped and nothing is requested. This is correct rather than lazy: the next frame arrives within 200 ms, so the cost of a discard is one dropped sample of a continuously-sampled signal, whereas a retransmission protocol would add buffering, state, and latency to a safety-critical path in exchange for data that will be superseded before it could be re-delivered.
 
-**Downstream, dashboard to P1 to Arduino**, commands are single-character opcodes with optional numeric arguments — `F120\n` is forward at PWM 120. The dashboard speaks JSON WebSocket messages; P1 validates and lowers them to the wire grammar. Six client message types (`hello`, `motor`, `servo`, `heartbeat`, `stop_all`, `resume_from`) and five server types (`telemetry`, `recovery_batch`, `ack`, `error`, `role`) constitute the entire application protocol.
+**Downstream, dashboard to P1 to Arduino**, commands are single-character opcodes with optional numeric arguments — `F120\n` is forward at PWM 120. The dashboard speaks JSON WebSocket messages; P1 validates and lowers them to the wire grammar. Six client message types (`hello`, `motor`, `servo`, `heartbeat`, `stop_all`, `resume_from`) and six server types (`telemetry`, `recovery_batch`, `ack`, `error`, `role`, `victim_mark`) constitute the entire WebSocket protocol; victim marks are created over REST (`POST /api/victims`, A.12), never over the WebSocket.
 
 **P1 outward to the dashboard**, the unit of exchange is the `TelemetrySnapshot` (19 keys as sent): the 8 Arduino fields, plus GPS position and fix quality merged from the reader thread, plus server metadata — message type, sequence number, server timestamp, serial health, client count, TURN status, and the robot's Wi-Fi signal `signal_dbm`. `build_snapshot()` re-asserts the P1-owned fields *last*, after merging, so that a malformed or hostile frame can never overwrite the server's own view of its health.
 
@@ -339,6 +344,7 @@ Field order is load-bearing — parsing is by index, not by name — which is th
 | `telemetry.log` | Disk CSV, 19 columns | Daily rotation, 7 kept | Post-mission analysis at 1 Hz |
 | `p{1,2,3}_events.log` | Disk, structured text | Weekly rotation, 8 kept | Fault diagnosis and audit |
 | GeoJSON track | Disk, per session | 90 days (cron) | Mission path reconstruction |
+| `victims/victims.jsonl` | Disk, one JSON line per mark | Kept until deleted by hand (not rotated) | Victim marks; no images (A.12) |
 
 ***Table A.6 — Data Stores, Retention, and Purpose***
 
@@ -474,9 +480,9 @@ Configuration is environment-file driven, with three files that map one-to-one o
 
 The network is an ordinary Wi-Fi network: the Pi and the operator laptop join the same network, and the operator opens `http://<pi-ip>:8080` in the browser. The Pi's address is fixed with a DHCP reservation in the Wi-Fi router's settings so it does not change between missions.
 
-Log rotation is tiered by write rate: `telemetry.log` daily at 50 MB retaining 7; event and fault logs weekly at 10 MB retaining 8; session logs monthly. All use `copytruncate` so running processes keep their open file handles. GPS tracks and CSV exports fall outside logrotate and are pruned by a documented `find -mtime +90 -delete` cron equivalent.
+Log rotation is tiered by write rate: `telemetry.log` daily at 50 MB retaining 7; the three event logs (`p1_events.log`, `p2_events.log`, `p3_events.log`) weekly at 10 MB retaining 8. All use `copytruncate` so running processes keep their open file handles. GPS tracks, CSV exports and `victims/victims.jsonl` fall outside logrotate; for GPS tracks a `find -mtime +90 -delete` cron line is documented but not installed by `install.sh`, and victim marks are kept until deleted by hand.
 
-Two housekeeping defects are worth recording. The systemd unit advertises `Documentation=file:///opt/robot/docs`, and until this document was written that directory was empty. The logrotate policy also names `watchdog.log`, `fault.log`, and `session.log`, which no current code writes — the policy anticipates logs the implementation does not yet produce.
+Two housekeeping defects are worth recording. The systemd unit advertises `Documentation=file:///opt/robot/docs`, and until this document was written that directory was empty. The logrotate policy once named `watchdog.log`, `fault.log` and `session.log`, which no code writes, so the real logs were never rotated; since 2026-10-08 it names exactly the files the code opens.
 
 ---
 
@@ -490,7 +496,7 @@ Two housekeeping defects are worth recording. The systemd unit advertises `Docum
 
 **Latency** is budgeted at every hop: sensor to telemetry at most 200 ms, telemetry to render one broadcast period, keypress to motor a validation pass plus UART transit. The 200 ms cadence, the 5 ms serial poll, and the absolute-scheduled broadcast loop all exist to keep the operator's perception of the vehicle current.
 
-**Testability** is achieved through the mock hardware layer, which decouples the entire stack from physical hardware. Fifty tests exercise the protocol parser, the validation pipeline, ring-buffer wraparound and replay, mission-state derivation, and the emulated dead-man — with boundary cases pinned deliberately: `STOP` at 3,001 ms but not at exactly 3,000 ms.
+**Testability** is achieved through the mock hardware layer, which decouples the entire stack from physical hardware. The suite (146 tests on 2026-10-30, `TEST_REPORT.md` §3) exercises the protocol parser, the validation pipeline, ring-buffer wraparound and replay, mission-state derivation, controller access, talk-back, victim marks and the emulated dead-man — with boundary cases pinned deliberately: `STOP` at 3,001 ms but not at exactly 3,000 ms.
 
 **Modifiability** follows from the narrow protocol contract. A new sensor requires a coordinated change to three mirror files and nothing else. The corresponding weakness is that the mirroring is manual.
 
@@ -509,7 +515,7 @@ The methodology's two source documents disagreed in several places. The implemen
 
 Three further decisions are visible only in the code and are recorded here for the first time.
 
-**Hook-owned state rather than context providers.** The plan specified context providers per state slice; the implementation uses a single hook with prop threading and leaves `src/context/` empty. For ten components the simpler structure is defensible and arguably preferable — data flow is explicit at every call site. The empty directory should be deleted.
+**Hook-owned state rather than context providers.** The plan specified context providers per state slice; the implementation uses a single hook with prop threading and leaves `src/context/` empty. For a dashboard of this size the simpler structure is defensible and arguably preferable — data flow is explicit at every call site. The empty directory has since been removed.
 
 **No reconnection on the video path.** The control socket reconnects indefinitely; the WebRTC path attempts negotiation once. This asymmetry is intentional: control is safety-critical and must self-heal, while video is a capability whose loss should be surfaced to the operator as a decision.
 
@@ -521,12 +527,13 @@ Recorded plainly, as the architecture's own account of where it is incomplete:
 
 1. **Protocol mirroring is manual.** Three files must change together with no compiler enforcement. Code generation from a single source would eliminate an entire class of silent defect.
 2. **Test coverage is uneven.** The protocol, validator, ring buffer, and mission-state logic are well covered. `SerialBridge`, `WebSocketHub`, `TelemetryLog`, `ProcessLock`, and `SupervisedProcess` have no direct tests, `GPSReader` is tested only for its track filtering (not NMEA parsing), and there is no JavaScript test runner configured — `package.json` provides only `oxlint`.
-3. **No real-hardware bring-up has been performed.** The firmware compiles cleanly and the protocol is exercised end-to-end against the emulator, but no flash-and-drive test on the assembled vehicle has been carried out. This is the single largest outstanding validation gap.
+3. **Hardware validation is partial.** The firmware runs on the assembled robot, and the dead-man stop, process recovery, media CPU cost and GPS drift have been measured there (paper Section 5). Wheel-stop timing, control latency over Wi-Fi, media delay and quality, and a full field run have not; `TEST_REPORT.md` §4–8 tracks them.
 4. **P3 is a single point of supervision failure.** If P3 dies, systemd restarts it and it adopts the surviving orphans — but during that window nothing is watching P1 and P2.
 5. **Controller authentication is a shared key over plain HTTP.** A dashboard must present `CONTROLLER_KEY` to drive, stop or talk (A.3, Driver 6), but the key travels unencrypted over `ws://` and `http://`, so anyone who can capture Wi-Fi traffic can read it; confidentiality rests on WPA2/WPA3 at the link layer. A short key (a few digits) is easy to guess, so the 5-tries/5-minute lockout is what makes guessing slow (about 17 hours to try all 1,000 three-digit keys against one service); P1 and P2 count failures separately and in memory, so a restart clears them. There is one key, not per-operator accounts, and logs identify a controller only by IP address.
-6. **The logrotate policy names logs no code writes**, and the empty `src/context/` directory implies a structure that does not exist. Both are housekeeping defects that mislead a reader of the deployment configuration.
+6. **Housekeeping.** The systemd unit waits for `dev-ttyUSB0.device` while the UNO enumerates as `/dev/ttyACM0`; the GPS-track clean-up cron is documented but not installed; `victims/victims.jsonl` is never rotated or pruned. (The logrotate file names and the empty `src/context/` directory recorded here earlier have been fixed.)
 7. **Talk-to-victim is only partly tested on hardware and needs a secure context.** Both audio directions work on the robot, but operator video, images and text have not been shown on a physical display. Mic/camera capture on the operator laptop requires HTTPS or a per-laptop Chrome flag, and a VNC viewer left open can switch the display to VNC mode by accident (Section A.11).
 8. **The Wi-Fi warning uses robot-side signal strength only, with provisional thresholds.** Since 2026-10-28 the dashboard shows the robot's RSSI as bars and a percentage, warns at −70 and −80 dBm, and shows NO SIGNAL when telemetry stops (A.5.5). The signal is what the robot hears; the laptop's side of the link can be weaker, and a wall or door can drop the link faster than any warning — the 1 s staleness check and the Arduino dead-man cover that case. The −70/−80 dBm thresholds are not yet calibrated: the distance sweep that relates RSSI to loss and latency has not been run.
+9. **The victim-finding tools are not evaluated (A.12).** The AI was trained on everyday photos and will miss people lying down, covered, in dust or in the dark; its accuracy on such scenes, the 10 dB reply threshold and the load on the operator laptop have not been measured. Snapshots live only on the device that took them, so a laptop lost or wiped before they are copied off loses them.
 
 ---
 
@@ -609,6 +616,43 @@ Six decisions shape the feature.
 The kiosk plays through the desktop session's default PipeWire sink, so that default must be the 3.5 mm jack (`bcm2835 Headphones`). On the robot it had been saved as the HDMI output and only fell back to the jack because no HDMI audio sink was present; attaching an HDMI display with audio would have moved the operator's voice off the speaker. It is now set with `wpctl set-default <jack sink id>`, which WirePlumber keeps across reboots.
 
 Two constraints remain. Browsers expose the microphone and camera only in a secure context, and the dashboard is served over plain HTTP at `<pi-ip>:8080`; until it is served over HTTPS, each operator laptop's Chrome must list that origin under `chrome://flags/#unsafely-treat-insecure-origin-as-secure`. The origin must match the address bar exactly (scheme, IP and port). Where the flags page is ignored, as on a managed browser, starting Chrome with `--unsafely-treat-insecure-origin-as-secure=<origin> --user-data-dir=<dir>` works, and `isSecureContext` in the console confirms it. Firefox and Safari have no supported equivalent, so the operator browser for talking is Chrome or Edge. Images and text messages need no secure context and work regardless, and the panel says so. And the operator-to-robot video adds roughly 300 kbps to the Wi-Fi budget when the camera is on — within capacity, but it should be measured alongside the existing 500 kbps downstream stream.
+
+---
+
+## **A.12  Victim-Finding Tools**
+
+**Status: implemented; unit-tested on the robot side, not evaluated.** Three tools help the operator notice a person and record where they are: AI person detection on the video, a recorded call-out with a reply cue, and victim marks. They help the operator look; they never act on the motors and never confirm that someone is there.
+
+| **Element** | **Implementation** |
+| --- | --- |
+| Dashboard `usePersonDetection()` | MediaPipe Tasks Vision 0.10.21 `ObjectDetector` with `efficientdet_lite0.tflite` (4.6 MB, COCO-trained), `categoryAllowlist: ['person']`, score threshold 0.4, at most 5 boxes, CPU delegate, `VIDEO` running mode on the received `<video>`; at most 5 Hz; "possible person" after 3 frames in a row with a person, cleared after 5 without; on/off remembered in `localStorage` |
+| Dashboard `VideoSurface` / `drawPersonBoxes` | Overlay canvas scaled to the `object-contain` picture; boxes red at ≥ 0.7, orange below; *POSSIBLE PERSON* badge; *AI: on / off / loading / error* toggle; a standing reminder that the AI can miss victims |
+| Dashboard `App` | At most one "AI: possible person in view" alert per 30 s, on the rising edge only |
+| Dashboard `useTalkback().callOut()` | Fetches `audio/callout-en.mp3`, decodes it with Web Audio and puts a `MediaStreamDestination` track on the talk audio sender with `replaceTrack`; restores the mic track when the clip ends; reports `talking` in `media_state` meanwhile, so P2 treats it as speech and floor rules apply |
+| Dashboard `useSoundLevel()` | RMS of the robot audio track (2048-sample analyser, every 100 ms) in dBFS, floor −80; meter redrawn at most every 250 ms, showing the loudest sample since the last redraw; works while the robot mic is muted on the laptop |
+| Dashboard `useReplyListener()` | Baseline = median of the 2 s before the call-out; for 10 s after it, a rise of ≥ 10 dB raises "sound after call-out"; nothing judged while the clip plays |
+| Dashboard `MarkVictimButton` | Captures the frame (with boxes) as JPEG when the form opens; sends note + AI score; then `saveVictimToDevice()` |
+| Dashboard `lib/saveVictim.ts` | Snapshot kept in IndexedDB (`robot-victims` / `snapshots`) and as an object URL; downloads `victim-<id>.jpg` and a plain-text `victim-<id>.txt`; manual download links as a fallback |
+| Dashboard `VictimList`, `MapPanel` | Every mark, newest first; red **+** on the map, faded when placed at the last known point |
+| P1 `victim_log.py` | `VictimLog.add()` / `list()`, append-only JSON lines under a lock; id = local time + 4 hex digits |
+| P1 `main.py` | `GET /api/victims`; `POST /api/victims` (body ≤ 16 KiB via `read_body_limited()`, controller key in `X-Controller-Key` checked by the same `KeyGate` as driving, note ≤ 280 characters); `VICTIM_MARK` event logged; `victim_mark` broadcast |
+| `scripts/copy-mediapipe.mjs` | `predev` / `prebuild` step that copies MediaPipe's WASM runtime into `public/mediapipe/wasm`, so no CDN is needed in the field |
+
+***Table A.12 — Implementation by Component***
+
+Five decisions shape the feature.
+
+**Inference runs on the operator's laptop, not the Pi.** P2 already uses about 63 % of one core for one media session (paper Section 5.5), so there is no room for a detector on the Pi without hurting video. The laptop has the decoded frames anyway. The cost is that the detector shares the browser's main thread with the drive and stop buttons, so the hook times every inference, waits at least twice the last inference time before the next one, and turns itself off with a message if five frames average more than 150 ms. The controls must stay responsive; the AI is the part that gives way.
+
+**CPU delegate only.** In headless Chromium on the Pi the GPU delegate loaded without error but returned no detections on two photos of a person, where the CPU delegate scored 0.95 and 0.98 — so the AI showed "on" and never drew a box. Empty results never throw, so a GPU-first fallback could not catch it. That test ran on a software renderer and was not repeated on a laptop's real GPU. WebGL is still required (MediaPipe uses it even with the CPU delegate), and its absence is reported before the model loads.
+
+**The call-out is speech, not a new path.** Putting the decoded clip on the existing talk sender means P2, the floor and the Robot Screen need no change, and the call-out works without HTTPS because it never opens the laptop mic. Push-to-talk and the call-out exclude each other.
+
+**The robot keeps the record; the laptop keeps the picture.** The mark (note, P1's own GPS and servo angles, AI score) lives on the robot so it survives a reload or a laptop crash and stays with the mission logs, and every dashboard sees it. P1 never takes position or angles from the browser. The snapshot, an image of an identifiable person, is never sent to the robot: it stays in the browser that took it and in its Downloads folder. Automatic downloads alone proved unreliable in the operator's real Chrome, hence the IndexedDB copy and the manual links.
+
+**The size limit comes before everything else.** `read_body_limited()` refuses an oversized body on its `Content-Length`, or while streaming one with no or a false length, before the key check and before JSON parsing, because a multi-megabyte parse would stall P1's event loop — telemetry and the heartbeat path with it — for every dashboard.
+
+Constraints that remain: detection accuracy on disaster-like scenes has not been measured; the 10 dB reply threshold is a first guess; the call-out clip must be recorded and installed by the team (`dashboard/public/audio/callout-en.mp3`) and is not in the repository; and snapshots exist only on the device that took them.
 
 ---
 

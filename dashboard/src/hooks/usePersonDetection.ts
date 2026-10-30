@@ -63,30 +63,21 @@ function webglRenderer(): string | null {
 }
 
 async function createDetector(): Promise<ObjectDetector> {
-  const renderer = webglRenderer();
-  if (renderer === null) throw new Error('AI needs WebGL, which this browser has turned off or lacks');
-  // On a software renderer the GPU delegate compiles its shaders on the page's
-  // main thread for minutes, freezing the controls; the CPU delegate doesn't.
-  const softwareGl = /swiftshader|llvmpipe|software/i.test(renderer);
+  if (webglRenderer() === null) throw new Error('AI needs WebGL, which this browser has turned off or lacks');
 
   // Loaded on first use: it is most of the dashboard's size.
   const { FilesetResolver, ObjectDetector } = await import('@mediapipe/tasks-vision');
   const fileset = await FilesetResolver.forVisionTasks(WASM_PATH);
-  const options = (delegate: 'GPU' | 'CPU') => ({
-    baseOptions: { modelAssetPath: MODEL_PATH, delegate },
-    runningMode: 'VIDEO' as const,
+  // CPU only. The GPU delegate loads without error but returns no detections
+  // (tested: CPU 0.95 and 0.98 on two photos of a person, GPU nothing), so the
+  // AI showed "on" and never drew a box. A slow CPU is caught by SLOW_FRAME_MS.
+  return ObjectDetector.createFromOptions(fileset, {
+    baseOptions: { modelAssetPath: MODEL_PATH, delegate: 'CPU' },
+    runningMode: 'VIDEO',
     scoreThreshold: SCORE_THRESHOLD,
     maxResults: 5,
     categoryAllowlist: ['person'],
   });
-  if (!softwareGl) {
-    try {
-      return await ObjectDetector.createFromOptions(fileset, options('GPU'));
-    } catch {
-      // GPU delegate unavailable: fall through to the slower CPU one.
-    }
-  }
-  return ObjectDetector.createFromOptions(fileset, options('CPU'));
 }
 
 /**

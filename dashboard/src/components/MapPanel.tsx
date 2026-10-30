@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Polyline, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import type { TelemetrySnapshot, VictimMark } from '../lib/protocol';
-import { fetchGpsTrack, victimSnapshotUrl } from '../lib/api';
+import { fetchGpsTrack } from '../lib/api';
+import { localSnapshotUrl, useLocalSnapshots } from '../lib/saveVictim';
 import { OfflineMapLayer } from './OfflineMapLayer';
 import { LocateRobotButton } from './LocateRobotButton';
 
@@ -38,6 +39,7 @@ const MIN_TRACK_STEP_M = 10;
 
 export function MapPanel(props: { telemetry: TelemetrySnapshot | null; victims: VictimMark[] }) {
   const t = props.telemetry;
+  useLocalSnapshots();
   const [recoveredTrack, setRecoveredTrack] = useState<[number, number][]>([]);
   const [liveTrack, setLiveTrack] = useState<[number, number][]>([]);
 
@@ -95,10 +97,10 @@ export function MapPanel(props: { telemetry: TelemetrySnapshot | null; victims: 
                   <i>No GPS fix: last known robot position</i>
                 </>
               )}
-              {m.snapshot && (
+              {localSnapshotUrl(m.id) && (
                 <>
                   <br />
-                  <a href={victimSnapshotUrl(m.id)} target="_blank" rel="noreferrer">
+                  <a href={localSnapshotUrl(m.id)!} target="_blank" rel="noreferrer">
                     snapshot
                   </a>
                 </>

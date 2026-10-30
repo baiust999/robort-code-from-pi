@@ -14,8 +14,6 @@ Exit codes are meaningful to the P3 watchdog (Section 8.8.3.2):
 from __future__ import annotations
 
 import asyncio
-import base64
-import binascii
 import contextlib
 import json
 import os
@@ -32,7 +30,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ValidationError
 
@@ -45,7 +43,7 @@ from p1_control.ring_buffer import RingBuffer
 from p1_control.safety import CommandValidator
 from p1_control.serial_bridge import HandshakeError, SerialBridge
 from p1_control.telemetry_log import TelemetryLog
-from p1_control.victim_log import JPEG_MAGIC, NOTE_MAX, SNAPSHOT_MAX_BYTES, VictimLog
+from p1_control.victim_log import NOTE_MAX, VictimLog
 from p1_control.websocket_hub import Client, WebSocketHub
 
 EXIT_LOCK_HELD = 0
@@ -65,11 +63,21 @@ CONTROLLER_KEY_HEADER = "X-Controller-Key"
 class VictimMarkRequest(BaseModel):
     note: str = ""
     ai_score: float | None = None
-    snapshot_b64: str | None = None
 
 
-# A base64 snapshot at the size limit plus the note and JSON around it.
-VICTIM_BODY_MAX_BYTES = SNAPSHOT_MAX_BYTES * 4 // 3 + 16_384
+# The note and the JSON around it; snapshots stay on the operator's device.
+VICTIM_BODY_MAX_BYTES = 16_384
+
+
+class DashboardFiles(StaticFiles):
+    """The dashboard bundle. Its HTML is revalidated on every load, so a
+    browser picks up a new build at once; the hashed assets stay cacheable."""
+
+    async def get_response(self, path: str, scope: Any) -> Any:
+        response = await super().get_response(path, scope)
+        if response.media_type == "text/html":
+            response.headers["Cache-Control"] = "no-cache"
+        return response
 
 
 async def read_body_limited(
@@ -349,25 +357,12 @@ class ControlServer:
         """Store a victim mark from the controller and tell every dashboard.
 
         Position and servo angles are P1's own readings at the moment of the
-        mark, not values the browser sends.
+        mark, not values the browser sends. No snapshot is stored here.
         """
         if self.gate.check(host, key) != access.OK:
             raise HTTPException(status_code=403, detail="controller key required")
         if len(body.note) > NOTE_MAX:
             raise HTTPException(status_code=400, detail=f"note longer than {NOTE_MAX} characters")
-        snapshot: bytes | None = None
-        if body.snapshot_b64:
-            if len(body.snapshot_b64) > SNAPSHOT_MAX_BYTES * 4 // 3 + 4:
-                raise HTTPException(status_code=400, detail="snapshot too large")
-            try:
-                snapshot = base64.b64decode(body.snapshot_b64, validate=True)
-            except (binascii.Error, ValueError):
-                raise HTTPException(status_code=400, detail="snapshot is not base64") from None
-            if len(snapshot) > SNAPSHOT_MAX_BYTES:
-                raise HTTPException(status_code=400, detail="snapshot too large")
-            if not snapshot.startswith(JPEG_MAGIC):
-                raise HTTPException(status_code=400, detail="snapshot is not a JPEG")
-
         gps = self.gps.snapshot()
         track = self.gps.track_points()
         fix = bool(gps.get("gps_fix"))
@@ -382,7 +377,7 @@ class ControlServer:
             "tilt_angle": self._latest_frame.get("tilt_angle"),
             "ai_score": body.ai_score,
         }
-        mark = self.victims.add(body.note.strip(), snapshot, fields)
+        mark = self.victims.add(body.note.strip(), fields)
         self.log.info(
             "VICTIM_MARK", "operator marked a victim",
             id=mark["id"], gps_fix=fix, lat=fields["lat"], lon=fields["lon"],
@@ -476,13 +471,6 @@ def create_app(server: ControlServer) -> FastAPI:
         host = request.client.host if request.client else "unknown"
         return await server.add_victim(host, request.headers.get(CONTROLLER_KEY_HEADER), body)
 
-    @app.get("/api/victims/{mark_id}.jpg")
-    async def victim_snapshot(mark_id: str) -> FileResponse:
-        path = server.victims.snapshot_path(mark_id)
-        if path is None:
-            raise HTTPException(status_code=404, detail="no such snapshot")
-        return FileResponse(path, media_type="image/jpeg")
-
     @app.websocket(protocol.WS_PATH)
     async def control_ws(socket: WebSocket) -> None:
         client = await server.hub.register(socket)
@@ -536,7 +524,7 @@ def create_app(server: ControlServer) -> FastAPI:
     if server.config.static_dir is not None:
         app.mount(
             "/",
-            StaticFiles(directory=str(server.config.static_dir), html=True),
+            DashboardFiles(directory=str(server.config.static_dir), html=True),
             name="dashboard",
         )
     else:

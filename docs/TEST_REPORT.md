@@ -22,7 +22,7 @@ turns the CSVs into the aggregate tables the paper's Section 5 needs.
 
 | Area | Covered by |
 |---|---|
-| Pi software logic (validation, parsing, mission state, buffering, talkback) | Automated unit tests (Section 3) |
+| Pi software logic (validation, parsing, mission state, buffering, talkback, victim marks) | Automated unit tests (Section 3) |
 | Arduino firmware and safety | Hardware tests (Section 4) |
 | Dashboard and operator controls | Integration tests (Section 5) |
 | Wi-Fi network range and performance | Network tests (Section 6) |
@@ -98,6 +98,31 @@ after NO SIGNAL -> stays amber (3 dB hysteresis); -60 dBm -> green again;
 frames stopped with the socket still open -> NO SIGNAL within about 1 s.
 These are software checks; the on-robot tests are I20-I22 and N1-N5 below.
 
+**Addendum, 2026-10-30 (victim-finding tools).** `test_victim_log.py`
+(16 tests) was added with the victim-finding tools: marks round-trip
+through `victims.jsonl` and nothing else is written there; the list is
+empty before the first mark; a corrupt line is skipped; a mark is stamped
+with P1's own GPS fix, satellite count and servo angles and broadcast as
+`victim_mark`; without a fix, `lat`/`lon` are null and the last track point
+is kept; no key, an empty key or a wrong key gets 403 and stores nothing
+(3 parametrised cases); a note over 280 characters gets 400; the body
+limit returns small bodies, refuses an oversized body on its declared
+length, while streaming a chunked body, and when the length header lies
+(3 cases), refuses a non-numeric length with 400, and still fits a full
+280-character note; a snapshot sent anyway is not stored. Full suite on
+2026-10-30 (same command): **146 passed, 0 failed (5.0 s)** = the 130
+above plus these 16; output in
+`research-analysis/output/rerun_full_venv_2026-10-30.txt`.
+
+The dashboard side has no automated tests (no JavaScript test runner is
+configured); on 2026-10-30 it type-checked cleanly (`tsc --noEmit`) and
+`oxlint` reported no errors. One functional check of the detector was
+made on 2026-10-29 in headless Chromium on the Pi, with the bundled model
+and the dashboard's options: on two photos of a person the CPU delegate
+scored 0.95 and 0.98 and the GPU delegate returned nothing (Issue 4).
+That is not an accuracy measurement; I23-I27 below and the field test
+cover the tools on the robot.
+
 **Limitation:** these tests use simulated hardware. They prove the software
 logic, not the real motors, sensors or radio link, which are covered in the
 sections below.
@@ -160,6 +185,11 @@ ending: Newline), or test through the dashboard where noted.
 | I21 | Weak-signal warning | Drive (or carry) the robot away from the router until the signal passes -70 dBm, then -80 dBm; come back. | Amber banner at -70 dBm, red at -80 dBm, each logged in Alerts; both clear on the way back. | | | |
 | I22 | NO SIGNAL | While connected, stop P1 (`sudo pkill -f p1_control`) or switch off the router. | Within about 1 s the bars turn grey and show `NO SIGNAL` with a red banner; the old value is not shown. | | | |
 | I19 | Robot audio | Click **Listen** and speak near the robot for a minute. | Voice is heard clearly on the dashboard, without dropouts, and stays in step with the video. | | | |
+| I23 | AI person detection | With "AI: on", have a person stand, sit, then lie down at 1, 3 and 5 m from the camera, in good and dim light. Then point the camera at an empty room for 2 minutes. | Note for each pose/distance/light whether a box appears and its %; *POSSIBLE PERSON* shows within about 1 s of a clear view; count false boxes in the empty room. | | | |
+| I24 | AI does not slow the controls | With AI on, drive and press EMERGENCY STOP on the slowest laptop that will be used. | No noticeable lag; if the laptop is too slow, AI switches itself off with a message. | | | |
+| I25 | Call out | Click **📢 Call out** with the clip installed. | Message heard clearly from the robot speaker; meter shows *(speaker playing)*, then *Listening for a reply…* for 10 s. | | | |
+| I26 | Reply cue | After a call-out, a person 2 m and 5 m from the robot knocks three times, then shouts; repeat once with nobody responding. | "sound after call-out" in Alerts for the knock/shout; record the dB rise shown; no alert when nobody responds (note background noise). | | | |
+| I27 | Mark victim | Click **📍 Mark victim here**, type a note, Save; then reload the page; then open a second (observer) dashboard. | Mark in *Victims found* and on the map (faded + without GPS); `victim-<id>.jpg` and `.txt` in Downloads; after reload the mark and its snapshot link are still there; the observer sees the mark but no snapshot and cannot mark; `victims/victims.jsonl` on the Pi has the mark and no image. | | | |
 
 ---
 
@@ -213,14 +243,22 @@ Run one complete simulated rescue:
 2. Drive the robot through a course with at least one obstacle and one turn
    to a "victim" (a person or mannequin).
 3. Use pan/tilt to find the victim on video.
-4. Talk to the victim, show an image and send a text message.
-5. Record the sensor readings and GPS position at the victim.
-6. Drive back to the start.
+4. Before the victim is in view, use **📢 Call out** and note whether the
+   reply cue fires; note when the AI first boxes the victim and when the
+   operator first sees them.
+5. Talk to the victim, show an image and send a text message.
+6. **Mark victim here** with a note; record the sensor readings and GPS
+   position at the victim, and compare the mark's position with the
+   victim's true position.
+7. Drive back to the start.
 
 | Measurement | Result |
 |---|---|
 | Course length / description | |
 | Time to reach the victim | |
+| Call-out reply cue fired? (rise in dB) | |
+| AI first box vs operator first sighting (s) | |
+| Victim-mark position error (m), or "no fix" | |
 | Number of collisions | |
 | Number of unplanned stops | |
 | Could the victim hear and see the operator clearly? | |
@@ -239,6 +277,8 @@ List every failure or unexpected behaviour found during testing.
 | 1 | I19 | Robot audio on the dashboard was choppy: P2 sent only ~75 % of the mic audio (305 of ~400 packets in 8 s, none lost on the network). aiortc encoded each 20 ms frame on a thread pool shared with every viewer's video encoding, which the busy Pi could not keep up with. | High | Yes, 2026-09-28 | The mic track now encodes its own 60 ms Opus packets; measured 99 % of real time afterwards (165 × 60 ms in 10 s). |
 | 2 | I19 | A dashboard stayed silent until reloaded if the mic could not be opened when it connected. The USB webcam/mic was seen dropping off USB and re-enumerating when P2 reopened it. | Medium | Yes, 2026-09-28 | Each session's mic track retries every 2 s and switches to the mic when it returns (`MIC_OPEN_FAIL` / `MIC_RESTORED` in `p2_events.log`). |
 | 3 | — | P2 crashed with a segmentation fault (exit -11), every 1–2 minutes once two dashboards were watching (13 crashes on 2026-09-28); P3 restarted it after ~10 s each time, dropping the video. | High | Yes, 2026-09-28 | Every `faulthandler` trace showed two VP8 encoder threads at once. The camera's YUYV frames were one object shared by all sessions, and each encoder converted it with `frame.reformat()`, which PyAV runs through a converter cached on the frame with the GIL released. Reproduced off the robot: two encoders on shared YUYV frames segfaulted 3/3 runs; with each session given its own yuv420p copy (`PrivateVideoTrack`), 3/3 runs of 1,500 frame pairs completed. |
+| 4 | — | AI person detection showed "AI: on" but never drew a box. The MediaPipe GPU delegate loaded without error but returned no detections (headless Chromium test on 2026-10-29: two person photos, GPU nothing, CPU 0.95 and 0.98); empty results never throw, so the GPU-to-CPU fallback never ran. | High | Yes, 2026-10-29 | Detector now always uses the CPU delegate; slow laptops are caught by the 150 ms auto-off. GPU test ran on a software renderer, not a laptop GPU. |
+| 5 | I27 | Victim photo and details did not reach Downloads in the operator's own Chrome; a headless test that allows downloads could not show this. | Medium | Mitigated, 2026-10-30 | The snapshot is now also kept in the browser (IndexedDB) and "download photo / details" links are shown; recheck with I27. |
 
 ---
 
@@ -246,9 +286,9 @@ List every failure or unexpected behaviour found during testing.
 
 | Area | Tests | Passed | Failed | Not run |
 |---|---|---|---|---|
-| Unit tests | 130 | 130 | 0 | 0 |
+| Unit tests | 146 | 146 | 0 | 0 |
 | Hardware | 15 | | | |
-| Integration | 24 | | | |
+| Integration | 33 | | | |
 | Network | 8 | | | |
 | Failure / recovery | 10 | | | |
 | Field test | 1 | | | |

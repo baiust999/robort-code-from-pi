@@ -27,6 +27,10 @@ Work through this list before the robot is sent in.
       name stays the same on every Wi-Fi network, so the flag only has to
       be set once, even when the robot moves. Without it, video from the
       robot, images and text messages still work.
+- [ ] Chrome's *Use graphics acceleration* is on (Settings → System). AI
+      person detection needs it.
+- [ ] The **📢 Call out** button does not say *"No call-out clip
+      installed"* (see [Call out and listen](#call-out-and-listen)).
 
 ---
 
@@ -283,7 +287,9 @@ you look; **you** decide. Keep watching the video yourself.
 While video is on, the dashboard looks for people in the picture. This runs
 on your laptop, not on the robot.
 
-- A red box labelled **Person 87%** appears around anyone it sees.
+- A box labelled **Person 87%** appears around anyone it sees: red when
+  the AI is fairly sure (70 % or more), orange when it is less sure. Take
+  a closer look at orange boxes.
 - **POSSIBLE PERSON** flashes at the top left once someone has been seen
   in several frames in a row. The Alerts log notes it (at most once every
   30 s).
@@ -294,7 +300,7 @@ on your laptop, not on the robot.
 on someone who is lying down, partly buried, covered in dust, in the dark,
 or far away. No box doesn't mean no one is there.
 
-If a yellow line under the video says *"AI turned off: too slow on this
+If an amber line under the video says *"AI turned off: too slow on this
 computer"*, the laptop can't run it without slowing the drive and stop
 buttons, so it switched itself off. *"AI needs WebGL"* means the browser's
 graphics acceleration is off; turn on *Use graphics acceleration* in
@@ -336,15 +342,26 @@ When you find someone, click **📍 Mark victim here** under the video.
    note is often the most useful part.
 3. Click **Save**.
 
-The robot stores the mark with its own GPS position, the camera angles,
-the time and the snapshot. Every connected dashboard then shows it:
+The robot stores the mark with its own GPS position, the camera angles
+and the time. The snapshot is **not** sent to the robot. It is kept in
+this browser on your laptop, and the browser also downloads it as
+`victim-<id>.jpg`, together with `victim-<id>.txt` holding the same
+details. If no files appear in Downloads, click **download photo** and
+**download details** under the message. If Chrome asks whether to allow
+several downloads, or warns about the download, click **Allow** or
+**Keep**. Every connected dashboard then shows the mark:
 
-- in **Victims found** on the right, with a **snapshot** link;
+- in **Victims found** on the right. **snapshot** and **save photo**
+  appear only in the browser that took the photo, also after a reload;
+  **save details** downloads the text file;
 - on the map as a red **+**. A faded **+** means there was no GPS fix and
   it sits at the robot's last known position.
 
-Only the controller can save marks. Marks are kept on the robot, so they
-survive reloading the page or a laptop crash.
+Only the controller can save marks. The marks are kept on the robot, so
+they survive reloading the page or a laptop crash. The snapshots are only
+on your laptop, in this browser and in Downloads, so copy them off before
+you hand the device back. Clearing the browser's site data deletes the
+copy in the browser.
 
 ---
 
@@ -382,5 +399,6 @@ survive reloading the page or a laptop crash.
    click **Forget key** first.
 4. Power off the robot and charge the battery.
 5. Save the mission logs if needed. They are on the Pi in `/var/log/robot/`,
-   and include telemetry, the GPS track, and the victim marks with their
-   snapshots (`victims/`).
+   and include telemetry, the GPS track, and the victim marks (`victims/`).
+   The victim snapshots are not on the Pi; they are in the Downloads folder
+   of the device that marked them.

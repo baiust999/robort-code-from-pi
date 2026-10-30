@@ -50,12 +50,10 @@ export const fetchGpsTrack = () => getJson<GpsTrackResponse>(`${P1_HTTP_BASE}/ap
 
 export const fetchVictims = () => getJson<{ marks: VictimMark[] }>(`${P1_HTTP_BASE}/api/victims`);
 
-export const victimSnapshotUrl = (id: string) => `${P1_HTTP_BASE}/api/victims/${id}.jpg`;
-
-/** Only the controller key may mark; P1 stamps position and servo angles itself. */
+/** Only the controller key may mark; P1 stamps position and servo angles itself. The snapshot stays on this device. */
 export async function postVictim(
   key: string | null,
-  body: { note: string; ai_score: number | null; snapshot_b64: string | null },
+  body: { note: string; ai_score: number | null },
 ): Promise<VictimMark> {
   const resp = await fetch(`${P1_HTTP_BASE}/api/victims`, {
     method: 'POST',

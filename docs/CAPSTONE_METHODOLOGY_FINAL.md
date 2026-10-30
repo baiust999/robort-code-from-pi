@@ -182,6 +182,9 @@ SUBSYSTEM 1: OPERATOR CONTROL
 ├─ Audio: robot mic (listen toggle); push-to-talk to the victim
 ├─ Talk-to-victim: operator voice, face (laptop camera), image or
 │  screen share, and text messages shown on the robot display
+├─ Victim finding: AI person detection on the video (runs on the
+│  laptop), call-out message + robot-mic level meter and reply cue,
+│  "Mark victim here" (marks on the robot, snapshot on the laptop)
 └─ Mission state: READY / DRIVING / DRIVING_LIMITED / STOP
 
 SUBSYSTEM 2: LOCAL WI-FI NETWORK
@@ -398,6 +401,7 @@ as child processes and supervises them.
 | Telemetry broadcast | Every 200 ms, to all WebSocket clients |
 | Ring buffer | 300 snapshots (60 s at 200 ms), in memory |
 | Disk log | `telemetry.log` CSV at 1 Hz |
+| Victim marks | `victims/victims.jsonl`, one JSON line per mark (Section 19.4) |
 | Health endpoint | `GET /health` (JSON) |
 | Supervision | P3 |
 
@@ -813,6 +817,19 @@ P1 turns these into serial commands: `motor` → `F/R/L/G<speed>`,
 
 // Rejection
 {"type": "error", "code": "rejected", "message": "observer role cannot send commands"}
+
+// Victim marked (broadcast to every dashboard, Section 19.4)
+{
+  "type": "victim_mark",
+  "mark": {
+    "id": "20261030-061502-3fa9", "ts": 1793355302113,
+    "note": "2nd room, under the table, responding",
+    "lat": null, "lon": null, "gps_fix": false, "gps_sats": 0,
+    "last_fix": [23.4540, 91.2030],   // last track point, used without a fix
+    "pan_angle": 120, "tilt_angle": 80,
+    "ai_score": 0.87                   // null if the AI saw no one
+  }
+}
 ```
 
 P1 broadcasts every 200 ms from the **latest** Arduino frame, so with the
@@ -945,6 +962,9 @@ Robot Screen (on the Pi, after desktop login):
 | `/api/ice-config` | GET | ICE server configuration (rate-limited, 5 per minute per client) | 200 JSON, or 429 |
 | `/api/session` | GET | Session id, mock flag, thresholds, cadences | 200 JSON |
 | `/api/gps-track` | GET | GPS track of this P1 session | 200, GeoJSON `LineString` |
+| `/api/controller` | GET | Host of the current controller, for P2's talk check (localhost only) | 200 JSON, or 403 |
+| `/api/victims` | GET | All victim marks, oldest first | 200, JSON `{marks: [...]}` |
+| `/api/victims` | POST | Add a victim mark: JSON `{note, ai_score}`, header `X-Controller-Key`; P1 adds GPS and servo angles itself | 200 mark; 400 bad body or note > 280 chars; 403 no/wrong key; 413 body > 16 KiB |
 | `/maps/<file>` | GET | Offline map files from `MAP_DIR` (only when that folder exists); supports HTTP range requests | 200 / 206, or 404 |
 | `/control/ws` | WS | Control WebSocket | 101 Switching Protocols |
 | `/` | GET | Built dashboard (static files) | 200 HTML |
@@ -1027,8 +1047,8 @@ Layer 1: Arduino
 | Layer | Runs on | Language | Main frameworks | Main modules |
 |---|---|---|---|---|
 | Firmware | Arduino UNO | C++ | Arduino core, no RTOS | scheduler, command_parser, motors, servos, sensors, telemetry |
-| Backend | Raspberry Pi 4 | Python 3, asyncio | FastAPI and uvicorn (P1, P2), aiortc and PyAV (P2), aiohttp (P3) | serial_bridge, safety, websocket_hub, gps_reader, signaling, talkback, supervisor |
-| Frontend | Operator browser | TypeScript | React 19, Vite, Tailwind CSS, Leaflet with PMTiles | useControlSocket, useWebrtcVideo, useTalkback, DriveControl, EmergencyStop, MapPanel |
+| Backend | Raspberry Pi 4 | Python 3, asyncio | FastAPI and uvicorn (P1, P2), aiortc and PyAV (P2), aiohttp (P3) | serial_bridge, safety, websocket_hub, gps_reader, victim_log, signaling, talkback, supervisor |
+| Frontend | Operator browser | TypeScript | React 19, Vite, Tailwind CSS, Leaflet with PMTiles, MediaPipe Tasks Vision | useControlSocket, useWebrtcVideo, useTalkback, usePersonDetection, DriveControl, EmergencyStop, MapPanel |
 
 The layers share no code and talk only through three interfaces:
 
@@ -1082,8 +1102,44 @@ Interface components (components/)
 │  AlertLog, ConnectionStatusBar ─────────────────┘   (commands, heartbeat, telemetry)
 ├─ VideoSurface, TalkPanel ───────────────────────→ useWebrtcVideo + useTalkback ──→ P2
 │                                                     (one peer connection: video, audio, data channel)
-└─ MapPanel, GpsStatusCard, OfflineMapLayer ──────→ lib/api.ts ──→ P1  HTTP
-                                                      (session, GPS track, map tiles, health)
+│    └─ usePersonDetection, useSoundLevel / useReplyListener (laptop only, read the received media)
+└─ MapPanel, GpsStatusCard, OfflineMapLayer, ──────→ lib/api.ts ──→ P1  HTTP
+   MarkVictimButton, VictimList                       (session, GPS track, map tiles, victim marks, health)
+```
+
+## 19.4 Victim-Finding Tools
+
+Three tools help the operator notice a person and record where they are.
+They are aids only: they never act on the motors, and the AI can miss
+people. Not yet evaluated (Section 40.3). Operator steps:
+`OPERATOR_MANUAL.md` §10; design: `SOFTWARE_ARCHITECTURE.md` §A.12.
+
+```
+AI person detection (dashboard, operator laptop — no work on the Pi):
+├─ MediaPipe Tasks Vision 0.10.21, EfficientDet-Lite0 (4.6 MB, COCO-trained),
+│  person class only, score ≥ 0.4, ≤ 5 boxes, CPU delegate (needs WebGL)
+├─ ≤ 5 frames/s; boxes red at ≥ 70 %, orange below
+├─ POSSIBLE PERSON after 3 frames in a row; cleared after 5 without;
+│  alert log at most once per 30 s
+├─ Turns itself off if inference averages > 150 ms (controls stay responsive)
+└─ Model and WASM runtime bundled with the dashboard: no internet needed
+
+Call out and listen:
+├─ Plays dashboard/public/audio/callout-en.mp3 (recorded by the team,
+│  not in the repository) on the talk audio track → P2 → robot speaker
+├─ Needs no HTTPS (the laptop mic is not used); excludes push-to-talk
+├─ Robot-mic level meter: RMS in dBFS every 100 ms, floor −80 dBFS
+└─ Reply cue: ≥ 10 dB above the 2 s before the call-out, within 10 s
+   after it (threshold not yet tuned)
+
+Mark victim here (controller only):
+├─ Browser → P1: note (≤ 280 chars) + AI score, POST /api/victims
+├─ P1 adds its own GPS fix / last track point and pan/tilt angles,
+│  appends to victims/victims.jsonl, broadcasts victim_mark
+├─ Every dashboard: "Victims found" list + red + on the map
+│  (faded + = no fix, at the last known position)
+└─ Snapshot (frame + AI boxes) never sent to the robot: kept in the
+   browser (IndexedDB) and downloaded as victim-<id>.jpg + .txt
 ```
 
 ---
@@ -1124,6 +1180,13 @@ WebSocket Server:
 ├─ resume_from → recovery_batch
 ├─ motor / servo / heartbeat / stop_all → validate → serial
 └─ Controller disconnects → send S immediately
+
+Victim marks (Section 19.4):
+├─ POST /api/victims: body ≤ 16 KiB (checked before parsing), controller
+│  key, note ≤ 280 chars
+├─ Stamp with P1's GPS fix, last track point, pan/tilt; append to
+│  victims/victims.jsonl; log VICTIM_MARK
+└─ Broadcast victim_mark to every WebSocket client
 
 Shutdown:
 └─ Send S, close the port, write the GPS track as GeoJSON
@@ -1418,6 +1481,11 @@ Session Track (light blue #90CAF9, weight 3):
 ├─ Loaded once when the dashboard opens: GET /api/gps-track
 └─ All positions P1 has recorded since it started (same 10 m rule)
 
+Victim markers (Section 19.4):
+├─ Red circle with a white +, one per victim mark; popup: time, note,
+│  snapshot link (only in the browser that took it)
+└─ Faded when the mark had no fix and sits at the last track point
+
 Persistence:
 └─ When P1 stops, the track is written to
    /var/log/robot/gps_track/session_<session-id>.geojson
@@ -1464,6 +1532,7 @@ only, as before.
 | `p2_events.log` | P2 | Events: WebRTC sessions, floor, display mode, device errors | Per event |
 | `p3_events.log` | P3 | Events: spawn, crash, health misses, kills | Per event |
 | `gps_track/session_<id>.geojson` | P1 | GPS track, written on P1 shutdown | Per session |
+| `victims/victims.jsonl` | P1 | Victim marks, one JSON line each (no images; snapshots stay on the operator's laptop) | Per mark |
 
 Event line format:
 
@@ -1482,12 +1551,13 @@ temp_crit, 2 gas_warn, 3 gas_crit, 4 range_warn, 5 range_crit, 7 gps_lost,
 | Files | Policy |
 |-------|--------|
 | `telemetry.log` | daily or 50 MB, keep 7, compressed |
-| `p1_events.log`, `p2_events.log` (plus `watchdog.log`, `fault.log`, which no code writes) | weekly or 10 MB, keep 8, compressed |
-| `session.log` (no code writes it) | monthly or 5 MB, keep 12 |
+| `p1_events.log`, `p2_events.log`, `p3_events.log` | weekly or 10 MB, keep 8, compressed |
 
-`p3_events.log` is not in the rotation policy, and the clean-up of old GPS
-tracks (a `find … -mtime +90 -delete` cron line in the comments) is not
-installed by `install.sh`. Both are listed in Section 40.3.
+The policy covers both layouts (`/var/log/robot` and a git checkout's
+`var/log`). Not rotated: the GPS tracks, whose clean-up (a
+`find … -mtime +90 -delete` cron line in the comments) is not installed by
+`install.sh`, and `victims/victims.jsonl`, which is kept until deleted by
+hand. Both are listed in Section 40.3.
 
 ## 28.3 Storage Estimate
 
@@ -1956,6 +2026,10 @@ OPERATOR LAPTOP:
     origin; check `isSecureContext` is true in the browser console)
   ☐ VNC viewer closed while talking to the victim (keys such as
     Alt+F4 sent through it close the kiosk)
+  ☐ Chrome "Use graphics acceleration" on (AI person detection needs
+    WebGL)
+  ☐ callout-en.mp3 installed in the dashboard build (the Call out
+    button must not say "No call-out clip installed")
   ☐ Wi-Fi adapter with 2.4 GHz support
 ```
 
@@ -1980,6 +2054,10 @@ OPERATOR LAPTOP:
    ☐ Hold Talk: voice heard from the robot speaker
    ☐ My camera and an image appear on the robot display
    ☐ Text message shown on the robot display; ✓ on the dashboard
+   ☐ "AI: on"; a person in front of the camera gets a box
+   ☐ Call out: message heard from the robot speaker; meter moves
+   ☐ Mark victim here (test mark): appears in Victims found and on the
+     map; photo and details land in Downloads
    ☐ Drive: each direction moves correctly and stops on release
    ☐ Pan/tilt sliders move the camera
    ☐ Obstacle < 20 cm → range card red (motors unaffected)
@@ -2049,7 +2127,7 @@ Each extra viewer adds another video + audio stream.
 | Crash recovery | Automatic, ~15 s | P3 (tests F3, F4) |
 | Watchdog recovery | Automatic | systemd (test F5) |
 | Reboot to operational | Unattended | Test F9 |
-| Automated tests | All pass | `pytest` in `pi/`: 69 tests passing |
+| Automated tests | All pass | `pytest` in `pi/`: 146 tests passing (2026-10-30) |
 
 No field reliability figures (uptime, packet loss, MTBF) have been
 measured yet; they belong in `TEST_REPORT.md` once the field test is run.
@@ -2086,6 +2164,14 @@ ROBOT SCREEN (victim-facing display + speaker)
   ├─ Failure: Chromium crash → launcher relaunches after 3 s
   └─ Recovery: idle screen until operator media resumes
 
+VICTIM-FINDING TOOLS (dashboard + P1 /api/victims)
+  ├─ Depends on: P2 media (AI, meter, call-out), P1 (marks), laptop
+  │  CPU + WebGL (AI)
+  ├─ Failure: AI too slow / no WebGL → AI off with a message; P2 down →
+  │  no AI, meter or call-out; P1 down → marks cannot be saved
+  └─ Recovery: marks reload from P1 on reconnect; snapshots stay in the
+     browser that took them
+
 P3 WATCHDOG
   ├─ Depends on: systemd
   ├─ Failure: crash → systemd restarts the service after 5 s
@@ -2107,13 +2193,14 @@ CRITICAL PATH (Motor Safety):
 ```
 ├─ Firmware: C++ (Arduino core), ServoTimer2Plus
 ├─ Pi: Python 3.11 — FastAPI, uvicorn, pyserial, aiortc, PyAV, aiohttp
-├─ Frontend: React 19, TypeScript, Vite, Tailwind CSS, Leaflet
+├─ Frontend: React 19, TypeScript, Vite, Tailwind CSS, Leaflet,
+│  MediaPipe Tasks Vision (person detection in the browser)
 ├─ Kiosk: Chromium in kiosk mode, bash launcher
 ├─ Network: ordinary Wi-Fi network (WPA2/WPA3)
 ├─ Supervision: systemd (P3), P3 (P1, P2)
-└─ Tests: pytest (69 tests: command validation, telemetry parsing,
+└─ Tests: pytest (146 tests: command validation, telemetry parsing,
    mission state, ring buffer, dead-man emulation, shared capture,
-   talk-back)
+   talk-back, controller access, Wi-Fi signal, victim marks)
 ```
 
 ## 40.3 Known Limitations
@@ -2133,18 +2220,25 @@ CRITICAL PATH (Motor Safety):
    download date. Everything else runs offline.
 5. **Gas is uncalibrated.** Readings and thresholds are raw ADC counts,
    labelled "ppm" on the dashboard.
-6. **No authentication.** Any host on the Wi-Fi network can open the dashboard and
-   take the controller role if it is free; security rests on the Wi-Fi
-   password.
+6. **One shared controller key over plain HTTP.** Driving, talking and
+   marking victims need `CONTROLLER_KEY` (5 wrong tries lock an address out
+   for 5 minutes), but the key travels unencrypted over `ws://` and
+   `http://`, and anyone on the Wi-Fi can watch; security rests on the
+   Wi-Fi password.
 7. **Housekeeping.** The systemd unit waits for `dev-ttyUSB0.device` while
-   the UNO is `/dev/ttyACM0`; `p3_events.log` is not rotated; logrotate
-   names logs no code writes; the GPS-track clean-up cron is not installed;
-   `VIDEO_BITRATE_KBPS` in `p2.env` is not used by P2.
+   the UNO is `/dev/ttyACM0`; the GPS-track clean-up cron is not installed;
+   `victims/victims.jsonl` is never rotated or pruned;
+   `VIDEO_BITRATE_KBPS` in `p2.env` is read but not used by P2.
 8. **Talk-to-victim partly tested on hardware.** Both audio directions work
    on the robot; operator video, images and text have not yet been shown on
    a physical display.
 9. **Performance not yet measured.** Latency, range and bandwidth figures
    in Sections 13 and 39 are design estimates until tests N1-N8 are run.
+10. **Victim-finding tools not evaluated.** The AI was trained on everyday
+   photos and misses people lying down, covered, in dust or in the dark;
+   its accuracy, the 10 dB reply threshold and the laptop load are not
+   measured (tests I23–I27). Snapshots exist only on the device that took
+   them.
 
 ## 40.4 System Conclusion
 
@@ -2158,6 +2252,8 @@ Capabilities:
 ├─ Live video + audio from the robot (WebRTC)
 ├─ Talk-to-victim: operator voice, face/image/screen and text on
 │  the robot's own display and speaker
+├─ Victim finding: AI person detection (on the laptop), call-out with
+│  reply cue, victim marks with position on the map
 ├─ Environmental monitoring: temperature, humidity, gas, range, GPS
 ├─ GPS tracking with a saved per-session track
 ├─ No internet needed for control, media or telemetry

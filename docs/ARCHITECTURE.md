@@ -55,7 +55,10 @@ operating area the map comes from `area.pmtiles` on the Pi, which P1 serves
 at `/maps`, so the map works with no internet there.
 
 WebRTC is two-way: the same connection carries the operator's voice, video
-and messages back to the victim-facing Robot Screen — see §14.
+and messages back to the victim-facing Robot Screen — see §14. The
+victim-finding tools (AI person detection, call-out, victim marks) run
+mostly in the dashboard and use these same two transports plus P1's
+REST API — see §15.
 
 ---
 
@@ -128,6 +131,7 @@ flowchart LR
         hub["websocket_hub.py<br/>WebSocketHub<br/>(role arbitration, fan-out)"]
         tlog["telemetry_log.py<br/>TelemetryLog<br/>(1Hz CSV)"]
         wifi["common/wifi.py<br/>read_signal_dbm<br/>(wlan0 RSSI, 1Hz)"]
+        victims["victim_log.py<br/>VictimLog<br/>(victims.jsonl)"]
     end
 
     arduino[("Arduino UNO")]
@@ -144,9 +148,11 @@ flowchart LR
     wifi -.signal_dbm.-> hub
     ring -.recovery_batch.-> hub
     hub <--> clients
+    victims --> disk
+    victims -.victim_mark.-> hub
 
     classDef mod fill:#fff,stroke:#2F7C9E,color:#12181A;
-    class lock,sb,safety,gps,ring,hub,tlog,wifi mod;
+    class lock,sb,safety,gps,ring,hub,tlog,wifi,victims mod;
 ```
 
 | Module | Type | Responsibility |
@@ -159,6 +165,7 @@ flowchart LR
 | `telemetry_log.py` | `TelemetryLog` | 1 Hz, 19-column CSV with packed alert bitfield |
 | `lockfile.py` | `ProcessLock` | Advisory `flock` enforcing the single-writer invariant |
 | `common/wifi.py` | `read_signal_dbm()` | Robot Wi-Fi RSSI for the `signal_dbm` field; `None` when the link is down |
+| `victim_log.py` | `VictimLog` | Appends victim marks to `victims/victims.jsonl` and reads them back, skipping a corrupt line (§15) |
 
 The last column of `telemetry.log` is `signal_dbm`, so a mission log records
 how the link changed along the route.
@@ -423,6 +430,8 @@ classDiagram
         recovery_batch
         ack
         error
+        role
+        victim_mark
     }
 
     class WireCommand_P1toArduino {
@@ -450,6 +459,7 @@ frame is dropped; the next one arrives within 200 ms.
 | `telemetry.log` | Disk CSV, 19 columns | Daily rotation, 7 kept | Post-mission analysis @ 1 Hz |
 | `p{1,2,3}_events.log` | Disk, structured text | Weekly rotation, 8 kept | Fault diagnosis, audit |
 | GeoJSON track | Disk, per session | 90 days (cron) | Mission path reconstruction |
+| `victims/victims.jsonl` | Disk, one JSON line per mark | Kept until deleted by hand (not rotated) | Victim marks (§15); no images |
 
 ---
 
@@ -527,7 +537,7 @@ flowchart TB
     subgraph fs["/opt/robot, /etc/robot, /var/log/robot, /run/robot (tmpfs)"]
         opt["/opt/robot/<br/>pi/ dashboard/dist venv/"]
         etc["/etc/robot/<br/>p1.env p2.env p3.env<br/>thresholds.json"]
-        log["/var/log/robot/<br/>telemetry.log<br/>p{1,2,3}_events.log<br/>gps_track/"]
+        log["/var/log/robot/<br/>telemetry.log<br/>p{1,2,3}_events.log<br/>gps_track/ victims/"]
         run["/run/robot/<br/>p1.lock (never survives reboot)"]
     end
 
@@ -589,7 +599,9 @@ flowchart LR
 
 ## 14. Two-Way Communication with the Victim
 
-**Status: implemented; not yet tested on robot hardware.** Full rationale in
+**Status: implemented; audio tested on robot hardware** (both directions,
+2026-09-27); operator video, images and text not yet shown on a physical
+display. Full rationale in
 [`SOFTWARE_ARCHITECTURE.md` §A.11](./SOFTWARE_ARCHITECTURE.md); protocol
 details in `CAPSTONE_METHODOLOGY_FINAL.md` §16.
 
@@ -718,6 +730,93 @@ press-and-hold and ignores keys. Still, close the viewer while talking to a
 victim. P2 logs
 which local client switched the mode (`source=local:127.0.0.1:kiosk` or
 `:curl`) in the `DISPLAY_MODE` event.
+
+---
+
+## 15. Victim-Finding Tools
+
+**Status: implemented; not evaluated.** Unit-tested on the robot side
+(16 tests, `pi/tests/test_victim_log.py`); detection accuracy, the reply
+threshold and the load on the operator laptop have not been measured. Full
+rationale in [`SOFTWARE_ARCHITECTURE.md` §A.12](./SOFTWARE_ARCHITECTURE.md);
+operator steps in [`OPERATOR_MANUAL.md` §10](./OPERATOR_MANUAL.md).
+
+### 15.1 Where each tool runs
+
+```mermaid
+flowchart LR
+    subgraph laptop["OPERATOR LAPTOP (dashboard)"]
+        det["usePersonDetection<br/>MediaPipe EfficientDet-Lite0<br/>CPU, ≤ 5 Hz"]
+        meter["useSoundLevel + useReplyListener<br/>robot-mic meter, reply cue"]
+        call["useTalkback.callOut<br/>callout-en.mp3"]
+        mark["MarkVictimButton<br/>note + snapshot"]
+        store["Snapshots: IndexedDB + Downloads<br/>victim-&lt;id&gt;.jpg / .txt<br/>(never sent to the robot)"]
+    end
+
+    subgraph robot["ROBOT"]
+        p2["P2 Media<br/>:8443"]
+        p1["P1 Control<br/>:8080<br/>POST/GET /api/victims"]
+        jsonl[("victims/victims.jsonl")]
+        spk["Speaker"]
+    end
+
+    det -- "robot video in (WebRTC)" --> p2
+    meter -- "robot mic audio in (WebRTC)" --> p2
+    call -- "clip out on the talk audio track" --> p2
+    mark <-- "note + AI score out (key required) /<br/>victim_mark broadcast in" --> p1
+    p2 --> spk
+    p1 --> jsonl
+
+    classDef added fill:#fff,stroke:#B7791F,stroke-dasharray:5 4,color:#12181A;
+    classDef core fill:#fff,stroke:#2F7C9E,color:#12181A;
+    class det,meter,call,mark,store added;
+    class p1,p2,jsonl,spk core;
+```
+
+Arrows point from the laptop to the robot; labels give the direction of
+the data. AI inference and the reply check run on the laptop, so the Pi
+does no detection work. The call-out reuses the push-to-talk audio sender, so P2
+relays it like speech (§14). Only the text of a mark reaches the robot; the
+snapshot stays on the device that took it.
+
+### 15.2 Sequence — marking a victim
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor O as Operator
+    participant D as Dashboard
+    participant P1 as P1 Control
+    participant F as victims.jsonl
+    participant D2 as Other dashboards
+
+    O->>D: click "Mark victim here"
+    D->>D: capture video frame + AI boxes as JPEG
+    O->>D: type note, Save
+    D->>P1: POST /api/victims {note, ai_score}<br/>X-Controller-Key
+    P1->>P1: body ≤ 16 KiB? key OK? note ≤ 280?
+    P1->>P1: add own GPS fix / last track point, pan + tilt
+    P1->>F: append one JSON line
+    P1-->>D: 200 mark {id, ts, lat, lon, ...}
+    P1-->>D2: WebSocket {"type":"victim_mark", mark}
+    D->>D: keep snapshot in IndexedDB,<br/>download victim-ID.jpg + .txt
+    Note over D,D2: List + red "+" on the map in every dashboard;<br/>a dashboard that connects later calls GET /api/victims
+```
+
+### 15.3 New failure modes
+
+| Fault | Detection | Response |
+|---|---|---|
+| Laptop too slow for AI | Mean inference > 150 ms over 5 frames | AI switches itself off with a message; controls stay responsive |
+| Browser has no WebGL | Checked before loading the model | "AI needs WebGL" message; everything else works |
+| AI misses a person (lying, covered, dark, far) | Not detectable | Operator keeps watching the video; dashboard says so |
+| Call-out clip not installed | `HEAD` on the clip is not `audio/*` | Button reads "No call-out clip installed" |
+| Mark sent without the controller key | P1 key check | 403; nothing stored or broadcast |
+| Oversized mark request | Body > 16 KiB, checked before parsing | 413; P1's event loop is never blocked by the parse |
+| No GPS fix when marking | `gps_fix = false` | Mark keeps the last track point; faded map marker; operator note matters |
+| Corrupt line in `victims.jsonl` | JSON parse error on read | Line skipped and logged (`VICTIM_LOG_BAD_LINE`); other marks load |
+| Browser blocks automatic downloads | — | Snapshot is still in IndexedDB; "download photo / details" links shown |
+| Browser site data cleared | — | The browser copy of the snapshots is lost; downloaded files remain |
 
 ---
 
