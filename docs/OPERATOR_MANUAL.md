@@ -80,7 +80,7 @@ removes it.
 │ (Wi-Fi warning banner, only when the signal is weak or lost)       │
 ├──────────────┬──────────────────────────────────┬──────────────────┤
 │ Mission state│  Live video from robot           │ Sensor cards     │
-│ Drive pad    │  (AI person boxes on top)        │ GPS card         │
+│ Drive pad    │  (AI person boxes, Record button)│ GPS card         │
 │ Speed slider │  [Mark victim here] button       │ Victims found    │
 │              │                                  │ Alerts log       │
 │ Camera pan/  ├──────────────────────────────────┴──────────────────┤
@@ -311,7 +311,8 @@ the robot's side only.
 
 ## 10. Finding victims
 
-Three tools help you notice a person and record where they are. They help
+Three tools help you notice a person and record where they are (to record
+the video itself, see [Recording the session](#recording-the-session)). They help
 you look; **you** decide. Keep watching the video yourself.
 
 ### AI person detection
@@ -434,3 +435,6 @@ copy in the browser.
    and include telemetry, the GPS track, and the victim marks (`victims/`).
    The victim snapshots are not on the Pi; they are in the Downloads folder
    of the device that marked them.
+6. Copy your session recordings off the laptop (Downloads, or **Save to
+   device** under *Recordings on this computer*), then **Delete** them from
+   the list so they don't fill the laptop's disk. They are not on the Pi.

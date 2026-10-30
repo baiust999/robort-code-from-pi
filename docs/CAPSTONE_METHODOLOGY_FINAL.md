@@ -1102,15 +1102,16 @@ Interface components (components/)
 │  AlertLog, ConnectionStatusBar ─────────────────┘   (commands, heartbeat, telemetry)
 ├─ VideoSurface, TalkPanel ───────────────────────→ useWebrtcVideo + useTalkback ──→ P2
 │                                                     (one peer connection: video, audio, data channel)
-│    └─ usePersonDetection, useSoundLevel / useReplyListener (laptop only, read the received media)
+│    └─ usePersonDetection, useSoundLevel / useReplyListener, useRecorder (laptop only, read the received media)
 └─ MapPanel, GpsStatusCard, OfflineMapLayer, ──────→ lib/api.ts ──→ P1  HTTP
    MarkVictimButton, VictimList                       (session, GPS track, map tiles, victim marks, health)
 ```
 
 ## 19.4 Victim-Finding Tools
 
-Three tools help the operator notice a person and record where they are.
-They are aids only: they never act on the motors, and the AI can miss
+Three tools help the operator notice a person and record where they are,
+and a fourth records the session on the operator's laptop. They are aids
+only: they never act on the motors, and the AI can miss
 people. Not yet evaluated (Section 40.3). Operator steps:
 `OPERATOR_MANUAL.md` §10; design: `SOFTWARE_ARCHITECTURE.md` §A.12.
 
@@ -1140,6 +1141,16 @@ Mark victim here (controller only):
 │  (faded + = no fix, at the last known position)
 └─ Snapshot (frame + AI boxes) never sent to the robot: kept in the
    browser (IndexedDB) and downloaded as victim-<id>.jpg + .txt
+
+Session recording (any dashboard; nothing recorded on the robot):
+├─ MediaRecorder: robot video + one mixed audio track
+│  (robot mic + talk sender: operator voice while push-to-talk, call-out)
+├─ WebM VP8/Opus (MP4 fallback); AI boxes not recorded
+├─ 1 s chunks → IndexedDB robot-recordings; on stop →
+│  Downloads robot-session-<time>.webm; kept and listed until deleted
+├─ Crash / reload → listed as unfinished, complete to its last chunk or two
+└─ Short drop: keeps recording; stops and saves after 15 s down or when
+   the connection is replaced
 ```
 
 ---
@@ -2169,8 +2180,9 @@ VICTIM-FINDING TOOLS (dashboard + P1 /api/victims)
   │  CPU + WebGL (AI)
   ├─ Failure: AI too slow / no WebGL → AI off with a message; P2 down →
   │  no AI, meter or call-out; P1 down → marks cannot be saved
-  └─ Recovery: marks reload from P1 on reconnect; snapshots stay in the
-     browser that took them
+  └─ Recovery: marks reload from P1 on reconnect; snapshots and session
+     recordings stay in the browser that made them (a recording cut off
+     by a crash is listed as unfinished)
 
 P3 WATCHDOG
   ├─ Depends on: systemd
@@ -2237,8 +2249,9 @@ CRITICAL PATH (Motor Safety):
 10. **Victim-finding tools not evaluated.** The AI was trained on everyday
    photos and misses people lying down, covered, in dust or in the dark;
    its accuracy, the 10 dB reply threshold and the laptop load are not
-   measured (tests I23–I27). Snapshots exist only on the device that took
-   them.
+   measured (tests I23–I28). Snapshots and session recordings exist only
+   on the device that made them; recording completeness and its laptop
+   load are not measured.
 
 ## 40.4 System Conclusion
 

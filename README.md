@@ -6,6 +6,8 @@ sensors (gas, temperature/humidity, sonar range, GPS), and talks two-way with
 a victim through a screen and speaker mounted on the robot. Victim-finding
 aids help the operator search: AI person detection on the video (run in the
 browser), a recorded call-out with a reply cue, and victim marks on the map.
+The operator can also record the session (video and both sides of the
+conversation) to their own device.
 
 ![Hardware diagram](hardware%20diagram.drawio.png)
 
@@ -163,6 +165,8 @@ button reads *No call-out clip installed*.
 - Application logs and telemetry: `/var/log/robot/` (rotated by `deploy/logrotate/robot`)
 - Victim marks: `/var/log/robot/victims/victims.jsonl` (not rotated; no
   images: victim snapshots stay on the operator's device)
+- Session recordings are not on the Pi: they are in the operator's
+  Downloads and listed in the dashboard (*Recordings on this computer*)
 
 
 

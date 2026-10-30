@@ -120,8 +120,31 @@ configured); on 2026-10-30 it type-checked cleanly (`tsc --noEmit`) and
 made on 2026-10-29 in headless Chromium on the Pi, with the bundled model
 and the dashboard's options: on two photos of a person the CPU delegate
 scored 0.95 and 0.98 and the GPU delegate returned nothing (Issue 4).
-That is not an accuracy measurement; I23-I27 below and the field test
+That is not an accuracy measurement; I23-I28 below and the field test
 cover the tools on the robot.
+
+**Addendum, 2026-10-30 (session recording).** The recording has no
+automated tests either. Functional checks were scripted in headless
+Chromium on the Pi against a separate mock P1/P2 (`MOCK_HARDWARE=1`, own
+ports and controller key, so the live robot was not controlled), with a
+fake laptop mic playing a 440 Hz tone and a 1 kHz tone served in place of
+the uninstalled call-out clip; each file was decoded with `ffprobe`/
+`ffmpeg` and its audio searched for the two tones. Results: as
+controller, the 440 Hz tone is present only while push-to-talk was held
+and the 1 kHz tone right after the call-out click, silent otherwise; as
+observer, video with silent outgoing audio; a 2 s connection blip (P2
+frozen with SIGSTOP) gives one continuous file; with P2 killed the
+recording saved itself 20.9 s later and a new one worked after
+reconnecting; a reload after 10 s left an unfinished entry from which
+9.4 s were recovered, and Delete (after the confirm) left IndexedDB
+empty; with IndexedDB blocked the warning showed and the file still
+downloaded; a forced `MediaRecorder.start()` failure showed a message
+and the next Record worked. One earlier recording from the live robot
+(as observer) held the real camera picture and mic audio. On this busy
+Pi, headless recordings were 5-10 % short of audio; a plain
+`MediaRecorder` recording with none of the dashboard code lost the same
+share, so this is attributed to the load, but the operator laptop has
+not been checked (I28). VP8/Opus WebM was the only format exercised.
 
 **Limitation:** these tests use simulated hardware. They prove the software
 logic, not the real motors, sensors or radio link, which are covered in the
@@ -190,6 +213,7 @@ ending: Newline), or test through the dashboard where noted.
 | I25 | Call out | Click **📢 Call out** with the clip installed. | Message heard clearly from the robot speaker; meter shows *(speaker playing)*, then *Listening for a reply…* for 10 s. | | | |
 | I26 | Reply cue | After a call-out, a person 2 m and 5 m from the robot knocks three times, then shouts; repeat once with nobody responding. | "sound after call-out" in Alerts for the knock/shout; record the dB rise shown; no alert when nobody responds (note background noise). | | | |
 | I27 | Mark victim | Click **📍 Mark victim here**, type a note, Save; then reload the page; then open a second (observer) dashboard. | Mark in *Victims found* and on the map (faded + without GPS); `victim-<id>.jpg` and `.txt` in Downloads; after reload the mark and its snapshot link are still there; the observer sees the mark but no snapshot and cannot mark; `victims/victims.jsonl` on the Pi has the mark and no image. | | | |
+| I28 | Session recording | On the operator laptop with the key: **⏺ Record**; speak with push-to-talk; **📢 Call out**; let someone speak near the robot; walk the robot out of Wi-Fi range for about 5 s and back; **⏹ Stop recording**. Then record again and reload the page midway. | `robot-session-<time>.webm` in Downloads plays in VLC with the video, the robot mic, your voice and the call-out, without gaps and in step; one file despite the short drop; listed under *Recordings on this computer*; after the reload the second is listed as *(unfinished)* and **Save to device** gives a playable file. | | | |
 
 ---
 
@@ -279,6 +303,7 @@ List every failure or unexpected behaviour found during testing.
 | 3 | — | P2 crashed with a segmentation fault (exit -11), every 1–2 minutes once two dashboards were watching (13 crashes on 2026-09-28); P3 restarted it after ~10 s each time, dropping the video. | High | Yes, 2026-09-28 | Every `faulthandler` trace showed two VP8 encoder threads at once. The camera's YUYV frames were one object shared by all sessions, and each encoder converted it with `frame.reformat()`, which PyAV runs through a converter cached on the frame with the GIL released. Reproduced off the robot: two encoders on shared YUYV frames segfaulted 3/3 runs; with each session given its own yuv420p copy (`PrivateVideoTrack`), 3/3 runs of 1,500 frame pairs completed. |
 | 4 | — | AI person detection showed "AI: on" but never drew a box. The MediaPipe GPU delegate loaded without error but returned no detections (headless Chromium test on 2026-10-29: two person photos, GPU nothing, CPU 0.95 and 0.98); empty results never throw, so the GPU-to-CPU fallback never ran. | High | Yes, 2026-10-29 | Detector now always uses the CPU delegate; slow laptops are caught by the 150 ms auto-off. GPU test ran on a software renderer, not a laptop GPU. |
 | 5 | I27 | Victim photo and details did not reach Downloads in the operator's own Chrome; a headless test that allows downloads could not show this. | Medium | Mitigated, 2026-10-30 | The snapshot is now also kept in the browser (IndexedDB) and "download photo / details" links are shown; recheck with I27. |
+| 6 | I28 | A recording stopped and saved itself on any brief connection drop: a 1.5 s "disconnected" state that recovered by itself split the recording (headless test, P2 frozen with SIGSTOP). On weak Wi-Fi this would chop a session into pieces. | Medium | Yes, 2026-10-30 | Recording now continues through a drop and stops only after 15 s down or when the connection is replaced; the same test then gave one continuous file. |
 
 ---
 

@@ -737,7 +737,8 @@ which local client switched the mode (`source=local:127.0.0.1:kiosk` or
 
 **Status: implemented; not evaluated.** Unit-tested on the robot side
 (16 tests, `pi/tests/test_victim_log.py`); detection accuracy, the reply
-threshold and the load on the operator laptop have not been measured. Full
+threshold and the load on the operator laptop have not been measured.
+Session recording (§15.3) has only functional checks in headless Chromium. Full
 rationale in [`SOFTWARE_ARCHITECTURE.md` §A.12](./SOFTWARE_ARCHITECTURE.md);
 operator steps in [`OPERATOR_MANUAL.md` §10](./OPERATOR_MANUAL.md).
 
@@ -751,6 +752,7 @@ flowchart LR
         call["useTalkback.callOut<br/>callout-en.mp3"]
         mark["MarkVictimButton<br/>note + snapshot"]
         store["Snapshots: IndexedDB + Downloads<br/>victim-&lt;id&gt;.jpg / .txt<br/>(never sent to the robot)"]
+        rec["useRecorder<br/>session recording<br/>IndexedDB + Downloads<br/>robot-session-&lt;time&gt;.webm"]
     end
 
     subgraph robot["ROBOT"]
@@ -762,6 +764,7 @@ flowchart LR
 
     det -- "robot video in (WebRTC)" --> p2
     meter -- "robot mic audio in (WebRTC)" --> p2
+    rec -- "robot video + mic in, talk audio mixed in" --> p2
     call -- "clip out on the talk audio track" --> p2
     mark <-- "note + AI score out (key required) /<br/>victim_mark broadcast in" --> p1
     p2 --> spk
@@ -769,7 +772,7 @@ flowchart LR
 
     classDef added fill:#fff,stroke:#B7791F,stroke-dasharray:5 4,color:#12181A;
     classDef core fill:#fff,stroke:#2F7C9E,color:#12181A;
-    class det,meter,call,mark,store added;
+    class det,meter,call,mark,store,rec added;
     class p1,p2,jsonl,spk core;
 ```
 
@@ -777,7 +780,8 @@ Arrows point from the laptop to the robot; labels give the direction of
 the data. AI inference and the reply check run on the laptop, so the Pi
 does no detection work. The call-out reuses the push-to-talk audio sender, so P2
 relays it like speech (§14). Only the text of a mark reaches the robot; the
-snapshot stays on the device that took it.
+snapshot stays on the device that took it. Recording also runs on the laptop
+only (§15.3).
 
 ### 15.2 Sequence — marking a victim
 
@@ -803,7 +807,32 @@ sequenceDiagram
     Note over D,D2: List + red "+" on the map in every dashboard;<br/>a dashboard that connects later calls GET /api/victims
 ```
 
-### 15.3 New failure modes
+### 15.3 Session recording
+
+Any dashboard can record the session; nothing is recorded or stored on the
+robot, and P1/P2 are unchanged.
+
+```
+useWebrtcVideo.remoteStream ──┬─ robot video track ─────────────────────┐
+                              └─ robot mic track ──┐                    │
+talkLink.audioSender.track ───── (polled 250 ms) ──┴─► AudioContext mix ─┤
+  (laptop mic while push-to-talk, or the call-out clip)                 ▼
+                                                    MediaRecorder (1 s chunks)
+                                                      ├─► IndexedDB robot-recordings
+                                                      └─► on stop: Downloads
+                                                          robot-session-<time>.webm
+```
+
+- WebM (VP8 + Opus) in Chrome and Firefox; MP4 where WebM is unsupported.
+  AI boxes are not recorded.
+- Finished recordings stay in IndexedDB, listed under the video, until the
+  operator deletes them, because automatic downloads can be blocked (§15.4).
+- The recording continues through a short drop; it stops and saves when the
+  video is down for more than 15 s or the peer connection is replaced.
+- An observer's recording has the robot side only (nothing is on its talk
+  sender).
+
+### 15.4 New failure modes
 
 | Fault | Detection | Response |
 |---|---|---|
@@ -817,6 +846,10 @@ sequenceDiagram
 | Corrupt line in `victims.jsonl` | JSON parse error on read | Line skipped and logged (`VICTIM_LOG_BAD_LINE`); other marks load |
 | Browser blocks automatic downloads | — | Snapshot is still in IndexedDB; "download photo / details" links shown |
 | Browser site data cleared | — | The browser copy of the snapshots is lost; downloaded files remain |
+| Video drops while recording | `connected` false | Recording continues; stopped and saved after 15 s down, or at once when the connection is replaced |
+| Browser crash or reload while recording | Unfinished entry in IndexedDB on next load | Listed as *(unfinished)*, complete up to its last chunk or two; **Save to device** downloads it |
+| Browser refuses IndexedDB (private window, quota) | Write fails | Recording continues in memory with a warning; still downloaded on stop |
+| Recorder cannot start | `MediaRecorder.start()` throws | Message shown; nothing left running; **Record** works again |
 
 ---
 

@@ -299,7 +299,7 @@ The indicator never shows an old value as current. P1 cannot report a link that 
 
 The hook contains a guard worth documenting because it addresses a genuinely subtle failure. Under React StrictMode, effects are double-invoked in development. Without protection, the abandoned first socket would open moments later, claim the single controller slot, and permanently strand the live hook as an observer — the dashboard would appear connected but every command would be rejected. The hook therefore closes any prior socket before connecting and uses an `isCurrent()` closure to ignore events from superseded sockets.
 
-The victim-finding tools (A.12) add three hooks that never touch the control path: `usePersonDetection()` runs the AI on the received video element, `useSoundLevel()` / `useReplyListener()` meter the robot microphone from the received audio track, and `useTalkback().callOut()` plays the recorded call-out on the existing talk sender. `useControlSocket()` gains only the list of victim marks, loaded with `GET /api/victims` on every connect and extended by `victim_mark` broadcasts.
+The victim-finding tools (A.12) add three hooks that never touch the control path: `usePersonDetection()` runs the AI on the received video element, `useSoundLevel()` / `useReplyListener()` meter the robot microphone from the received audio track, and `useTalkback().callOut()` plays the recorded call-out on the existing talk sender. `useRecorder()` records the received media, mixed with whatever is on the talk sender, to the operator's device; `useWebrtcVideo()` now exposes the received stream (`remoteStream`) for it. `useControlSocket()` gains only the list of victim marks, loaded with `GET /api/victims` on every connect and extended by `victim_mark` broadcasts.
 
 `useWebrtcVideo()` is entirely separate, self-contained within `VideoSurface`, and notably has **no automatic reconnection once video has connected** — a later loss is reported, the video panel shows its error state, and the operator reconnects with its *Retry video* button. Before the first successful connection it does retry every 3 seconds, because P2 starts several seconds after P1 and a dashboard opened during boot would otherwise be stuck on an error. This asymmetry with the control socket is correct by the architecture's own logic: control must be restored automatically because the vehicle is unsafe without it, whereas video is a convenience whose loss degrades the mission to `DRIVING_LIMITED` and is properly surfaced to the operator as a decision rather than papered over by silent retries.
 
@@ -621,7 +621,7 @@ Two constraints remain. Browsers expose the microphone and camera only in a secu
 
 ## **A.12  Victim-Finding Tools**
 
-**Status: implemented; unit-tested on the robot side, not evaluated.** Three tools help the operator notice a person and record where they are: AI person detection on the video, a recorded call-out with a reply cue, and victim marks. They help the operator look; they never act on the motors and never confirm that someone is there.
+**Status: implemented; unit-tested on the robot side, not evaluated.** Three tools help the operator notice a person and record where they are: AI person detection on the video, a recorded call-out with a reply cue, and victim marks. A fourth, session recording, keeps the video and both sides of the conversation on the operator's computer. They help the operator look; they never act on the motors and never confirm that someone is there.
 
 | **Element** | **Implementation** |
 | --- | --- |
@@ -636,11 +636,14 @@ Two constraints remain. Browsers expose the microphone and camera only in a secu
 | Dashboard `VictimList`, `MapPanel` | Every mark, newest first; red **+** on the map, faded when placed at the last known point |
 | P1 `victim_log.py` | `VictimLog.add()` / `list()`, append-only JSON lines under a lock; id = local time + 4 hex digits |
 | P1 `main.py` | `GET /api/victims`; `POST /api/victims` (body ≤ 16 KiB via `read_body_limited()`, controller key in `X-Controller-Key` checked by the same `KeyGate` as driving, note ≤ 280 characters); `VICTIM_MARK` event logged; `victim_mark` broadcast |
+| Dashboard `useRecorder()` | Session recording: `MediaRecorder` on the received video track plus one audio track from an `AudioContext` that mixes the robot mic with `talkLink.audioSender.track` (polled every 250 ms, since `replaceTrack` fires no event); type `video/webm;codecs=vp8,opus`, then `video/webm`, then `video/mp4`; 1 s chunks; stops and saves after 15 s with the video down or when `remoteStream` is replaced; *REC mm:ss · MB* badge and **⏺ Record / ⏹ Stop recording** in `VideoSurface` |
+| Dashboard `lib/recordingStore.ts` | IndexedDB `robot-recordings` (`meta` keyed by id, `chunks` keyed `[id, seq]`); each chunk appended as it arrives; a finished recording is kept and listed (*Recordings on this computer*) until deleted; an unfinished one left by a crash is listed as such |
+| Dashboard `lib/download.ts` | `download()` helper shared by victim snapshots and recordings |
 | `scripts/copy-mediapipe.mjs` | `predev` / `prebuild` step that copies MediaPipe's WASM runtime into `public/mediapipe/wasm`, so no CDN is needed in the field |
 
 ***Table A.12 — Implementation by Component***
 
-Five decisions shape the feature.
+Six decisions shape the feature.
 
 **Inference runs on the operator's laptop, not the Pi.** P2 already uses about 63 % of one core for one media session (paper Section 5.5), so there is no room for a detector on the Pi without hurting video. The laptop has the decoded frames anyway. The cost is that the detector shares the browser's main thread with the drive and stop buttons, so the hook times every inference, waits at least twice the last inference time before the next one, and turns itself off with a message if five frames average more than 150 ms. The controls must stay responsive; the AI is the part that gives way.
 
@@ -650,9 +653,11 @@ Five decisions shape the feature.
 
 **The robot keeps the record; the laptop keeps the picture.** The mark (note, P1's own GPS and servo angles, AI score) lives on the robot so it survives a reload or a laptop crash and stays with the mission logs, and every dashboard sees it. P1 never takes position or angles from the browser. The snapshot, an image of an identifiable person, is never sent to the robot: it stays in the browser that took it and in its Downloads folder. Automatic downloads alone proved unreliable in the operator's real Chrome, hence the IndexedDB copy and the manual links.
 
+**Recording happens where the media already is.** The browser already holds the decoded robot video and audio and the operator's outgoing audio, so recording there costs the Pi nothing and keeps footage of victims off the robot, as with snapshots. Mixing from the talk sender, rather than from the laptop mic, records what the robot actually played, including the call-out. Chunks go to IndexedDB every second so a crash keeps the recording, and finished files stay there until deleted for the same reason as snapshots: a held-back download must not lose them. A short Wi-Fi drop used to end the recording at once (found in testing, TEST_REPORT Issue 6); it now waits 15 s.
+
 **The size limit comes before everything else.** `read_body_limited()` refuses an oversized body on its `Content-Length`, or while streaming one with no or a false length, before the key check and before JSON parsing, because a multi-megabyte parse would stall P1's event loop — telemetry and the heartbeat path with it — for every dashboard.
 
-Constraints that remain: detection accuracy on disaster-like scenes has not been measured; the 10 dB reply threshold is a first guess; the call-out clip must be recorded and installed by the team (`dashboard/public/audio/callout-en.mp3`) and is not in the repository; and snapshots exist only on the device that took them.
+Constraints that remain: detection accuracy on disaster-like scenes has not been measured; the 10 dB reply threshold is a first guess; the call-out clip must be recorded and installed by the team (`dashboard/public/audio/callout-en.mp3`) and is not in the repository; snapshots and recordings exist only on the device that made them; and recording completeness and its load on the operator's laptop have not been measured.
 
 ---
 
