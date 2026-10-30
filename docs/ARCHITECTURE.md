@@ -786,7 +786,7 @@ flowchart LR
         call["useTalkback.callOut<br/>callout-en.mp3"]
         mark["MarkVictimButton<br/>note + snapshot"]
         store["Snapshots: IndexedDB + Downloads<br/>victim-&lt;id&gt;.jpg / .txt<br/>(never sent to the robot)"]
-        rec["useRecorder<br/>session recording<br/>IndexedDB + Downloads<br/>robot-session-&lt;time&gt;.webm"]
+        rec["useRecorder<br/>session recording<br/>IndexedDB + Downloads<br/>robot-session-&lt;time&gt;.mp4"]
     end
 
     subgraph robot["ROBOT"]
@@ -854,11 +854,17 @@ talkLink.audioSender.track ───── (polled 250 ms) ──┴─► Audio
                                                     MediaRecorder (1 s chunks)
                                                       ├─► IndexedDB robot-recordings
                                                       └─► on stop: Downloads
-                                                          robot-session-<time>.webm
+                                                          robot-session-<time>.mp4
 ```
 
-- WebM (VP8 + Opus) in Chrome and Firefox; MP4 where WebM is unsupported.
-  AI boxes are not recorded.
+- Most playable format first: MP4 with H.264 + AAC, then MP4 with H.264 +
+  Opus (Chromium without AAC), WebM (VP8 + Opus) only where MP4 can't be
+  recorded (Firefox). A key frame is requested every second, because
+  Chrome's MP4 writer emits data only at key frames. AI boxes are not
+  recorded.
+- On save, the file's length is written into its header (`fixDuration.ts`):
+  MediaRecorder leaves it out (WebM) or as 0 (MP4). For MP4 it is read from
+  the fragments' own timestamps; for WebM it is the recording time.
 - Finished recordings stay in IndexedDB, listed under the video, until the
   operator deletes them, because automatic downloads can be blocked (§15.4).
 - The recording continues through a short drop; it stops and saves when the
@@ -884,6 +890,9 @@ talkLink.audioSender.track ───── (polled 250 ms) ──┴─► Audio
 | Browser crash or reload while recording | Unfinished entry in IndexedDB on next load | Listed as *(unfinished)*, complete up to its last chunk or two; **Save to device** downloads it |
 | Browser refuses IndexedDB (private window, quota) | Write fails | Recording continues in memory with a warning; still downloaded on stop |
 | Recorder cannot start | `MediaRecorder.start()` throws | Message shown; nothing left running; **Record** works again |
+| Browser holds back the recording download | — | Recording stays in IndexedDB, listed under the video; **Save to device** downloads it |
+| MP4 writer emits data only at key frames | Steady camera video gave no chunk until Stop (headless test) | Key frame requested every 1 s, so chunks (and crash recovery) stay at about a second |
+| Saved file has no usable length (WebM none, MP4 header 0 s) | Always, as MediaRecorder writes a live stream | `withDuration()` writes it into the header on save; a file it doesn't recognise is saved unchanged |
 
 ---
 

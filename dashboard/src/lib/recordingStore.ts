@@ -1,6 +1,8 @@
+import { withDuration } from './fixDuration';
+
 /*
  * Session recordings, kept chunk by chunk in this browser's IndexedDB so a
- * crash or reload mid-recording loses at most the last second. A finished
+ * crash or reload mid-recording loses at most the last second or two. A finished
  * recording stays here until the operator deletes it, because the browser
  * may hold back the automatic download. Like victim snapshots, recordings
  * never go to the robot.
@@ -15,6 +17,8 @@ export interface RecordingMeta {
   mimeType: string;
   /** False while recording, and for one a crash cut off. */
   finished: boolean;
+  /** Length so far, updated with every chunk; written into the file header on save. */
+  durationMs?: number;
 }
 
 function openDb(): Promise<IDBDatabase> {
@@ -55,20 +59,32 @@ export async function putMeta(meta: RecordingMeta): Promise<void> {
   db.close();
 }
 
-export async function appendChunk(id: string, seq: number, chunk: Blob): Promise<void> {
+export async function appendChunk(id: string, seq: number, chunk: Blob, durationMs: number): Promise<void> {
   const db = await openDb();
-  const tx = db.transaction(CHUNKS, 'readwrite');
+  const tx = db.transaction([CHUNKS, META], 'readwrite');
   tx.objectStore(CHUNKS).put(chunk, [id, seq]);
+  // The length goes with the chunk, so a recording a crash cut off still has one.
+  const metas = tx.objectStore(META);
+  const req = metas.get(id);
+  req.onsuccess = () => {
+    if (req.result) metas.put({ ...req.result, durationMs });
+  };
   await done(tx);
   db.close();
 }
 
-/** The stored recording as one file, or null if no chunks were kept. */
+/** The stored recording as one file with its length set, or null if no chunks were kept. */
 export async function assembleRecording(meta: RecordingMeta): Promise<Blob | null> {
   const db = await openDb();
-  const chunks = await result(db.transaction(CHUNKS, 'readonly').objectStore(CHUNKS).getAll(range(meta.id)));
+  const tx = db.transaction([CHUNKS, META], 'readonly');
+  const [chunks, stored] = await Promise.all([
+    result(tx.objectStore(CHUNKS).getAll(range(meta.id))),
+    result(tx.objectStore(META).get(meta.id)),
+  ]);
   db.close();
-  return chunks.length ? new Blob(chunks as Blob[], { type: meta.mimeType }) : null;
+  if (!chunks.length) return null;
+  const durationMs = (stored as RecordingMeta | undefined)?.durationMs ?? meta.durationMs ?? 0;
+  return withDuration(new Blob(chunks as Blob[], { type: meta.mimeType }), durationMs);
 }
 
 export async function deleteRecording(id: string): Promise<void> {

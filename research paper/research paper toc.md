@@ -185,6 +185,8 @@
   - Person detection in the operator's browser (advisory, not evaluated)
   - Call-out and reply cue
   - Victim marks (snapshot kept on the operator's device)
+  - Session recording (MP4 or WebM on the operator's device, both voices
+    mixed; not evaluated)
 
 **4. Experimental Setup**
 

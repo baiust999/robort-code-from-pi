@@ -311,10 +311,13 @@ call-out message). The AI boxes are not recorded. Recording works whether
 or not **Listen to robot mic** is on.
 
 - While recording, **REC 01:23 · 14 MB** shows top-right of the video.
-  Expect roughly 10–40 MB per minute.
+  The size depends on the picture: one test recording from the robot
+  camera came to about 8 MB per minute. Watch the MB counter on long
+  recordings.
 - **⏹ Stop recording** saves the file to your Downloads as
-  `robot-session-<date-time>.webm` (`.mp4` in Safari). It plays in
-  Chrome, Firefox or VLC.
+  `robot-session-<date-time>.mp4` (H.264 video). It plays in Windows,
+  macOS, phones, browsers and VLC, with a working seek bar. Firefox can't
+  record MP4 and saves a `.webm` instead, which plays in browsers and VLC.
 - The recording is kept **only on your device**, never on the robot.
 - A short Wi-Fi drop doesn't interrupt the recording. If the video stays
   down for more than 15 seconds, or you press **Retry video**, the
@@ -450,6 +453,11 @@ copy in the browser.
 | "AI turned off: too slow" | The laptop is too slow to run detection without slowing the controls. | Use a faster laptop, or carry on without AI. |
 | "No call-out clip installed" | `callout-en.mp3` missing from the dashboard build. | See [Call out and listen](#call-out-and-listen). |
 | "Mark victim here" greyed out | You're an observer. | Enter the controller key. |
+| No **⏺ Record** button | The video isn't connected. | Wait for the video, or click **Retry video**. |
+| Recording didn't appear in Downloads | Chrome held back the automatic download. | Open *Recordings on this computer* under the video and click **Save to device**. |
+| My voice isn't in the recording | Only what reached the robot speaker is recorded: your voice while **Hold to talk** is held, and the call-out. An observer's recording has the robot side only. | Hold **Hold to talk** while speaking; record from the controller's dashboard. |
+| Recording split into two files | The video was down for more than 15 s, or **Retry video** was pressed. | Both files are saved; press **⏺ Record** again after the video returns. |
+| A player shows no length or can't seek | Usually a `.webm` file (Firefox) in a player that handles WebM poorly. | Play it in Chrome or VLC. |
 
 ---
 

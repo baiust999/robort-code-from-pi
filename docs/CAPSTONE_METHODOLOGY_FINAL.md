@@ -1161,9 +1161,11 @@ Mark victim here (controller only):
 Session recording (any dashboard; nothing recorded on the robot):
 ├─ MediaRecorder: robot video + one mixed audio track
 │  (robot mic + talk sender: operator voice while push-to-talk, call-out)
-├─ WebM VP8/Opus (MP4 fallback); AI boxes not recorded
+├─ MP4 H.264 + AAC, else MP4 H.264 + Opus, else WebM VP8/Opus (Firefox);
+│  key frame every 1 s; length written into the file header on save;
+│  AI boxes not recorded
 ├─ 1 s chunks → IndexedDB robot-recordings; on stop →
-│  Downloads robot-session-<time>.webm; kept and listed until deleted
+│  Downloads robot-session-<time>.mp4; kept and listed until deleted
 ├─ Crash / reload → listed as unfinished, complete to its last chunk or two
 └─ Short drop: keeps recording; stops and saves after 15 s down or when
    the connection is replaced

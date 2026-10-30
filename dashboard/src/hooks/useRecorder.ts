@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { TalkLink } from './useWebrtcVideo';
 import { download } from '../lib/download';
+import { withDuration } from '../lib/fixDuration';
 import {
   appendChunk,
   assembleRecording,
@@ -19,7 +20,19 @@ const SENDER_POLL_MS = 250;
  * Short Wi-Fi drops recover by themselves and shouldn't split the recording.
  */
 const RECONNECT_GRACE_MS = 15_000;
-const MIME_TYPES = ['video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4'];
+/**
+ * Most playable first: MP4 with H.264 and AAC plays almost everywhere (Chrome
+ * and Edge on Windows and Mac); then MP4 with Opus audio (Chromium without
+ * AAC); WebM only where MP4 can't be recorded.
+ */
+const MIME_TYPES = [
+  'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+  'video/mp4;codecs=avc1,mp4a',
+  'video/mp4;codecs=avc1,opus',
+  'video/webm;codecs=vp8,opus',
+  'video/webm',
+  'video/mp4',
+];
 
 export interface RecorderState {
   supported: boolean;
@@ -110,10 +123,13 @@ export function useRecorder(
     const poll = setInterval(followSender, SENDER_POLL_MS);
 
     const mimeType = MIME_TYPES.find((t) => MediaRecorder.isTypeSupported(t));
-    const rec = new MediaRecorder(
-      new MediaStream([video, ...mix.stream.getAudioTracks()]),
-      mimeType ? { mimeType } : undefined,
-    );
+    const rec = new MediaRecorder(new MediaStream([video, ...mix.stream.getAudioTracks()]), {
+      ...(mimeType ? { mimeType } : {}),
+      // Chrome's MP4 writes data only at keyframes, which from a camera can
+      // be minutes apart: without this a crash could lose the whole
+      // recording. Browsers without the option ignore it.
+      videoKeyFrameIntervalDuration: CHUNK_MS,
+    } as MediaRecorderOptions);
     const meta: RecordingMeta = {
       id: crypto.randomUUID(),
       startedAt: Date.now(),
@@ -125,6 +141,12 @@ export function useRecorder(
     let stored = putMeta(meta).then(() => true, () => false);
     stored.then(setCrashSafe);
 
+    // The media starts when the recorder does, not at the click.
+    let mediaStart = meta.startedAt;
+    rec.onstart = () => {
+      mediaStart = Date.now();
+    };
+
     rec.ondataavailable = (e) => {
       if (!e.data.size) return;
       const seq = chunks.length;
@@ -133,7 +155,7 @@ export function useRecorder(
       setSizeBytes(size);
       // Chained so chunks land in order and the finished mark comes last.
       stored = stored.then((ok) =>
-        ok ? appendChunk(meta.id, seq, e.data).then(() => true, () => false) : false,
+        ok ? appendChunk(meta.id, seq, e.data, Date.now() - mediaStart).then(() => true, () => false) : false,
       );
       stored.then((ok) => { if (!ok) setCrashSafe(false); });
     };
@@ -149,9 +171,10 @@ export function useRecorder(
         stored.then(() => deleteRecording(meta.id)).catch(() => {});
         return;
       }
-      download(new Blob(chunks, { type: meta.mimeType }), fileName(meta));
+      const durationMs = Date.now() - mediaStart;
+      withDuration(new Blob(chunks, { type: meta.mimeType }), durationMs).then((file) => download(file, fileName(meta)));
       setMessage(`Recording saved${stopReason ? ` (${stopReason})` : ''}: ${fileName(meta)}`);
-      const done = { ...meta, finished: true };
+      const done = { ...meta, finished: true, durationMs };
       stored.then((ok) => {
         // A partial copy (storage failed midway) would later pass for a
         // crashed recording; the full file was just downloaded, so drop it.

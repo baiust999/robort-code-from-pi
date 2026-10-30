@@ -144,7 +144,44 @@ and the next Record worked. One earlier recording from the live robot
 Pi, headless recordings were 5-10 % short of audio; a plain
 `MediaRecorder` recording with none of the dashboard code lost the same
 share, so this is attributed to the load, but the operator laptop has
-not been checked (I28). VP8/Opus WebM was the only format exercised.
+not been checked (I28).
+
+**Addendum, 2026-10-30 (recording format).** Recording now prefers MP4
+(H.264). Chromium 152 on the Pi accepts `video/mp4;codecs=avc1,opus`
+but not AAC (Debian build), so H.264 + Opus was exercised; H.264 + AAC
+is untested. As recorded by Chromium, WebM has no Duration (Chrome's
+player reports `Infinity`) and the fragmented MP4 header declares 0 s.
+After `withDuration()`: WebM showed 5.9 s in Chrome's player and seeked
+to 4 s; the MP4 headers declared 6.210, 6.169 and 5.909 s against
+ffprobe's 6.2103, 6.1695 and 5.9094 s (read from the file, not
+estimated); every patched file decoded with no errors. End-to-end
+against the mock stack, a normal and a crash-recovered recording were
+both `.mp4` (H.264 + Opus) and decoded fully. Players other than
+Chrome, VLC and ffmpeg (Windows, QuickTime, phones) were not tried.
+
+Verification run, same day. `fixDuration.ts` compiled on its own and run
+in Node 22 on ten files: Chrome's MP4 and WebM, a real crash-recovered
+MP4, a 10-minute fragmented MP4 from ffmpeg, an MP4 whose fragments use
+`base_data_offset`, MP4 and WebM cut at 60 %, random bytes and an empty
+file. No call threw; files it does not handle (base offset, random,
+empty) came back byte-identical; in every other file only the header
+changed, and a second pass added nothing. Declared MP4 lengths against
+the last decoded packet: 5.909/5.876 s, 6.169/6.172 s, 600.023/600.027 s
+(the 10-minute file in 100 ms). The cut MP4 first declared 5.2 s with
+3.8 s playable, because its last fragment lists samples whose data is
+missing; the fixer now ends the length at the fragment before an
+incomplete one (3.50 s). In the browser against the mock stack: as
+controller, an H.264 + Opus MP4 declaring 13.499 s for 13.478 s of media,
+with the fake-mic tone at 3.0-6.3 s (push-to-talk held 3.3-6.5 s) and
+the call-out tone at 8.8-10.8 s (clicked at 8.5 s); a crash-recovered
+MP4 declaring 7.437 s for 7.416 s; with MP4 made unavailable, a WebM
+fallback declaring 5.751 s for 6.103 s of media (the WebM length is the
+recording time, here 0.35 s short). All decoded with no errors. Opened
+whole in Chrome's player, the MP4s showed 7.437 and 13.499 s and the
+WebM 5.751 s, and each seeked to 1.5 s before its end; the unpatched
+WebM showed `Infinity`. Served without range requests, Chrome showed
+wrong lengths and could not seek, which is a property of that serving,
+not of the files.
 
 **Addendum, 2026-10-30 (tap-to-answer questions).** Ten tests were added
 to `test_talkback.py` (see the table above). Full suite on 2026-10-30
@@ -240,7 +277,7 @@ ending: Newline), or test through the dashboard where noted.
 | I26 | Reply cue | After a call-out, a person 2 m and 5 m from the robot knocks three times, then shouts; repeat once with nobody responding. | "sound after call-out" in Alerts for the knock/shout; record the dB rise shown; no alert when nobody responds (note background noise). | | | |
 | I27 | Mark victim | Click **📍 Mark victim here**, type a note, Save; then reload the page; then open a second (observer) dashboard. | Mark in *Victims found* and on the map (faded + without GPS); `victim-<id>.jpg` and `.txt` in Downloads; after reload the mark and its snapshot link are still there; the observer sees the mark but no snapshot and cannot mark; `victims/victims.jsonl` on the Pi has the mark and no image. | | | |
 | I29 | Tap-to-answer question | With the display's touch cable connected and **Robot Display** on: in *Ask a question* type "Are you hurt?" with Yes / No, **Send question**; tap **Yes** on the robot's touchscreen. Repeat with 3 and 4 answers; then send one and click **Clear**; then send one and leave it for 5 minutes. | Question and large buttons fill the robot display; after a tap "Answer sent ✓" for about 2 s, then the question goes and the dashboard shows **Answer: Yes**; 3 answers in one row, 4 in two; Clear removes it at once; unanswered, it goes after 5 minutes and the dashboard shows "No answer (5 min)". Note whether the buttons are easy to read and tap at arm's length. | | | |
-| I28 | Session recording | On the operator laptop with the key: **⏺ Record**; speak with push-to-talk; **📢 Call out**; let someone speak near the robot; walk the robot out of Wi-Fi range for about 5 s and back; **⏹ Stop recording**. Then record again and reload the page midway. | `robot-session-<time>.webm` in Downloads plays in VLC with the video, the robot mic, your voice and the call-out, without gaps and in step; one file despite the short drop; listed under *Recordings on this computer*; after the reload the second is listed as *(unfinished)* and **Save to device** gives a playable file. | | | |
+| I28 | Session recording | On the operator laptop with the key: **⏺ Record**; speak with push-to-talk; **📢 Call out**; let someone speak near the robot; walk the robot out of Wi-Fi range for about 5 s and back; **⏹ Stop recording**. Then record again and reload the page midway. | `robot-session-<time>.mp4` in Downloads plays in the laptop's own player and in VLC, shows its full length and can be seeked to near the end, with the video, the robot mic, your voice and the call-out, without gaps and in step; one file despite the short drop; listed under *Recordings on this computer*; after the reload the second is listed as *(unfinished)* and **Save to device** gives a playable file. | | | |
 
 ---
 
@@ -330,9 +367,10 @@ List every failure or unexpected behaviour found during testing.
 | 3 | — | P2 crashed with a segmentation fault (exit -11), every 1–2 minutes once two dashboards were watching (13 crashes on 2026-09-28); P3 restarted it after ~10 s each time, dropping the video. | High | Yes, 2026-09-28 | Every `faulthandler` trace showed two VP8 encoder threads at once. The camera's YUYV frames were one object shared by all sessions, and each encoder converted it with `frame.reformat()`, which PyAV runs through a converter cached on the frame with the GIL released. Reproduced off the robot: two encoders on shared YUYV frames segfaulted 3/3 runs; with each session given its own yuv420p copy (`PrivateVideoTrack`), 3/3 runs of 1,500 frame pairs completed. |
 | 4 | — | AI person detection showed "AI: on" but never drew a box. The MediaPipe GPU delegate loaded without error but returned no detections (headless Chromium test on 2026-10-29: two person photos, GPU nothing, CPU 0.95 and 0.98); empty results never throw, so the GPU-to-CPU fallback never ran. | High | Yes, 2026-10-29 | Detector now always uses the CPU delegate; slow laptops are caught by the 150 ms auto-off. GPU test ran on a software renderer, not a laptop GPU. |
 | 5 | I27 | Victim photo and details did not reach Downloads in the operator's own Chrome; a headless test that allows downloads could not show this. | Medium | Mitigated, 2026-10-30 | The snapshot is now also kept in the browser (IndexedDB) and "download photo / details" links are shown; recheck with I27. |
+| 6 | I28 | A recording stopped and saved itself on any brief connection drop: a 1.5 s "disconnected" state that recovered by itself split the recording (headless test, P2 frozen with SIGSTOP). On weak Wi-Fi this would chop a session into pieces. | Medium | Yes, 2026-10-30 | Recording now continues through a drop and stops only after 15 s down or when the connection is replaced; the same test then gave one continuous file. |
 | 7 | I29 | The question layer covered the "Rescuer is speaking" badge and the "Tap to turn on sound" button, so a victim answering a question could not see that the operator was talking (headless test, 2026-10-30). | Low | Yes, 2026-10-30 | Both now sit above the question layer; rechecked in the same test. |
 | 8 | I29 | Questions sent from the dashboard never appeared on the physical robot display, although P2 logged them and the kiosk was connected: the kiosk's Chromium was showing a cached copy of the screen page from before the update, which ignores question messages. P2 served `/screen` without `Cache-Control`. | High | Yes, 2026-10-30 | The kiosk cache was cleared, and P2 now sends `/screen` with `Cache-Control: no-cache` (as P1 does for the dashboard HTML), so an update reaches the kiosk on its next load. Recheck with I29. |
-| 6 | I28 | A recording stopped and saved itself on any brief connection drop: a 1.5 s "disconnected" state that recovered by itself split the recording (headless test, P2 frozen with SIGSTOP). On weak Wi-Fi this would chop a session into pieces. | Medium | Yes, 2026-10-30 | Recording now continues through a drop and stops only after 15 s down or when the connection is replaced; the same test then gave one continuous file. |
+| 9 | I28 | With MP4 recording, a recording cut off by a reload was recovered empty. Chrome's MP4 writer emits data only at key frames: with steady, camera-like video and no key-frame request it wrote nothing until Stop (headless test, 8 s), so a crash would lose the whole recording; WebM wrote every second. | High | Yes, 2026-10-30 | The recorder now asks for a key frame every second (`videoKeyFrameIntervalDuration`); MP4 then wrote every 1-2 s and the recovered recording played. |
 
 ---
 
