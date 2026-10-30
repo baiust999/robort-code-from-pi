@@ -395,6 +395,19 @@ class ControlServer:
         await self.hub.broadcast({"type": protocol.MSG_VICTIM_DELETE, "id": mark_id})
         return {"id": mark_id}
 
+    async def start_new_mission(self, host: str, key: str | None) -> dict[str, Any]:
+        """Archive all current victim marks and start this mission's list empty.
+
+        Marks are kept on disk under a dated filename, never deleted, same as
+        the active log; only the active list the dashboard shows is cleared.
+        """
+        if self.gate.check(host, key) != access.OK:
+            raise HTTPException(status_code=403, detail="controller key required")
+        archive = self.victims.rotate()
+        self.log.info("VICTIM_LOG_ROTATED", "victim marks archived for a new mission", archive=archive)
+        await self.hub.broadcast({"type": protocol.MSG_VICTIMS_RESET, "archive": archive})
+        return {"archive": archive}
+
     def ice_config(self, client_key: str) -> dict[str, Any]:
         """Issue ICE servers, rate-limited per client, Section 8.8.1.1."""
         now = time.monotonic()
@@ -485,6 +498,11 @@ def create_app(server: ControlServer) -> FastAPI:
     async def delete_victim(mark_id: str, request: Request) -> dict[str, Any]:
         host = request.client.host if request.client else "unknown"
         return await server.delete_victim(host, request.headers.get(CONTROLLER_KEY_HEADER), mark_id)
+
+    @app.post("/api/victims/new-mission")
+    async def new_mission(request: Request) -> dict[str, Any]:
+        host = request.client.host if request.client else "unknown"
+        return await server.start_new_mission(host, request.headers.get(CONTROLLER_KEY_HEADER))
 
     @app.websocket(protocol.WS_PATH)
     async def control_ws(socket: WebSocket) -> None:

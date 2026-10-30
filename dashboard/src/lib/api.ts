@@ -79,6 +79,19 @@ export async function deleteVictim(key: string | null, id: string): Promise<void
   }
 }
 
+/** Only the controller key may start a new mission. Archives every current mark under a dated filename on the robot (nothing is deleted) and clears the active list. */
+export async function startNewMission(key: string | null): Promise<{ archive: string | null }> {
+  const resp = await fetch(`${P1_HTTP_BASE}/api/victims/new-mission`, {
+    method: 'POST',
+    headers: { 'X-Controller-Key': key ?? '' },
+  });
+  if (!resp.ok) {
+    const detail = await resp.json().then((j: { detail?: string }) => j.detail).catch(() => null);
+    throw new Error(detail ?? `new mission failed: ${resp.status}`);
+  }
+  return (await resp.json()) as { archive: string | null };
+}
+
 export async function fetchMediaHealth(): Promise<{
   status: string;
   camera_open: boolean;

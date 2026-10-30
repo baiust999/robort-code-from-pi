@@ -49,6 +49,8 @@ export const MSG_ROLE = 'role';
 export const MSG_VICTIM_MARK = 'victim_mark';
 /** Broadcast by P1 when the operator deletes a victim mark. */
 export const MSG_VICTIM_DELETE = 'victim_mark_deleted';
+/** Broadcast by P1 when the operator archives victim marks to start a new mission. */
+export const MSG_VICTIMS_RESET = 'victims_reset';
 
 export const ROLE_CONTROLLER = 'controller';
 export const ROLE_OBSERVER = 'observer';

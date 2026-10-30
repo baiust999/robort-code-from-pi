@@ -11,6 +11,7 @@ import {
   MSG_ROLE,
   MSG_VICTIM_MARK,
   MSG_VICTIM_DELETE,
+  MSG_VICTIMS_RESET,
   ROLE_CONTROLLER,
   ROLE_OBSERVER,
   HEARTBEAT_PERIOD_MS,
@@ -53,6 +54,8 @@ export interface ControlSocketState {
   addVictimMark: (mark: VictimMark) => void;
   /** Removes a mark this dashboard just deleted, ahead of P1's broadcast. */
   removeVictimMark: (id: string) => void;
+  /** Clears the list this dashboard just archived, ahead of P1's broadcast. */
+  clearVictimMarks: () => void;
   sendMotor: (dir: 'F' | 'R' | 'L' | 'G', speed: number) => void;
   sendServo: (axis: 'pan' | 'tilt', angle: number) => void;
   sendStopAll: () => void;
@@ -103,6 +106,10 @@ export function useControlSocket(controllerKey: string | null): ControlSocketSta
 
   const removeVictimMark = useCallback((id: string) => {
     setVictimMarks((prev) => prev.filter((m) => m.id !== id));
+  }, []);
+
+  const clearVictimMarks = useCallback(() => {
+    setVictimMarks([]);
   }, []);
 
   const send = useCallback((message: ClientMessage) => {
@@ -220,6 +227,11 @@ export function useControlSocket(controllerKey: string | null): ControlSocketSta
           }
           break;
         }
+        case MSG_VICTIMS_RESET: {
+          clearVictimMarks();
+          pushAlert('victim marks archived for a new mission');
+          break;
+        }
         case MSG_ERROR: {
           pushAlert(`error: ${msg.message ?? msg.code ?? 'unknown'}`);
           break;
@@ -228,7 +240,7 @@ export function useControlSocket(controllerKey: string | null): ControlSocketSta
           break;
       }
     };
-  }, [pushAlert, addVictimMark, removeVictimMark]);
+  }, [pushAlert, addVictimMark, removeVictimMark, clearVictimMarks]);
 
   const scheduleReconnect = useCallback(() => {
     if (reconnectTimerRef.current !== null) return;
@@ -330,6 +342,7 @@ export function useControlSocket(controllerKey: string | null): ControlSocketSta
     victimMarks,
     addVictimMark,
     removeVictimMark,
+    clearVictimMarks,
     sendMotor,
     sendServo,
     sendStopAll,

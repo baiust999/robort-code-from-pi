@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { deleteVictim } from '../lib/api';
+import { deleteVictim, startNewMission } from '../lib/api';
 import type { VictimMark } from '../lib/protocol';
 import { downloadVictimPhoto, downloadVictimRecord, localSnapshotUrl, useLocalSnapshots } from '../lib/saveVictim';
 
@@ -8,10 +8,12 @@ export function VictimList(props: {
   marks: VictimMark[];
   controllerKey: string | null;
   onDeleted: (id: string) => void;
+  onNewMission: () => void;
 }) {
-  const { controllerKey, onDeleted } = props;
+  const { controllerKey, onDeleted, onNewMission } = props;
   const marks = [...props.marks].reverse();
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [rotating, setRotating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   useLocalSnapshots();
 
@@ -29,11 +31,41 @@ export function VictimList(props: {
     }
   }
 
+  async function newMission() {
+    if (marks.length > 0) {
+      const ok = window.confirm(
+        `Start a new mission? These ${marks.length} mark(s) are archived under a dated filename on the robot (not deleted) and this list starts empty.`,
+      );
+      if (!ok) return;
+    }
+    setError(null);
+    setRotating(true);
+    try {
+      await startNewMission(controllerKey);
+      onNewMission();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'could not start new mission');
+    } finally {
+      setRotating(false);
+    }
+  }
+
   return (
     <div>
-      <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-white/50">
-        Victims found ({marks.length})
-      </h3>
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-white/50">
+          Victims found ({marks.length})
+        </h3>
+        <button
+          type="button"
+          disabled={!controllerKey || rotating}
+          onClick={() => void newMission()}
+          title={controllerKey ? 'Archive these marks and start a fresh list for a new mission' : 'Controller key required'}
+          className="text-[11px] text-white/50 hover:text-white/80 hover:underline disabled:opacity-40"
+        >
+          {rotating ? 'archiving…' : 'new mission'}
+        </button>
+      </div>
       <div className="flex max-h-40 flex-col overflow-y-auto rounded-lg border border-white/10 bg-black/30 p-2 text-xs">
         {marks.map((m) => (
           <div key={m.id} className="flex flex-wrap items-baseline gap-x-2 border-b border-white/5 py-1">

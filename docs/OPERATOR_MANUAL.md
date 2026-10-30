@@ -421,10 +421,21 @@ several downloads, or warns about the download, click **Allow** or
   it sits at the robot's last known position.
 
 Only the controller can save marks. The marks are kept on the robot, so
-they survive reloading the page or a laptop crash. The snapshots are only
-on your laptop, in this browser and in Downloads, so copy them off before
-you hand the device back. Clearing the browser's site data deletes the
-copy in the browser.
+they survive reloading the page or a laptop crash, and are **not** cleared
+when the robot restarts or the control service restarts, so a mark from a
+previous session, including a stray test note, will still be listed the
+next time the dashboard connects, until it is removed. The snapshots are
+only on your laptop, in this browser and in Downloads, so copy them off
+before you hand the device back. Clearing the browser's site data deletes
+the copy in the browser.
+
+To remove one mark, click **delete** next to it in **Victims found** and
+confirm; this cannot be undone. To start a fresh list for a new mission
+without losing the record of the old one, click **new mission** at the
+top of **Victims found** and confirm: every mark currently listed is
+archived on the robot under a dated filename and the list starts empty
+for every connected dashboard, not only yours. Nothing is deleted by
+**new mission**; it only moves marks out of the active list.
 
 ---
 
@@ -470,8 +481,11 @@ copy in the browser.
 4. Power off the robot and charge the battery.
 5. Save the mission logs if needed. They are on the Pi in `/var/log/robot/`,
    and include telemetry, the GPS track, and the victim marks (`victims/`).
-   The victim snapshots are not on the Pi; they are in the Downloads folder
-   of the device that marked them.
+   If **new mission** was used, this mission's marks are the active
+   `victims/victims.jsonl`; earlier missions are the dated
+   `victims/victims-<timestamp>-<id>.jsonl` files alongside it. The victim
+   snapshots are not on the Pi; they are in the Downloads folder of the
+   device that marked them.
 6. Copy your session recordings off the laptop (Downloads, or **Save to
    device** under *Recordings on this computer*), then **Delete** them from
    the list so they don't fill the laptop's disk. They are not on the Pi.

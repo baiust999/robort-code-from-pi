@@ -69,6 +69,23 @@ class VictimLog:
                 self._index.write_text(text, encoding="utf-8")
             return found
 
+    def rotate(self) -> str | None:
+        """Archive all current marks under a dated name and start this mission's list empty.
+
+        Returns the archive's filename, or None if there was nothing to archive.
+        """
+        with self._lock:
+            try:
+                text = self._index.read_text(encoding="utf-8")
+            except FileNotFoundError:
+                return None
+            if not text.strip():
+                return None
+            stamp = time.strftime("%Y%m%d-%H%M%S", time.localtime())
+            archive = self.directory / f"victims-{stamp}-{secrets.token_hex(2)}.jsonl"
+            self._index.rename(archive)
+            return archive.name
+
     def list(self) -> list[dict[str, Any]]:
         with self._lock:
             try:

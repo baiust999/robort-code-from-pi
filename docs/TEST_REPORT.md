@@ -146,6 +146,28 @@ Pi, headless recordings were 5-10 % short of audio; a plain
 share, so this is attributed to the load, but the operator laptop has
 not been checked (I28).
 
+**Addendum, 2026-10-30 (new-mission tool for `victims.jsonl`).** Marks
+left over in `victims.jsonl` from an earlier development session were
+found still listed in a later one, because nothing until now reset the
+active list between sessions; per-mark deletion (I27) could only remove
+them one at a time. Eight tests were added to `test_victim_log.py` for
+`VictimLog.rotate()` and the new `POST /api/victims/new-mission`
+endpoint: rotating archives every current mark to a dated filename in
+the same folder and leaves the active list empty; rotating an empty or
+missing log is a no-op (`archive: null`); the operation is broadcast as
+`victims_reset`; and it is refused with 403 to no key, an empty key or
+a wrong key, same as marking and deleting. Full suite on 2026-10-30
+(same command): **172 passed, 0 failed (4.3 s)**; output in
+`research-analysis/output/rerun_full_venv_2026-10-30_victim-new-mission.txt`.
+The dashboard's "new mission" button (next to "Victims found") was
+checked against the live robot's P1 process: a temporary mark was
+added directly to the live `victims.jsonl`, confirmed over
+`GET /api/victims`, then rotated, confirming the live endpoint, not
+only the unit tests, archives the mark and clears the active list; the
+temporary mark was removed afterward. No dashboard-side automated test
+exists for the new button, same limitation as the rest of the victim
+tools (see above).
+
 **Addendum, 2026-10-30 (recording format).** Recording now prefers MP4
 (H.264). Chromium 152 on the Pi accepts `video/mp4;codecs=avc1,opus`
 but not AAC (Debian build), so H.264 + Opus was exercised; H.264 + AAC

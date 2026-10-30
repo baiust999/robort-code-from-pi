@@ -979,6 +979,8 @@ Robot Screen (on the Pi, after desktop login):
 | `/api/controller` | GET | Host of the current controller, for P2's talk check (localhost only) | 200 JSON, or 403 |
 | `/api/victims` | GET | All victim marks, oldest first | 200, JSON `{marks: [...]}` |
 | `/api/victims` | POST | Add a victim mark: JSON `{note, ai_score}`, header `X-Controller-Key`; P1 adds GPS and servo angles itself | 200 mark; 400 bad body or note > 280 chars; 403 no/wrong key; 413 body > 16 KiB |
+| `/api/victims/<id>` | DELETE | Remove one victim mark by id, header `X-Controller-Key`; broadcasts `victim_mark_deleted` | 200 `{id}`; 403 no/wrong key; 404 unknown id |
+| `/api/victims/new-mission` | POST | Archive every current mark under a dated filename in the same log folder and clear the active list, header `X-Controller-Key`; broadcasts `victims_reset` | 200 `{archive}` (filename, or `null` if there was nothing to archive); 403 no/wrong key |
 | `/maps/<file>` | GET | Offline map files from `MAP_DIR` (only when that folder exists); supports HTTP range requests | 200 / 206, or 404 |
 | `/control/ws` | WS | Control WebSocket | 101 Switching Protocols |
 | `/` | GET | Built dashboard (static files) | 200 HTML |
@@ -1155,8 +1157,14 @@ Mark victim here (controller only):
 │  appends to victims/victims.jsonl, broadcasts victim_mark
 ├─ Every dashboard: "Victims found" list + red + on the map
 │  (faded + = no fix, at the last known position)
-└─ Snapshot (frame + AI boxes) never sent to the robot: kept in the
-   browser (IndexedDB) and downloaded as victim-<id>.jpg + .txt
+├─ Snapshot (frame + AI boxes) never sent to the robot: kept in the
+│  browser (IndexedDB) and downloaded as victim-<id>.jpg + .txt
+├─ delete button: DELETE /api/victims/{id} removes one mark; broadcasts
+│  victim_mark_deleted so every dashboard drops it
+└─ "new mission" button (2026-10-30): POST /api/victims/new-mission
+   renames victims.jsonl to a dated archive in the same folder and
+   broadcasts victims_reset, so marks left from an earlier session
+   or test run do not stay listed; nothing is deleted, only archived
 
 Session recording (any dashboard; nothing recorded on the robot):
 ├─ MediaRecorder: robot video + one mixed audio track
@@ -1215,7 +1223,12 @@ Victim marks (Section 19.4):
 │  key, note ≤ 280 chars
 ├─ Stamp with P1's GPS fix, last track point, pan/tilt; append to
 │  victims/victims.jsonl; log VICTIM_MARK
-└─ Broadcast victim_mark to every WebSocket client
+├─ Broadcast victim_mark to every WebSocket client
+├─ DELETE /api/victims/{id}: rewrite victims.jsonl without that line;
+│  broadcast victim_mark_deleted
+└─ POST /api/victims/new-mission (2026-10-30): rename victims.jsonl to
+   a dated archive in the same folder, leaving the active list empty;
+   broadcast victims_reset; a no-op (archive: null) if nothing to archive
 
 Shutdown:
 └─ Send S, close the port, write the GPS track as GeoJSON
@@ -1588,10 +1601,14 @@ temp_crit, 2 gas_warn, 3 gas_crit, 4 range_warn, 5 range_crit, 7 gps_lost,
 | `p1_events.log`, `p2_events.log`, `p3_events.log` | weekly or 10 MB, keep 8, compressed |
 
 The policy covers both layouts (`/var/log/robot` and a git checkout's
-`var/log`). Not rotated: the GPS tracks, whose clean-up (a
+`var/log`). Not rotated by logrotate: the GPS tracks, whose clean-up (a
 `find … -mtime +90 -delete` cron line in the comments) is not installed by
-`install.sh`, and `victims/victims.jsonl`, which is kept until deleted by
-hand. Both are listed in Section 40.3.
+`install.sh`, and `victims/victims.jsonl`, which this policy leaves alone.
+Since 2026-10-30 the dashboard's **new mission** button (Section 19.4,
+`POST /api/victims/new-mission`) can rotate `victims.jsonl` on request,
+archiving it to a dated filename in the same folder; outside of that
+explicit action it is still kept until deleted by hand. Both are listed
+in Section 40.3.
 
 ## 28.3 Storage Estimate
 
@@ -2161,7 +2178,7 @@ Each extra viewer adds another video + audio stream.
 | Crash recovery | Automatic, ~15 s | P3 (tests F3, F4) |
 | Watchdog recovery | Automatic | systemd (test F5) |
 | Reboot to operational | Unattended | Test F9 |
-| Automated tests | All pass | `pytest` in `pi/`: 156 tests passing (2026-10-30) |
+| Automated tests | All pass | `pytest` in `pi/`: 172 tests passing (2026-10-30, after the delete and new-mission endpoints) |
 
 No field reliability figures (uptime, packet loss, MTBF) have been
 measured yet; they belong in `TEST_REPORT.md` once the field test is run.
@@ -2233,9 +2250,10 @@ CRITICAL PATH (Motor Safety):
 ├─ Kiosk: Chromium in kiosk mode, bash launcher
 ├─ Network: ordinary Wi-Fi network (WPA2/WPA3)
 ├─ Supervision: systemd (P3), P3 (P1, P2)
-└─ Tests: pytest (156 tests: command validation, telemetry parsing,
+└─ Tests: pytest (172 tests: command validation, telemetry parsing,
    mission state, ring buffer, dead-man emulation, shared capture,
-   talk-back, controller access, Wi-Fi signal, victim marks)
+   talk-back, controller access, Wi-Fi signal, victim marks including
+   delete and new-mission)
 ```
 
 ## 40.3 Known Limitations
@@ -2262,7 +2280,10 @@ CRITICAL PATH (Motor Safety):
    Wi-Fi password.
 7. **Housekeeping.** The systemd unit waits for `dev-ttyUSB0.device` while
    the UNO is `/dev/ttyACM0`; the GPS-track clean-up cron is not installed;
-   `victims/victims.jsonl` is never rotated or pruned;
+   `victims/victims.jsonl` is never rotated or pruned automatically, and
+   nothing clears marks left over from an earlier session on its own
+   (since 2026-10-30 the dashboard's **new mission** button can archive
+   the active list on request, but nothing does so by itself);
    `VIDEO_BITRATE_KBPS` in `p2.env` is read but not used by P2.
 8. **Talk-to-victim partly tested on hardware.** Both audio directions work
    on the robot; operator video, images, text and tap-to-answer questions

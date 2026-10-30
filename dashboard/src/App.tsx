@@ -47,6 +47,7 @@ function App() {
     victimMarks,
     addVictimMark,
     removeVictimMark,
+    clearVictimMarks,
     sendMotor,
     sendServo,
     sendStopAll,
@@ -147,7 +148,12 @@ function App() {
         <aside className="flex flex-col gap-3 overflow-y-auto rounded-lg border border-white/10 bg-white/5 p-3">
           <SensorCardGrid telemetry={telemetry} />
           <GpsStatusCard telemetry={telemetry} />
-          <VictimList marks={victimMarks} controllerKey={controllerKey} onDeleted={removeVictimMark} />
+          <VictimList
+            marks={victimMarks}
+            controllerKey={controllerKey}
+            onDeleted={removeVictimMark}
+            onNewMission={clearVictimMarks}
+          />
           <div className="flex-1">
             <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-white/50">
               Alerts

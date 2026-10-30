@@ -1,6 +1,7 @@
 """Victim marks: stored on the robot without snapshots, stamped with P1's own GPS, controller only."""
 
 import asyncio
+import json
 import logging
 
 import pytest
@@ -91,6 +92,30 @@ def test_delete_from_empty_log_is_a_no_op(tmp_path, log):
     assert VictimLog(tmp_path / "victims", log).delete("anything") is False
 
 
+def test_rotate_archives_marks_under_a_dated_name_and_starts_empty(tmp_path, log):
+    victims = VictimLog(tmp_path / "victims", log)
+    first = victims.add("one", {})
+    second = victims.add("two", {})
+
+    archive_name = victims.rotate()
+
+    assert archive_name is not None
+    assert victims.list() == []
+    archived_lines = (tmp_path / "victims" / archive_name).read_text().splitlines()
+    assert [json.loads(line)["id"] for line in archived_lines] == [first["id"], second["id"]]
+    assert sorted(p.name for p in (tmp_path / "victims").iterdir()) == [archive_name]
+
+
+def test_rotate_of_empty_log_is_a_no_op(tmp_path, log):
+    victims = VictimLog(tmp_path / "victims", log)
+    assert victims.rotate() is None
+    assert victims.list() == []
+
+
+def test_rotate_of_missing_log_is_a_no_op(tmp_path, log):
+    assert VictimLog(tmp_path / "victims", log).rotate() is None
+
+
 # --- P1 add_victim ------------------------------------------------------------
 
 
@@ -165,6 +190,38 @@ def test_deleting_an_unknown_mark_is_404(server):
     with pytest.raises(HTTPException) as exc:
         asyncio.run(server.delete_victim(HOST, KEY, "no-such-id"))
     assert exc.value.status_code == 404
+
+
+# --- P1 start_new_mission -------------------------------------------------------
+
+
+def test_controller_can_start_a_new_mission_and_it_is_broadcast(server):
+    result = mark(server, VictimMarkRequest(note="x"))
+    server.broadcasts = []
+
+    outcome = asyncio.run(server.start_new_mission(HOST, KEY))
+
+    assert outcome["archive"] is not None
+    assert server.victims.list() == []
+    assert server.broadcasts == [{"type": protocol.MSG_VICTIMS_RESET, "archive": outcome["archive"]}]
+    archived = (server.config.paths.victims_dir / outcome["archive"]).read_text()
+    assert json.loads(archived)["id"] == result["id"]
+
+
+def test_new_mission_on_an_empty_log_archives_nothing(server):
+    outcome = asyncio.run(server.start_new_mission(HOST, KEY))
+    assert outcome == {"archive": None}
+    assert server.broadcasts == [{"type": protocol.MSG_VICTIMS_RESET, "archive": None}]
+
+
+@pytest.mark.parametrize("key", [None, "", "wrong"])
+def test_only_the_controller_key_may_start_a_new_mission(server, key):
+    result = mark(server, VictimMarkRequest(note="x"))
+
+    with pytest.raises(HTTPException) as exc:
+        asyncio.run(server.start_new_mission(HOST, key))
+    assert exc.value.status_code == 403
+    assert server.victims.list() == [result]
 
 
 # --- request size limit ---------------------------------------------------------
