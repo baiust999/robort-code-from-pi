@@ -50,7 +50,10 @@
     padding: 1.2vh 3vw; border-radius: 99px; background: #dc2626; font-size: 3.5vh; font-weight: 700; }
   #sound { position: absolute; right: 3vw; top: 3vh; padding: 2vh 3vw; font-size: 3.5vh;
     border-radius: 1.5vh; border: 0; background: #f59e0b; color: #000; font-weight: 700; cursor: pointer; }
+  /* Over the video and message bar; the speaking badge, sound button and
+     VNC button stay above it. */
   #question { z-index: 5; background: #0b2a4a; gap: 5vh; }
+  #talking, #sound { z-index: 6; }
   #question-text { margin: 0; font-size: 7vh; line-height: 1.15; max-width: 90vw; overflow-wrap: anywhere; }
   #question-options { display: grid; gap: 3vh 3vw; width: 100%; max-width: 92vw; }
   #question-options button { min-height: 20vh; padding: 2vh 2vw; border: 0; border-radius: 2.5vh;
