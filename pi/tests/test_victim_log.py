@@ -70,6 +70,27 @@ def test_corrupt_line_is_skipped(tmp_path, log):
     assert [m["note"] for m in victims.list()] == ["one", "two"]
 
 
+def test_delete_removes_only_that_mark(tmp_path, log):
+    victims = VictimLog(tmp_path / "victims", log)
+    first = victims.add("one", {})
+    second = victims.add("two", {})
+
+    assert victims.delete(first["id"]) is True
+    assert victims.list() == [second]
+
+
+def test_delete_of_unknown_id_is_a_no_op(tmp_path, log):
+    victims = VictimLog(tmp_path / "victims", log)
+    mark = victims.add("one", {})
+
+    assert victims.delete("no-such-id") is False
+    assert victims.list() == [mark]
+
+
+def test_delete_from_empty_log_is_a_no_op(tmp_path, log):
+    assert VictimLog(tmp_path / "victims", log).delete("anything") is False
+
+
 # --- P1 add_victim ------------------------------------------------------------
 
 
@@ -114,6 +135,36 @@ def test_long_note_is_refused(server):
         mark(server, VictimMarkRequest(note="x" * 281))
     assert exc.value.status_code == 400
     assert server.victims.list() == []
+
+
+# --- P1 delete_victim -----------------------------------------------------------
+
+
+def test_controller_can_delete_a_mark_and_it_is_broadcast(server):
+    result = mark(server, VictimMarkRequest(note="x"))
+    server.broadcasts = []
+
+    outcome = asyncio.run(server.delete_victim(HOST, KEY, result["id"]))
+
+    assert outcome == {"id": result["id"]}
+    assert server.victims.list() == []
+    assert server.broadcasts == [{"type": protocol.MSG_VICTIM_DELETE, "id": result["id"]}]
+
+
+@pytest.mark.parametrize("key", [None, "", "wrong"])
+def test_only_the_controller_key_may_delete(server, key):
+    result = mark(server, VictimMarkRequest(note="x"))
+
+    with pytest.raises(HTTPException) as exc:
+        asyncio.run(server.delete_victim(HOST, key, result["id"]))
+    assert exc.value.status_code == 403
+    assert server.victims.list() == [result]
+
+
+def test_deleting_an_unknown_mark_is_404(server):
+    with pytest.raises(HTTPException) as exc:
+        asyncio.run(server.delete_victim(HOST, KEY, "no-such-id"))
+    assert exc.value.status_code == 404
 
 
 # --- request size limit ---------------------------------------------------------

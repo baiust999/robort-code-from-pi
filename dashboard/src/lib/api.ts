@@ -67,6 +67,18 @@ export async function postVictim(
   return (await resp.json()) as VictimMark;
 }
 
+/** Only the controller key may delete a mark, same as marking one. */
+export async function deleteVictim(key: string | null, id: string): Promise<void> {
+  const resp = await fetch(`${P1_HTTP_BASE}/api/victims/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: { 'X-Controller-Key': key ?? '' },
+  });
+  if (!resp.ok) {
+    const detail = await resp.json().then((j: { detail?: string }) => j.detail).catch(() => null);
+    throw new Error(detail ?? `delete failed: ${resp.status}`);
+  }
+}
+
 export async function fetchMediaHealth(): Promise<{
   status: string;
   camera_open: boolean;

@@ -1,10 +1,34 @@
+import { useState } from 'react';
+import { deleteVictim } from '../lib/api';
 import type { VictimMark } from '../lib/protocol';
 import { downloadVictimPhoto, downloadVictimRecord, localSnapshotUrl, useLocalSnapshots } from '../lib/saveVictim';
 
 /** Every victim marked this mission, newest first. The robot keeps the marks; snapshots live only on the device that took them. */
-export function VictimList(props: { marks: VictimMark[] }) {
+export function VictimList(props: {
+  marks: VictimMark[];
+  controllerKey: string | null;
+  onDeleted: (id: string) => void;
+}) {
+  const { controllerKey, onDeleted } = props;
   const marks = [...props.marks].reverse();
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   useLocalSnapshots();
+
+  async function remove(mark: VictimMark) {
+    if (!window.confirm(`Delete this mark${mark.note ? ` ("${mark.note}")` : ''}? This cannot be undone.`)) return;
+    setError(null);
+    setDeleting(mark.id);
+    try {
+      await deleteVictim(controllerKey, mark.id);
+      onDeleted(mark.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'could not delete');
+    } finally {
+      setDeleting(null);
+    }
+  }
+
   return (
     <div>
       <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-white/50">
@@ -41,10 +65,20 @@ export function VictimList(props: { marks: VictimMark[] }) {
             >
               save details
             </button>
+            <button
+              type="button"
+              disabled={!controllerKey || deleting === m.id}
+              onClick={() => void remove(m)}
+              title={controllerKey ? 'Remove this mark' : 'Controller key required to delete'}
+              className="text-red-400 hover:underline disabled:opacity-40"
+            >
+              {deleting === m.id ? 'deleting…' : 'delete'}
+            </button>
           </div>
         ))}
         {marks.length === 0 && <div className="text-white/30">none marked yet</div>}
       </div>
+      {error && <div className="mt-1 text-xs text-red-400">{error}</div>}
     </div>
   );
 }

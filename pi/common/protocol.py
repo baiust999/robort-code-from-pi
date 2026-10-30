@@ -161,6 +161,8 @@ MSG_ERROR = "error"
 MSG_ROLE = "role"
 # Broadcast when the operator marks a victim (see /api/victims).
 MSG_VICTIM_MARK = "victim_mark"
+# Broadcast when the operator deletes a victim mark (see /api/victims/{id}).
+MSG_VICTIM_DELETE = "victim_mark_deleted"
 
 CLIENT_MESSAGE_TYPES = frozenset(
     {MSG_MOTOR, MSG_SERVO, MSG_HEARTBEAT, MSG_STOP_ALL, MSG_HELLO, MSG_RESUME_FROM}

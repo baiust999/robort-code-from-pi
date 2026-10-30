@@ -385,6 +385,16 @@ class ControlServer:
         await self.hub.broadcast({"type": protocol.MSG_VICTIM_MARK, "mark": mark})
         return mark
 
+    async def delete_victim(self, host: str, key: str | None, mark_id: str) -> dict[str, Any]:
+        """Remove a victim mark; only the controller key may delete, same as marking."""
+        if self.gate.check(host, key) != access.OK:
+            raise HTTPException(status_code=403, detail="controller key required")
+        if not self.victims.delete(mark_id):
+            raise HTTPException(status_code=404, detail="no such mark")
+        self.log.info("VICTIM_DELETE", "operator deleted a victim mark", id=mark_id)
+        await self.hub.broadcast({"type": protocol.MSG_VICTIM_DELETE, "id": mark_id})
+        return {"id": mark_id}
+
     def ice_config(self, client_key: str) -> dict[str, Any]:
         """Issue ICE servers, rate-limited per client, Section 8.8.1.1."""
         now = time.monotonic()
@@ -470,6 +480,11 @@ def create_app(server: ControlServer) -> FastAPI:
             raise HTTPException(status_code=400, detail="malformed victim mark") from None
         host = request.client.host if request.client else "unknown"
         return await server.add_victim(host, request.headers.get(CONTROLLER_KEY_HEADER), body)
+
+    @app.delete("/api/victims/{mark_id}")
+    async def delete_victim(mark_id: str, request: Request) -> dict[str, Any]:
+        host = request.client.host if request.client else "unknown"
+        return await server.delete_victim(host, request.headers.get(CONTROLLER_KEY_HEADER), mark_id)
 
     @app.websocket(protocol.WS_PATH)
     async def control_ws(socket: WebSocket) -> None:

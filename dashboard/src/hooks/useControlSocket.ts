@@ -10,6 +10,7 @@ import {
   MSG_ERROR,
   MSG_ROLE,
   MSG_VICTIM_MARK,
+  MSG_VICTIM_DELETE,
   ROLE_CONTROLLER,
   ROLE_OBSERVER,
   HEARTBEAT_PERIOD_MS,
@@ -50,6 +51,8 @@ export interface ControlSocketState {
   victimMarks: VictimMark[];
   /** Adds a mark this dashboard just saved, ahead of P1's broadcast. */
   addVictimMark: (mark: VictimMark) => void;
+  /** Removes a mark this dashboard just deleted, ahead of P1's broadcast. */
+  removeVictimMark: (id: string) => void;
   sendMotor: (dir: 'F' | 'R' | 'L' | 'G', speed: number) => void;
   sendServo: (axis: 'pan' | 'tilt', angle: number) => void;
   sendStopAll: () => void;
@@ -96,6 +99,10 @@ export function useControlSocket(controllerKey: string | null): ControlSocketSta
 
   const addVictimMark = useCallback((mark: VictimMark) => {
     setVictimMarks((prev) => (prev.some((m) => m.id === mark.id) ? prev : [...prev, mark]));
+  }, []);
+
+  const removeVictimMark = useCallback((id: string) => {
+    setVictimMarks((prev) => prev.filter((m) => m.id !== id));
   }, []);
 
   const send = useCallback((message: ClientMessage) => {
@@ -205,6 +212,14 @@ export function useControlSocket(controllerKey: string | null): ControlSocketSta
           }
           break;
         }
+        case MSG_VICTIM_DELETE: {
+          const id = msg.id as string | undefined;
+          if (id) {
+            removeVictimMark(id);
+            pushAlert('victim mark deleted');
+          }
+          break;
+        }
         case MSG_ERROR: {
           pushAlert(`error: ${msg.message ?? msg.code ?? 'unknown'}`);
           break;
@@ -213,7 +228,7 @@ export function useControlSocket(controllerKey: string | null): ControlSocketSta
           break;
       }
     };
-  }, [pushAlert, addVictimMark]);
+  }, [pushAlert, addVictimMark, removeVictimMark]);
 
   const scheduleReconnect = useCallback(() => {
     if (reconnectTimerRef.current !== null) return;
@@ -314,6 +329,7 @@ export function useControlSocket(controllerKey: string | null): ControlSocketSta
     pushAlert,
     victimMarks,
     addVictimMark,
+    removeVictimMark,
     sendMotor,
     sendServo,
     sendStopAll,

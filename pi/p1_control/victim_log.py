@@ -43,6 +43,32 @@ class VictimLog:
                 fh.write(json.dumps(mark) + "\n")
         return mark
 
+    def delete(self, mark_id: str) -> bool:
+        """Remove one mark by id. Returns False if no mark had that id."""
+        with self._lock:
+            try:
+                lines = self._index.read_text(encoding="utf-8").splitlines()
+            except FileNotFoundError:
+                return False
+            kept = []
+            found = False
+            for line in lines:
+                if not line.strip():
+                    continue
+                try:
+                    mark = json.loads(line)
+                except json.JSONDecodeError:
+                    kept.append(line)
+                    continue
+                if isinstance(mark, dict) and mark.get("id") == mark_id:
+                    found = True
+                    continue
+                kept.append(line)
+            if found:
+                text = "".join(f"{line}\n" for line in kept)
+                self._index.write_text(text, encoding="utf-8")
+            return found
+
     def list(self) -> list[dict[str, Any]]:
         with self._lock:
             try:
