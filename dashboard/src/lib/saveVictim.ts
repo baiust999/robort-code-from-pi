@@ -1,18 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import type { VictimMark } from './protocol';
-
-/** Hands `blob` to the browser as a download named `filename`. */
-function download(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  // Revoked later: some browsers read the blob after click() returns.
-  setTimeout(() => URL.revokeObjectURL(url), 10_000);
-}
+import { download } from './download';
 
 /*
  * Snapshots live only on the device that took them, never on the robot. They

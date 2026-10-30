@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { WebrtcVideoState } from '../hooks/useWebrtcVideo';
 import type { PersonBox, PersonDetectionState } from '../hooks/usePersonDetection';
+import type { RecorderState } from '../hooks/useRecorder';
 import { drawPersonBoxes } from '../lib/drawPersonBoxes';
 
 /** Keeps the overlay canvas the size of the video box and draws the boxes where the picture is. */
@@ -40,9 +41,18 @@ function DetectionOverlay(props: { videoRef: WebrtcVideoState['videoRef']; boxes
   return <canvas ref={canvasRef} className="pointer-events-none absolute inset-0 h-full w-full" />;
 }
 
-export function VideoSurface(props: { video: WebrtcVideoState; detection: PersonDetectionState }) {
+const clock = (ms: number) => {
+  const s = Math.floor(ms / 1000);
+  return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+};
+
+export function VideoSurface(props: {
+  video: WebrtcVideoState;
+  detection: PersonDetectionState;
+  recorder: RecorderState;
+}) {
   const { videoRef, connected, error, waiting, retry } = props.video;
-  const detection = props.detection;
+  const { detection, recorder } = props;
   // Browsers only autoplay muted media, so the robot's microphone starts
   // muted and the operator turns it on with a click.
   const [listening, setListening] = useState(false);
@@ -67,6 +77,12 @@ export function VideoSurface(props: { video: WebrtcVideoState; detection: Person
             POSSIBLE PERSON
           </div>
         )}
+        {recorder.recording && (
+          <div className="absolute top-2 right-2 flex items-center gap-1 rounded bg-black/70 px-2 py-1 text-xs font-bold text-white">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" />
+            REC {clock(recorder.elapsedMs)} · {(recorder.sizeBytes / 1e6).toFixed(1)} MB
+          </div>
+        )}
         {connected && (
           <div className="absolute right-2 bottom-2 flex gap-1">
             <button
@@ -84,6 +100,18 @@ export function VideoSurface(props: { video: WebrtcVideoState; detection: Person
             >
               {listening ? '🔊 Robot mic on' : '🔇 Listen to robot mic'}
             </button>
+            {recorder.supported && (
+              <button
+                type="button"
+                onClick={recorder.recording ? recorder.stop : recorder.start}
+                title="Record the robot video with both sides' audio, saved on this computer only"
+                className={`rounded px-2 py-1 text-xs text-white/90 ${
+                  recorder.recording ? 'bg-red-700 hover:bg-red-600' : 'bg-black/60 hover:bg-black/80'
+                }`}
+              >
+                {recorder.recording ? '⏹ Stop recording' : '⏺ Record'}
+              </button>
+            )}
           </div>
         )}
         {!connected && (
@@ -108,6 +136,50 @@ export function VideoSurface(props: { video: WebrtcVideoState; detection: Person
         )}
       </div>
       {detection.error && <p className="text-xs text-amber-300">{detection.error}</p>}
+      {recorder.recording && !recorder.crashSafe && (
+        <p className="text-xs text-amber-300">
+          This browser won't keep the recording while it runs: a crash or reload would lose it.
+        </p>
+      )}
+      {recorder.message && <p className="text-xs text-white/60">{recorder.message}</p>}
+      {recorder.saved.length > 0 && (
+        <details className="rounded bg-white/5 px-2 py-1 text-xs text-white/70">
+          <summary className="cursor-pointer">
+            Recordings on this computer ({recorder.saved.length})
+            {recorder.saved.some((m) => !m.finished) && (
+              <span className="ml-1 text-amber-300">· one was cut off by a crash or reload</span>
+            )}
+          </summary>
+          <ul className="mt-1 flex flex-col gap-1">
+            {recorder.saved.map((m) => (
+              <li key={m.id} className="flex items-center gap-2">
+                <span className={`flex-1 ${m.finished ? '' : 'text-amber-300'}`}>
+                  {new Date(m.startedAt).toLocaleString()}
+                  {!m.finished && ' (unfinished)'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => recorder.save(m)}
+                  className="rounded border border-white/20 px-2 py-0.5 hover:bg-white/10"
+                >
+                  Save to device
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm('Delete this recording from this browser? Copies already in Downloads are kept.')) {
+                      recorder.remove(m);
+                    }
+                  }}
+                  className="rounded border border-white/20 px-2 py-0.5 hover:bg-white/10"
+                >
+                  Delete
+                </button>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
       {detection.enabled && (
         <p className="text-xs text-white/40">
           AI detects people only when visible and lit; it can miss victims. Always check the video yourself.

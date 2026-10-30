@@ -3,6 +3,7 @@ import { useControlSocket } from './hooks/useControlSocket';
 import { useWebrtcVideo } from './hooks/useWebrtcVideo';
 import { useTalkback } from './hooks/useTalkback';
 import { usePersonDetection } from './hooks/usePersonDetection';
+import { useRecorder } from './hooks/useRecorder';
 import { ConnectionStatusBar } from './components/ConnectionStatusBar';
 import { SignalWarningBanner } from './components/SignalWarningBanner';
 import { MissionStateIndicator } from './components/MissionStateIndicator';
@@ -62,6 +63,7 @@ function App() {
   }, [auth, retryAfterS, controllerKey]);
   const talk = useTalkback(video.talkLink);
   const detection = usePersonDetection(video.videoRef, video.connected);
+  const recorder = useRecorder(video.remoteStream, video.talkLink, video.connected);
 
   // Log when a person comes into view, not every frame they stay in it.
   const lastPersonAlert = useRef(0);
@@ -130,7 +132,7 @@ function App() {
         </aside>
 
         <main className="flex flex-col gap-2">
-          <VideoSurface video={video} detection={detection} />
+          <VideoSurface video={video} detection={detection} recorder={recorder} />
           <MarkVictimButton
             videoRef={video.videoRef}
             boxes={detection.boxes}

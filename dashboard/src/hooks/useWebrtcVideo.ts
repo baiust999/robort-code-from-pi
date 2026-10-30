@@ -28,6 +28,8 @@ export interface WebrtcVideoState {
   talkLink: TalkLink | null;
   /** P2's controller-key check for this connection. */
   auth: Auth | null;
+  /** The robot's camera and mic as received; replaced on every reconnect. */
+  remoteStream: MediaStream | null;
 }
 
 /**
@@ -56,6 +58,7 @@ export function useWebrtcVideo(controllerKey: string | null): WebrtcVideoState {
   const [waiting, setWaiting] = useState(false);
   const [talkLink, setTalkLink] = useState<TalkLink | null>(null);
   const [auth, setAuth] = useState<Auth | null>(null);
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
 
   const retry = useCallback(() => {
     everConnected.current = false;
@@ -92,6 +95,7 @@ export function useWebrtcVideo(controllerKey: string | null): WebrtcVideoState {
         setTalkLink({ audioSender: audioTx.sender, videoSender: videoTx.sender, channel });
 
         const stream = new MediaStream();
+        setRemoteStream(stream);
         pc.ontrack = (event) => {
           stream.addTrack(event.track);
           if (videoRef.current) {
@@ -131,8 +135,9 @@ export function useWebrtcVideo(controllerKey: string | null): WebrtcVideoState {
       pc?.close();
       setTalkLink(null);
       setAuth(null);
+      setRemoteStream(null);
     };
   }, [attempt, controllerKey]);
 
-  return { videoRef, connected, error, waiting, retry, talkLink, auth };
+  return { videoRef, connected, error, waiting, retry, talkLink, auth, remoteStream };
 }

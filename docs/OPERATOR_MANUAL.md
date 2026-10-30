@@ -275,6 +275,38 @@ The **Robot display** buttons switch what the robot's screen shows:
 
 Always switch back to **Robot Display** before a mission.
 
+### Recording the session
+
+**⏺ Record** (bottom-right of the video) records the robot's camera together
+with both sides of the conversation: the robot's microphone, and whatever
+you send to the robot speaker (your voice while you hold talk, or the
+call-out message). The AI boxes are not recorded. Recording works whether
+or not **Listen to robot mic** is on.
+
+- While recording, **REC 01:23 · 14 MB** shows top-right of the video.
+  Expect roughly 10–40 MB per minute.
+- **⏹ Stop recording** saves the file to your Downloads as
+  `robot-session-<date-time>.webm` (`.mp4` in Safari). It plays in
+  Chrome, Firefox or VLC.
+- The recording is kept **only on your device**, never on the robot.
+- A short Wi-Fi drop doesn't interrupt the recording. If the video stays
+  down for more than 15 seconds, or you press **Retry video**, the
+  recording stops and saves by itself ("video connection lost"). Press
+  **⏺ Record** again once the video is back.
+- Every recording is also kept in this browser, listed under the video as
+  **Recordings on this computer**. If Chrome held back the download (or
+  you need another copy), press **Save to device** there. **Delete**
+  removes it from the browser; copies in Downloads are kept. Delete old
+  recordings after copying them off, as they take up disk space.
+- If the browser crashes or the page is reloaded while recording, the
+  recording is still in that list, marked **(unfinished)**. It is complete
+  up to the last second or two before the crash.
+- In a private window, a yellow note warns that a crash would lose the
+  recording, and nothing is listed after a reload.
+
+Any dashboard can record, including observers. An observer's recording has
+the robot's side only.
+
 ---
 
 ## 10. Finding victims
