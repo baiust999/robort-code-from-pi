@@ -38,7 +38,7 @@ flowchart TB
             direction TB
             P2_SIG["signaling\nPOST /webrtc/offer → SDP"]
             P2_MED["media\nH.264 video 640x480@10fps\n+ Opus audio"]
-            P2_RLY["talkback relay\noperator video/audio + text\n→ Robot Screen"]
+            P2_RLY["talkback relay\noperator video/audio + text\n+ tap-to-answer questions\n→ Robot Screen"]
             P2_SIG --> P2_MED
             P2_SIG -.-> P2_RLY
         end

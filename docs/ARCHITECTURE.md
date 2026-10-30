@@ -54,8 +54,9 @@ dependency is OSM map tiles, and it is not mission-critical: inside the
 operating area the map comes from `area.pmtiles` on the Pi, which P1 serves
 at `/maps`, so the map works with no internet there.
 
-WebRTC is two-way: the same connection carries the operator's voice, video
-and messages back to the victim-facing Robot Screen — see §14. The
+WebRTC is two-way: the same connection carries the operator's voice, video,
+messages and tap-to-answer questions back to the victim-facing Robot Screen
+— see §14. The
 victim-finding tools (AI person detection, call-out, victim marks) run
 mostly in the dashboard and use these same two transports plus P1's
 REST API — see §15.
@@ -600,8 +601,10 @@ flowchart LR
 ## 14. Two-Way Communication with the Victim
 
 **Status: implemented; audio tested on robot hardware** (both directions,
-2026-09-27); operator video, images and text not yet shown on a physical
-display. Full rationale in
+2026-09-27); operator video, images, text and tap-to-answer questions not
+yet confirmed on a physical display (questions: functional headless checks
+only, §14.5; answering needs the display's touch input, which was not
+connected on 2026-10-30). Full rationale in
 [`SOFTWARE_ARCHITECTURE.md` §A.11](./SOFTWARE_ARCHITECTURE.md); protocol
 details in `CAPSTONE_METHODOLOGY_FINAL.md` §16.
 
@@ -624,10 +627,10 @@ flowchart LR
 
     victim -- "face + voice" --> cam --> p2
     p2 -- "Tracks 1-2: video + audio" --> dash --> operator
-    operator -- "push-to-talk, camera / image / screen, text" --> dash
+    operator -- "push-to-talk, camera / image / screen, text, questions" --> dash
     dash -- "Tracks 3-4 + data channel 'screen'" --> p2
     p2 -- "decode + re-encode<br/>(localhost peer)" --> screen
-    screen --> disp -- "operator face / image + text" --> victim
+    screen --> disp -- "operator face / image + text + answer buttons" --> victim
     screen --> spk -- "operator voice" --> victim
 
     classDef added fill:#fff,stroke:#B7791F,stroke-dasharray:5 4,color:#12181A;
@@ -689,6 +692,8 @@ sequenceDiagram
 | P2 crash | P3 (existing) | Video **and** talk-to-victim lost; driving unaffected (`DRIVING_LIMITED`) |
 | Second operator tries to talk | P2 floor control | Request refused; that session stays listen-only |
 | Robot display left in VNC mode | `talk_status.display_mode = "vnc"` | Dashboard shows an orange "robot screen is OFF" warning; P2 restart resets to `robot` |
+| Kiosk shows a cached page after an update | Questions logged by P2 but never shown | `/screen` is sent with `Cache-Control: no-cache`; found 2026-10-30 (TEST_REPORT Issue 8) |
+| Victim never answers a question | P2's 5-minute timer | Question taken off the screen; dashboard shows "No answer (5 min)" |
 
 ### 14.4 Display mode — Robot Display ⇄ VNC
 
@@ -730,6 +735,35 @@ press-and-hold and ignores keys. Still, close the viewer while talking to a
 victim. P2 logs
 which local client switched the mode (`source=local:127.0.0.1:kiosk` or
 `:curl`) in the `DISPLAY_MODE` event.
+
+### 14.5 Sequence — asking the victim a question
+
+For a victim who cannot speak. The operator writes the question and 2-4
+answers; P2 holds the single current question, so its outcome survives a
+kiosk reload or a dashboard reconnect.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant K as Robot Screen (kiosk)
+    participant P2 as P2 Media
+    participant D as Dashboard(s)
+    actor O as Operator
+
+    O->>D: "Are you hurt?" + Yes / No, Send question
+    D->>P2: {"type":"question_ask", text, options}
+    P2->>P2: claim floor, replace any question, start 5-min timer
+    P2->>K: {"type":"question_show", id, text, options}
+    P2-->>D: question_status: waiting (to every dashboard)
+    K->>K: question + one large button per answer
+    Note over K: victim taps "Yes"
+    K->>P2: {"type":"question_answer", id, choice: 0}
+    P2->>P2: first tap on the current question only; stop timer
+    P2-->>D: question_status: answered, answer 0
+    D->>D: shows "Answer: Yes"
+    K->>K: "Answer sent ✓" for 2 s, then hide
+    Note over P2,K: no tap in 5 min, Clear, or release: question_hide + status expired / cleared
+```
 
 ---
 

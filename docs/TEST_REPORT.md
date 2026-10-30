@@ -54,7 +54,7 @@ turns the CSVs into the aggregate tables the paper's Section 5 needs.
 | `test_mock_deadman.py` | 10 | Simulated firmware: dead-man timer trips after 2 s and stops the motors; heartbeat re-arms it; oversized and unknown commands are rejected; PWM is clamped; telemetry arrives at the expected rate. | PASS |
 | `test_ring_buffer.py` | 9 | The 300-slot telemetry buffer keeps order, overwrites the oldest entries, returns only newer frames on resume, and reports gaps. | PASS |
 | `test_telemetry_parser.py` | 8 | Arduino telemetry lines are parsed correctly; wrong field counts, non-numeric, out-of-range, empty and oversized lines are rejected. | PASS |
-| `test_talkback.py` | 22 | Only one operator can hold the robot screen; release and disconnect free it; messages reach the screen; a reconnecting screen gets the current text; Robot Display / VNC mode switching; a session without the controller key can't talk, show video, send text or switch the display, and its media never reaches the screen; a session with the key but not from P1's current controller is also view-only; a takeover moves talk to the new controller and frees the floor. | PASS |
+| `test_talkback.py` | 32 | Only one operator can hold the robot screen; release and disconnect free it; messages reach the screen; a reconnecting screen gets the current text; Robot Display / VNC mode switching; a session without the controller key can't talk, show video, send text or switch the display, and its media never reaches the screen; a session with the key but not from P1's current controller is also view-only; a takeover moves talk to the new controller and frees the floor. Tap-to-answer questions (10 tests, added 2026-10-30): question text and 2-4 answers are trimmed and capped, and 1 or 5 answers are refused; a question reaches the screen and the tapped answer reaches every dashboard; a late, repeated, out-of-range or non-integer tap is ignored; a new question replaces the old one; expiry and Clear take it off the screen, and expiry after an answer changes nothing; releasing the screen clears it; an observer can't ask but sees the status; a reconnecting screen gets a question that is still waiting; the timeout fires on the real event loop. | PASS |
 | `test_controller_access.py` | 25 | Controller key: the right key makes a dashboard controller, no key or a wrong one makes it an observer; a stranger connecting first doesn't block the operator; a second keyed dashboard takes over, demoting and telling the first and stopping the robot; observers' drive, servo and emergency-stop commands are rejected and their heartbeats ignored; 5 wrong keys lock an IP out for 5 minutes, even for the right key, without affecting other IPs; no `CONTROLLER_KEY` means nobody controls; P2 gives the talk path only to offers with the key; P1 reports its controller's host to P2 on a localhost-only endpoint. | PASS |
 | `test_shared_capture.py` | 5 | Several video sessions share one camera device; the device closes after the last session and reopens; open errors are reported; each session gets its own yuv420p copy of every camera frame (never a shared frame object), from YUYV or yuv420p cameras. | PASS |
 | `test_resilient_audio.py` | 4 | The robot mic track sends silence while the mic is missing and switches to it once it opens; a mic lost mid-session is reopened; each outage is reported once; output is one continuous stream of 60 ms Opus packets, paced in real time. | PASS |
@@ -146,6 +146,32 @@ Pi, headless recordings were 5-10 % short of audio; a plain
 share, so this is attributed to the load, but the operator laptop has
 not been checked (I28). VP8/Opus WebM was the only format exercised.
 
+**Addendum, 2026-10-30 (tap-to-answer questions).** Ten tests were added
+to `test_talkback.py` (see the table above). Full suite on 2026-10-30
+(same command): **156 passed, 0 failed (4.6 s)** = the 146 above plus
+these 10; output in
+`research-analysis/output/rerun_full_venv_2026-10-30_questions.txt`.
+Functional checks were scripted against a separate mock P2
+(`MOCK_HARDWARE=1`, own ports and controller key), a headless Chromium
+kiosk on its `/screen` page driven over the DevTools protocol, and two
+scripted dashboards (one controller, one observer): 34 of 34 checks
+passed, covering the existing text message and its acknowledgement, the
+"Rescuer is speaking" badge, observer refusal and floor release as well
+as the question itself (2, 3 and 4 answers, first tap only, "Answer
+sent", replace, Clear, reload of the kiosk and late-joining dashboards).
+The dashboard panel was checked in the same way as controller and as
+observer. The real 5-minute timeout was checked once without media
+(`ScreenHub` with stub channels): the question expired after 300.4 s,
+the screen was told to hide it, both dashboards saw "expired" and a
+later tap was ignored. These checks found Issues 7 and 8. The full
+video test stack overloaded the Pi when run alongside other desktop
+software (P2 missed health checks and the Pi rebooted), so it should be
+run with the desktop otherwise idle. No victim has used the screen, and
+the feature has not been checked on the physical display (I29). On
+2026-10-30 no touch input device was connected to the Pi (only the HDMI
+inputs were listed in `/proc/bus/input/devices`), so I29 needs the
+display's touch cable connected first.
+
 **Limitation:** these tests use simulated hardware. They prove the software
 logic, not the real motors, sensors or radio link, which are covered in the
 sections below.
@@ -213,6 +239,7 @@ ending: Newline), or test through the dashboard where noted.
 | I25 | Call out | Click **📢 Call out** with the clip installed. | Message heard clearly from the robot speaker; meter shows *(speaker playing)*, then *Listening for a reply…* for 10 s. | | | |
 | I26 | Reply cue | After a call-out, a person 2 m and 5 m from the robot knocks three times, then shouts; repeat once with nobody responding. | "sound after call-out" in Alerts for the knock/shout; record the dB rise shown; no alert when nobody responds (note background noise). | | | |
 | I27 | Mark victim | Click **📍 Mark victim here**, type a note, Save; then reload the page; then open a second (observer) dashboard. | Mark in *Victims found* and on the map (faded + without GPS); `victim-<id>.jpg` and `.txt` in Downloads; after reload the mark and its snapshot link are still there; the observer sees the mark but no snapshot and cannot mark; `victims/victims.jsonl` on the Pi has the mark and no image. | | | |
+| I29 | Tap-to-answer question | With the display's touch cable connected and **Robot Display** on: in *Ask a question* type "Are you hurt?" with Yes / No, **Send question**; tap **Yes** on the robot's touchscreen. Repeat with 3 and 4 answers; then send one and click **Clear**; then send one and leave it for 5 minutes. | Question and large buttons fill the robot display; after a tap "Answer sent ✓" for about 2 s, then the question goes and the dashboard shows **Answer: Yes**; 3 answers in one row, 4 in two; Clear removes it at once; unanswered, it goes after 5 minutes and the dashboard shows "No answer (5 min)". Note whether the buttons are easy to read and tap at arm's length. | | | |
 | I28 | Session recording | On the operator laptop with the key: **⏺ Record**; speak with push-to-talk; **📢 Call out**; let someone speak near the robot; walk the robot out of Wi-Fi range for about 5 s and back; **⏹ Stop recording**. Then record again and reload the page midway. | `robot-session-<time>.webm` in Downloads plays in VLC with the video, the robot mic, your voice and the call-out, without gaps and in step; one file despite the short drop; listed under *Recordings on this computer*; after the reload the second is listed as *(unfinished)* and **Save to device** gives a playable file. | | | |
 
 ---
@@ -303,6 +330,8 @@ List every failure or unexpected behaviour found during testing.
 | 3 | — | P2 crashed with a segmentation fault (exit -11), every 1–2 minutes once two dashboards were watching (13 crashes on 2026-09-28); P3 restarted it after ~10 s each time, dropping the video. | High | Yes, 2026-09-28 | Every `faulthandler` trace showed two VP8 encoder threads at once. The camera's YUYV frames were one object shared by all sessions, and each encoder converted it with `frame.reformat()`, which PyAV runs through a converter cached on the frame with the GIL released. Reproduced off the robot: two encoders on shared YUYV frames segfaulted 3/3 runs; with each session given its own yuv420p copy (`PrivateVideoTrack`), 3/3 runs of 1,500 frame pairs completed. |
 | 4 | — | AI person detection showed "AI: on" but never drew a box. The MediaPipe GPU delegate loaded without error but returned no detections (headless Chromium test on 2026-10-29: two person photos, GPU nothing, CPU 0.95 and 0.98); empty results never throw, so the GPU-to-CPU fallback never ran. | High | Yes, 2026-10-29 | Detector now always uses the CPU delegate; slow laptops are caught by the 150 ms auto-off. GPU test ran on a software renderer, not a laptop GPU. |
 | 5 | I27 | Victim photo and details did not reach Downloads in the operator's own Chrome; a headless test that allows downloads could not show this. | Medium | Mitigated, 2026-10-30 | The snapshot is now also kept in the browser (IndexedDB) and "download photo / details" links are shown; recheck with I27. |
+| 7 | I29 | The question layer covered the "Rescuer is speaking" badge and the "Tap to turn on sound" button, so a victim answering a question could not see that the operator was talking (headless test, 2026-10-30). | Low | Yes, 2026-10-30 | Both now sit above the question layer; rechecked in the same test. |
+| 8 | I29 | Questions sent from the dashboard never appeared on the physical robot display, although P2 logged them and the kiosk was connected: the kiosk's Chromium was showing a cached copy of the screen page from before the update, which ignores question messages. P2 served `/screen` without `Cache-Control`. | High | Yes, 2026-10-30 | The kiosk cache was cleared, and P2 now sends `/screen` with `Cache-Control: no-cache` (as P1 does for the dashboard HTML), so an update reaches the kiosk on its next load. Recheck with I29. |
 | 6 | I28 | A recording stopped and saved itself on any brief connection drop: a 1.5 s "disconnected" state that recovered by itself split the recording (headless test, P2 frozen with SIGSTOP). On weak Wi-Fi this would chop a session into pieces. | Medium | Yes, 2026-10-30 | Recording now continues through a drop and stops only after 15 s down or when the connection is replaced; the same test then gave one continuous file. |
 
 ---
@@ -311,9 +340,9 @@ List every failure or unexpected behaviour found during testing.
 
 | Area | Tests | Passed | Failed | Not run |
 |---|---|---|---|---|
-| Unit tests | 146 | 146 | 0 | 0 |
+| Unit tests | 156 | 156 | 0 | 0 |
 | Hardware | 15 | | | |
-| Integration | 33 | | | |
+| Integration | 34 | | | |
 | Network | 8 | | | |
 | Failure / recovery | 10 | | | |
 | Field test | 1 | | | |

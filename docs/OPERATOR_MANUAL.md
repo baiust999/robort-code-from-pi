@@ -264,7 +264,10 @@ Useful things to tell the victim:
 ### Asking the victim a question
 
 If the victim can't speak, ask a question they answer by tapping a button
-on the robot screen. It's below the message box, under **Ask a question**:
+on the robot screen. It's below the message box, under **Ask a question**.
+The robot display's touch input must be connected to the Pi (on most 7-inch
+HDMI displays this is a separate USB cable); without it the victim can see
+the question but can't answer.
 
 1. Type the question, for example *Are you hurt?*
 2. Type the answers the victim can choose from: at least 2, for example
@@ -440,6 +443,8 @@ copy in the browser.
 | "Hold to talk" / "My camera" greyed out | Chrome blocks the mic and camera on plain HTTP. | Set the Chrome flag in [Section 1](#1-before-the-mission). Images and text still work. |
 | `robot screen offline` | The robot's display app isn't running, or the robot is in VNC mode. | Select **Robot Display**. If it stays offline, the robot display needs a restart. |
 | Victim can't see messages | VNC mode is on. | Switch to **Robot Display**. |
+| Question doesn't appear on the robot screen | VNC mode is on, or the robot display is showing an old copy of its page after a software update. | Switch to **Robot Display** and wait for `robot screen online`. If it still doesn't appear, restart the robot service so the display reloads its page. |
+| "No answer (5 min)" | Nobody tapped an answer within 5 minutes. | Ask by voice or send the question again. |
 | `GPS no fix` | Indoors or no sky view. | Normal indoors. Driving is unaffected. |
 | "AI: error" / "AI needs WebGL" | The browser's graphics acceleration is off. | Turn on *Use graphics acceleration* in Chrome settings and reload. |
 | "AI turned off: too slow" | The laptop is too slow to run detection without slowing the controls. | Use a faster laptop, or carry on without AI. |

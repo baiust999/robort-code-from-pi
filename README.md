@@ -3,7 +3,9 @@
 A teleoperated rescue robot. An operator drives it over the local Wi-Fi
 network from a browser dashboard, watches live video, reads environmental
 sensors (gas, temperature/humidity, sonar range, GPS), and talks two-way with
-a victim through a screen and speaker mounted on the robot. Victim-finding
+a victim through a screen and speaker mounted on the robot; a victim who
+cannot speak can answer the operator's questions by tapping a button on the
+robot's screen. Victim-finding
 aids help the operator search: AI person detection on the video (run in the
 browser), a recorded call-out with a reply cue, and victim marks on the map.
 The operator can also record the session (video and both sides of the

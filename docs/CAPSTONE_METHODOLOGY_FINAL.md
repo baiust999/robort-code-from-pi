@@ -887,10 +887,19 @@ opened, or drops off USB, the session gets silence and P2 retries every
 | Screen / window | `getDisplayMedia({video: 5 fps})` | Show anything on the operator's screen |
 | None | track stopped | Idle screen |
 
-**Floor control:** only one operator session at a time may send media or
-messages to the robot. The first session to send anything holds the floor
-until it releases it or disconnects; others get `floor_denied` and stay
-watch/listen-only.
+**Floor control:** only one operator session at a time may send media,
+messages or questions to the robot. The first session to send anything
+holds the floor until it releases it or disconnects; others get
+`floor_denied` and stay watch/listen-only.
+
+**Tap-to-answer questions:** for a victim who cannot speak, the operator
+types a question with 2-4 answers of their own (each at most 40
+characters). P2 holds the one current question and its 5-minute timer; a
+new question replaces it, and Clear, the timeout or a floor release take
+it off the screen. The robot screen shows one large button per answer and
+returns the tapped answer's index; P2 accepts only the first tap on the
+current question and reports it to every dashboard. Nothing is stored
+(the event log keeps only ids, answer counts and the chosen index).
 
 ## 16.3 Data Channel — Robot Screen Messages
 
@@ -902,6 +911,7 @@ watch/listen-only.
 | `media_state` | Operator → Robot | `{"type":"media_state","talking":true,"video":"camera"}` | Relayed as `screen_state`; shows "🎤 Rescuer is speaking" and hides the idle screen while video is active |
 | `question_ask` | Operator → P2 | `{"type":"question_ask","text":"Are you hurt?","options":["Yes","No"]}` | Shows the question with 2-4 tap-to-answer buttons; replaces any current question |
 | `question_clear` | Operator → P2 | `{"type":"question_clear"}` | Takes the question off the robot screen |
+| `question_show` / `question_hide` | P2 → Robot | `{"type":"question_show","id":1,"text":"Are you hurt?","options":["Yes","No"]}` / `{"type":"question_hide","id":1}` | Show the question as one large button per answer, or take it off (cleared, timed out, floor released) |
 | `question_answer` | Robot → P2 | `{"type":"question_answer","id":1,"choice":0}` | The button the victim tapped; first answer wins |
 | `question_status` | P2 → Operator | `{"type":"question_status","id":1,"status":"answered","answer":0,...}` | Waiting (with time left), answered, expired after 5 min, or cleared |
 | `floor_release` | Operator → P2 | `{"type":"floor_release"}` | Frees the robot screen and clears it to idle |
@@ -1114,7 +1124,9 @@ Interface components (components/)
 ## 19.4 Victim-Finding Tools
 
 Three tools help the operator notice a person and record where they are,
-and a fourth records the session on the operator's laptop. They are aids
+and a fourth records the session on the operator's laptop. A victim who
+cannot speak can answer the operator's questions on the robot screen
+(Section 16.2, *Tap-to-answer questions*). They are aids
 only: they never act on the motors, and the AI can miss
 people. Not yet evaluated (Section 40.3). Operator steps:
 `OPERATOR_MANUAL.md` §10; design: `SOFTWARE_ARCHITECTURE.md` §A.12.
@@ -1239,8 +1251,10 @@ Audio (Two-Way):
 
 Operator Video & Messages (operator → victim):
 ├─ Receive: Track 3 (camera, image or screen share)
-├─ Receive: `screen` data channel messages
+├─ Receive: `screen` data channel messages (text, questions)
 ├─ Floor control: first sending operator holds the floor
+├─ Question: one at a time, held by P2 with a 5-minute timeout; first tap
+│  counts; status sent to every dashboard
 ├─ Every inbound track is drained, but only the floor holder's frames
 │  are forwarded
 └─ Relay: re-encoded to the Robot Screen peer; the last frame is
@@ -1252,7 +1266,10 @@ Robot Screen (victim-facing display):
 ├─ Connects: POST /webrtc/screen-offer (localhost only); a new screen
 │  connection replaces the old one
 ├─ Display mode: shown in `robot` mode, closed in `vnc` mode (Section 16.3.1)
-├─ Shows: Operator video full-screen, text banner on top
+├─ Shows: Operator video full-screen, text banner on top; a question
+│  covers both, with one large button per answer
+├─ Page: served with Cache-Control: no-cache, so an update reaches the
+│  kiosk on its next load
 ├─ Plays: Operator voice through the speaker
 └─ Idle: "Help is coming" when no media
 
@@ -2246,8 +2263,10 @@ CRITICAL PATH (Motor Safety):
    `victims/victims.jsonl` is never rotated or pruned;
    `VIDEO_BITRATE_KBPS` in `p2.env` is read but not used by P2.
 8. **Talk-to-victim partly tested on hardware.** Both audio directions work
-   on the robot; operator video, images and text have not yet been shown on
-   a physical display.
+   on the robot; operator video, images, text and tap-to-answer questions
+   have not yet been confirmed on a physical display. Answering a question
+   needs a touch input on the robot display, and none was connected to the
+   Pi on 2026-10-30.
 9. **Performance not yet measured.** Latency, range and bandwidth figures
    in Sections 13 and 39 are design estimates until tests N1-N8 are run.
 10. **Victim-finding tools not evaluated.** The AI was trained on everyday
