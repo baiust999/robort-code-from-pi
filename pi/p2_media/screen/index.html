@@ -6,8 +6,9 @@
   deploy/robot-screen/robot-screen.sh (Chromium kiosk). It connects to P2 on
   localhost, shows whatever the operator is sending — their face, an image or
   a shared screen — plays the operator's voice on the robot speaker, and
-  shows text messages in large type. With no operator active it shows a
-  reassurance screen.
+  shows text messages in large type. The operator can also ask a question
+  with 2-4 answer buttons, for a victim who can't speak; the tapped answer
+  goes back through P2. With no operator active it shows a reassurance screen.
 
   The button in the corner switches the display to VNC mode when held for
   three seconds: the launcher then closes this kiosk so the Pi desktop can be
@@ -49,6 +50,16 @@
     padding: 1.2vh 3vw; border-radius: 99px; background: #dc2626; font-size: 3.5vh; font-weight: 700; }
   #sound { position: absolute; right: 3vw; top: 3vh; padding: 2vh 3vw; font-size: 3.5vh;
     border-radius: 1.5vh; border: 0; background: #f59e0b; color: #000; font-weight: 700; cursor: pointer; }
+  #question { z-index: 5; background: #0b2a4a; gap: 5vh; }
+  #question-text { margin: 0; font-size: 7vh; line-height: 1.15; max-width: 90vw; overflow-wrap: anywhere; }
+  #question-options { display: grid; gap: 3vh 3vw; width: 100%; max-width: 92vw; }
+  #question-options button { min-height: 20vh; padding: 2vh 2vw; border: 0; border-radius: 2.5vh;
+    background: #fff; color: #000; font: inherit; font-size: 6vh; font-weight: 700;
+    overflow-wrap: anywhere; cursor: pointer; touch-action: manipulation; }
+  #question-options button:active { background: #fde047; }
+  #question-options button:disabled { opacity: .35; }
+  #question-options button.chosen { opacity: 1; background: #4ade80; }
+  #question-sent { margin: 0; font-size: 6vh; font-weight: 700; color: #4ade80; }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -61,6 +72,11 @@
 </div>
 <div id="talking" hidden>🎤 Rescuer is speaking</div>
 <div id="message" hidden></div>
+<div id="question" class="layer" hidden>
+  <h1 id="question-text"></h1>
+  <div id="question-options"></div>
+  <p id="question-sent" hidden>Answer sent ✓</p>
+</div>
 <button id="sound" type="button" hidden>Tap to turn on sound</button>
 <button id="vnc" type="button" tabindex="-1"><span id="vnc-fill"></span><span id="vnc-label">Hold 3 s for VNC</span></button>
 <script>
@@ -71,10 +87,18 @@ const idle = document.getElementById('idle');
 const talking = document.getElementById('talking');
 const message = document.getElementById('message');
 const soundBtn = document.getElementById('sound');
+const question = document.getElementById('question');
+const questionText = document.getElementById('question-text');
+const questionOptions = document.getElementById('question-options');
+const questionSent = document.getElementById('question-sent');
+// How long "Answer sent" stays up after a tap before the question goes.
+const ANSWER_SHOWN_MS = 2000;
 
 let state = { operator: false, talking: false, video: 'none' };
 let pc = null;
 let retryTimer = null;
+let questionId = null;
+let answeredTimer = null;
 
 function render() {
   // Show the operator's picture only while they are actually sending one;
@@ -85,7 +109,45 @@ function render() {
 
 function setOnline(online) {
   idle.classList.toggle('offline', !online);
-  if (!online) { state = { operator: false, talking: false, video: 'none' }; render(); }
+  if (!online) {
+    state = { operator: false, talking: false, video: 'none' };
+    render();
+    hideQuestion();  // P2 sends it again when we reconnect
+  }
+}
+
+function hideQuestion() {
+  clearTimeout(answeredTimer);
+  answeredTimer = null;
+  questionId = null;
+  question.hidden = true;
+  questionOptions.replaceChildren();
+}
+
+function showQuestion(msg, channel) {
+  hideQuestion();
+  questionId = msg.id;
+  questionText.textContent = msg.text;
+  questionSent.hidden = true;
+  // Two or four answers sit in two columns; three in a row.
+  questionOptions.style.gridTemplateColumns = `repeat(${msg.options.length === 3 ? 3 : 2}, 1fr)`;
+  msg.options.forEach((label, choice) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = label;
+    btn.addEventListener('click', () => answer(msg.id, choice, btn, channel));
+    questionOptions.append(btn);
+  });
+  question.hidden = false;
+}
+
+function answer(id, choice, btn, channel) {
+  if (id !== questionId || answeredTimer !== null) return;  // one answer per question
+  for (const b of questionOptions.children) b.disabled = true;
+  btn.classList.add('chosen');
+  questionSent.hidden = false;
+  channel.send(JSON.stringify({ type: 'question_answer', id, choice }));
+  answeredTimer = setTimeout(hideQuestion, ANSWER_SHOWN_MS);
 }
 
 async function enableSound() {
@@ -162,6 +224,11 @@ function onMessage(event) {
   } else if (msg.type === 'screen_clear') {
     message.hidden = true;
     message.textContent = '';
+  } else if (msg.type === 'question_show') {
+    showQuestion(msg, event.target);
+  } else if (msg.type === 'question_hide') {
+    // Leave "Answer sent" up for its moment; it hides itself.
+    if (msg.id === questionId && answeredTimer === null) hideQuestion();
   }
 }
 

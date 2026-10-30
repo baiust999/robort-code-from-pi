@@ -12,6 +12,7 @@ import pytest
 
 from common.logging_setup import EventLogger
 from p2_media.talkback import (
+    QUESTION_OPTION_MAX,
     SCREEN_TEXT_MAX,
     ScreenAudioTrack,
     ScreenHub,
@@ -375,3 +376,138 @@ def test_screen_audio_carries_operator_voice_and_never_bursts(hub, monkeypatch):
     # After the stall the next packet goes out at once, but the one after
     # waits its 60 ms instead of following in a burst.
     assert elapsed >= 0.05
+
+
+# --- questions --------------------------------------------------------------
+
+
+def _ask(text="Are you hurt?", options=("Yes", "No")) -> str:
+    return _msg(type="question_ask", text=text, options=list(options))
+
+
+def test_parse_question_trims_and_limits_options():
+    msg = parse_operator_message(_ask("  Where?  ", ["  Head ", "", "Leg", "x" * 100]))
+    assert msg == {"type": "question_ask", "text": "Where?", "options": ["Head", "Leg", "x" * QUESTION_OPTION_MAX]}
+    assert parse_operator_message(_ask(options=["Yes"])) is None
+    assert parse_operator_message(_ask(options=["Yes", " "])) is None
+    assert parse_operator_message(_ask(options=["a", "b", "c", "d", "e"])) is None
+    assert parse_operator_message(_ask(text=" ")) is None
+    assert parse_operator_message(_msg(type="question_ask", text="Q", options="Yes,No")) is None
+    assert parse_operator_message(_msg(type="question_ask", text="Q", options=["Yes", 2])) is None
+    assert parse_operator_message(_msg(type="question_clear")) == {"type": "question_clear"}
+
+
+def test_question_reaches_screen_and_answer_reaches_everyone(hub):
+    op, viewer, screen = FakeChannel(), FakeChannel(), FakeChannel()
+    connect_controller(hub, "s1", op)
+    hub.operator_connected("s2", viewer)
+    hub.screen_attached(screen)
+
+    hub.handle_operator_message("s1", _ask())
+    assert hub.floor_holder == "s1"
+    shown = screen.of_type("question_show")[-1]
+    assert shown == {"type": "question_show", "id": 1, "text": "Are you hurt?", "options": ["Yes", "No"]}
+    assert op.of_type("question_status")[-1]["status"] == "waiting"
+
+    hub.handle_screen_message(_msg(type="question_answer", id=1, choice=0))
+    for channel in (op, viewer):
+        status = channel.of_type("question_status")[-1]
+        assert (status["status"], status["answer"], status["remaining_s"]) == ("answered", 0, None)
+
+
+def test_bad_late_or_repeated_answers_are_ignored(hub):
+    op = FakeChannel()
+    connect_controller(hub, "s1", op)
+    hub.handle_operator_message("s1", _ask(options=["A", "B", "C"]))
+    for qid, choice in [(2, 0), (1, 3), (1, -1), (1, True), (1, "0")]:
+        hub.handle_screen_message(_msg(type="question_answer", id=qid, choice=choice))
+        assert hub.question["status"] == "waiting"
+    hub.handle_screen_message(_msg(type="question_answer", id=1, choice=2))
+    hub.handle_screen_message(_msg(type="question_answer", id=1, choice=0))
+    assert hub.question["answer"] == 2
+
+
+def test_new_question_replaces_old_one(hub):
+    screen = FakeChannel()
+    connect_controller(hub, "s1", FakeChannel())
+    hub.screen_attached(screen)
+    hub.handle_operator_message("s1", _ask())
+    hub.handle_operator_message("s1", _ask("How many with you?", ["1", "2", "More"]))
+    hub.handle_screen_message(_msg(type="question_answer", id=1, choice=0))
+    assert hub.question["id"] == 2 and hub.question["status"] == "waiting"
+    assert screen.of_type("question_show")[-1]["id"] == 2
+
+
+def test_expiry_and_clear_take_question_off_screen(hub):
+    op, screen = FakeChannel(), FakeChannel()
+    connect_controller(hub, "s1", op)
+    hub.screen_attached(screen)
+    hub.handle_operator_message("s1", _ask())
+    hub.expire_question(1)
+    assert screen.of_type("question_hide") == [{"type": "question_hide", "id": 1}]
+    assert op.of_type("question_status")[-1]["status"] == "expired"
+
+    hub.handle_operator_message("s1", _ask())
+    hub.handle_operator_message("s1", _msg(type="question_clear"))
+    assert hub.question["status"] == "cleared"
+    assert screen.of_type("question_hide")[-1]["id"] == 2
+
+
+def test_expiry_after_answer_changes_nothing(hub):
+    connect_controller(hub, "s1", FakeChannel())
+    hub.handle_operator_message("s1", _ask())
+    hub.handle_screen_message(_msg(type="question_answer", id=1, choice=1))
+    hub.expire_question(1)
+    assert (hub.question["status"], hub.question["answer"]) == ("answered", 1)
+
+
+def test_releasing_floor_clears_question(hub):
+    screen = FakeChannel()
+    connect_controller(hub, "s1", FakeChannel())
+    hub.screen_attached(screen)
+    hub.handle_operator_message("s1", _ask())
+    hub.operator_closed("s1")
+    assert hub.question["status"] == "cleared"
+    assert screen.of_type("question_hide")
+
+
+def test_observer_cannot_ask_but_sees_status_on_connect(hub):
+    op, viewer, screen = FakeChannel(), FakeChannel(), FakeChannel()
+    connect_controller(hub, "s1", op)
+    hub.operator_connected("s2", viewer)
+    hub.screen_attached(screen)
+    hub.handle_operator_message("s2", _ask())
+    assert hub.question is None and not screen.of_type("question_show")
+
+    hub.handle_operator_message("s1", _ask())
+    late = FakeChannel()
+    hub.operator_connected("s3", late)
+    assert late.of_type("question_status")[-1]["id"] == 1
+
+
+def test_reconnecting_screen_gets_waiting_question_only(hub):
+    connect_controller(hub, "s1", FakeChannel())
+    hub.handle_operator_message("s1", _ask())
+    screen = FakeChannel()
+    hub.screen_attached(screen)
+    assert screen.of_type("question_show")[-1]["id"] == 1
+
+    hub.handle_screen_message(_msg(type="question_answer", id=1, choice=0))
+    again = FakeChannel()
+    hub.screen_attached(again)
+    assert not again.of_type("question_show")
+
+
+def test_question_times_out_on_the_event_loop(monkeypatch):
+    monkeypatch.setattr("p2_media.talkback.QUESTION_TIMEOUT_S", 0.05)
+
+    async def run():
+        hub = ScreenHub(EventLogger(logging.getLogger("test-talkback")))
+        op = FakeChannel()
+        connect_controller(hub, "s1", op)
+        hub.handle_operator_message("s1", _ask())
+        assert op.of_type("question_status")[-1]["remaining_s"] is not None
+        await asyncio.sleep(0.1)
+        return hub
+
+    assert asyncio.run(run()).question["status"] == "expired"

@@ -254,11 +254,35 @@ running.
 | Show nothing | Click **Nothing**. |
 | Send a text message | Type in the message box and click **Send**. When it appears on the robot, you'll see *"Message is on the robot screen ✓"*. |
 | Remove the message | Click **Clear**. |
+| Ask a yes/no (or 2-4 choice) question | See [Asking the victim a question](#asking-the-victim-a-question). |
 
 Useful things to tell the victim:
 - Help is on the way.
 - Stay still, and cover your nose and mouth if there is dust or gas.
 - Tap or call out so rescuers can locate you.
+
+### Asking the victim a question
+
+If the victim can't speak, ask a question they answer by tapping a button
+on the robot screen. It's below the message box, under **Ask a question**:
+
+1. Type the question, for example *Are you hurt?*
+2. Type the answers the victim can choose from: at least 2, for example
+   *Yes* and *No*. Click **+ Add answer** for a third or fourth, for example
+   *Head / Arm / Leg*. Click **✕** to remove one.
+3. Click **Send question**. The robot screen shows the question with one
+   large button per answer.
+4. When the victim taps a button, the panel shows **Answer: Yes** (or
+   whichever they chose).
+
+- Only one question is on screen at a time. Sending a new one replaces it
+  (the button then reads **Replace question**).
+- Click **Clear** to take the question off the robot screen.
+- If nobody answers within **5 minutes**, the question disappears by itself
+  and the panel shows *"No answer (5 min)"*.
+- Questions and answers are not saved. Note anything important in the
+  victim mark (see [Mark victim here](#mark-victim-here)).
+- Observers see the question and the answer but can't send one.
 
 **Only one operator can talk at a time.** If another operator is using the
 screen, you'll see *"Another operator is talking to the victim"*. When you're

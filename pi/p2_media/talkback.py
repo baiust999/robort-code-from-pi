@@ -1,9 +1,9 @@
 """Operator-to-victim path ("talk-to-victim"), methodology Section 16.
 
 The operator's dashboard sends its microphone (push-to-talk), an optional
-video source (laptop camera, a still image, or a shared screen) and short
-text messages to P2 over its existing peer connection. P2 forwards all of
-it to the Robot Screen — a kiosk browser on the robot's own display and
+video source (laptop camera, a still image, or a shared screen), short
+text messages and questions the victim answers by tapping a button, to P2
+over its existing peer connection. P2 forwards all of it to the Robot Screen — a kiosk browser on the robot's own display and
 speaker, connected to P2 over localhost.
 
 Only the dashboard that is P1's current controller may use any of it (or
@@ -45,6 +45,13 @@ from common.logging_setup import EventLogger
 from .media import AUDIO_PACKET_SAMPLES, encode_packet, opus_encoder
 
 SCREEN_TEXT_MAX = 280
+# A question the operator asks with tap-to-answer buttons on the robot screen,
+# for a victim who can't speak. P2 owns it, including the timeout, so "no
+# answer" holds even if the kiosk or the dashboard reconnects.
+QUESTION_OPTIONS_MIN = 2
+QUESTION_OPTIONS_MAX = 4
+QUESTION_OPTION_MAX = 40
+QUESTION_TIMEOUT_S = 300.0
 VIDEO_SOURCES = ("none", "camera", "image", "screen")
 # What the robot's display shows: the Robot Screen kiosk ("robot"), or the
 # plain Pi desktop so an operator can work on the Pi over VNC ("vnc"), which
@@ -109,6 +116,21 @@ def parse_operator_message(raw: Any) -> dict[str, Any] | None:
         return {"type": "screen_text", "text": text, "ts": ts if isinstance(ts, (int, float)) else None}
     if kind == "screen_clear":
         return {"type": "screen_clear"}
+    if kind == "question_ask":
+        text = msg.get("text")
+        options = msg.get("options")
+        if not isinstance(text, str) or not isinstance(options, list):
+            return None
+        text = text.strip()[:SCREEN_TEXT_MAX]
+        if not text or not all(isinstance(o, str) for o in options):
+            return None
+        cleaned = [o.strip()[:QUESTION_OPTION_MAX] for o in options]
+        cleaned = [o for o in cleaned if o]
+        if not QUESTION_OPTIONS_MIN <= len(cleaned) <= QUESTION_OPTIONS_MAX:
+            return None
+        return {"type": "question_ask", "text": text, "options": cleaned}
+    if kind == "question_clear":
+        return {"type": "question_clear"}
     if kind == "media_state":
         video = msg.get("video", "none")
         if video not in VIDEO_SOURCES:
@@ -146,6 +168,12 @@ class ScreenHub:
         self.screen_connected = False
         self.media_state: dict[str, Any] = {"talking": False, "video": "none"}
         self.current_text: str | None = None
+        # The current question: id, text, options, status ("waiting",
+        # "answered", "expired" or "cleared") and the chosen option's index.
+        self.question: dict[str, Any] | None = None
+        self._question_ids = 0
+        self._question_deadline: float | None = None
+        self._question_timer: asyncio.TimerHandle | None = None
         # Always "robot" after a P2 restart, so a reboot never leaves the
         # victim looking at the Pi desktop.
         self.display_mode = "robot"
@@ -180,6 +208,8 @@ class ScreenHub:
     def operator_connected(self, session_id: str, channel: Channel) -> None:
         self.operators[session_id] = channel
         self._send_status(session_id)
+        if self.question is not None:
+            _send(channel, self._question_status())
 
     def operator_closed(self, session_id: str) -> None:
         self.controllers.pop(session_id, None)
@@ -228,6 +258,10 @@ class ScreenHub:
         elif msg["type"] == "screen_clear":
             self.current_text = None
             _send(self.screen_channel, {"type": "screen_clear"})
+        elif msg["type"] == "question_ask":
+            self._ask_question(msg["text"], msg["options"], session_id)
+        elif msg["type"] == "question_clear":
+            self._end_question("cleared")
 
     def _claim_floor(self, session_id: str) -> bool:
         if self.floor_holder == session_id:
@@ -247,6 +281,7 @@ class ScreenHub:
         self._video_latest = None
         self._audio_queue.clear()
         _send(self.screen_channel, {"type": "screen_clear"})
+        self._end_question("cleared")
         self._send_screen_state()
         self._broadcast_status()
 
@@ -282,6 +317,80 @@ class ScreenHub:
         self.log.info("DISPLAY_MODE", f"robot display switched to {mode}", source=source)
         self._broadcast_status()
 
+    # --- questions ---------------------------------------------------------
+
+    def _ask_question(self, text: str, options: list[str], session_id: str) -> None:
+        """Show a new question, replacing any current one."""
+        self._cancel_question_timer()
+        self._question_ids += 1
+        qid = self._question_ids
+        self.question = {"id": qid, "text": text, "options": options, "status": "waiting", "answer": None}
+        self._question_deadline = time.monotonic() + QUESTION_TIMEOUT_S
+        # Handlers run on P2's event loop; unit tests without one call
+        # expire_question themselves.
+        with contextlib.suppress(RuntimeError):
+            self._question_timer = asyncio.get_running_loop().call_later(
+                QUESTION_TIMEOUT_S, self.expire_question, qid
+            )
+        self._show_question(self.screen_channel)
+        self.log.info("QUESTION_ASK", "question sent to robot screen",
+                      session=session_id, id=qid, options=len(options))
+        self._broadcast_question()
+
+    def expire_question(self, qid: int) -> None:
+        """Nobody answered in time: take the question off the screen."""
+        if self.question is not None and self.question["id"] == qid:
+            self._end_question("expired")
+
+    def _end_question(self, status: str) -> None:
+        if self.question is None or self.question["status"] != "waiting":
+            return
+        self._cancel_question_timer()
+        self.question["status"] = status
+        _send(self.screen_channel, {"type": "question_hide", "id": self.question["id"]})
+        event = "QUESTION_EXPIRE" if status == "expired" else "QUESTION_CLEAR"
+        self.log.info(event, f"question {status}", id=self.question["id"])
+        self._broadcast_question()
+
+    def _answer_question(self, qid: Any, choice: Any) -> None:
+        q = self.question
+        # bool is an int; a stray true must not count as option 1.
+        if (
+            q is None or q["status"] != "waiting" or qid != q["id"]
+            or not isinstance(choice, int) or isinstance(choice, bool)
+            or not 0 <= choice < len(q["options"])
+        ):
+            return  # a late, repeated or malformed tap
+        self._cancel_question_timer()
+        q["status"] = "answered"
+        q["answer"] = choice
+        self.log.info("QUESTION_ANSWER", "victim answered the question", id=qid, choice=choice)
+        self._broadcast_question()
+
+    def _cancel_question_timer(self) -> None:
+        if self._question_timer is not None:
+            self._question_timer.cancel()
+            self._question_timer = None
+        self._question_deadline = None
+
+    def _show_question(self, channel: Channel | None) -> None:
+        q = self.question
+        if q is not None and q["status"] == "waiting":
+            _send(channel, {"type": "question_show", "id": q["id"], "text": q["text"], "options": q["options"]})
+
+    def _question_status(self) -> dict[str, Any]:
+        q = self.question
+        assert q is not None
+        remaining = None
+        if self._question_deadline is not None:
+            remaining = max(0.0, round(self._question_deadline - time.monotonic(), 1))
+        return {"type": "question_status", **q, "remaining_s": remaining}
+
+    def _broadcast_question(self) -> None:
+        status = self._question_status()
+        for channel in list(self.operators.values()):
+            _send(channel, status)
+
     # --- robot screen ------------------------------------------------------
 
     def screen_attached(self, channel: Channel) -> None:
@@ -291,6 +400,7 @@ class ScreenHub:
         self._send_screen_state()
         if self.current_text is not None:
             _send(channel, {"type": "screen_text", "text": self.current_text, "ts": None})
+        self._show_question(channel)
         self._broadcast_status()
 
     def screen_detached(self, channel: Channel | None = None) -> None:
@@ -305,8 +415,12 @@ class ScreenHub:
             msg = json.loads(raw) if isinstance(raw, str) else None
         except json.JSONDecodeError:
             return
-        if isinstance(msg, dict) and msg.get("type") == "screen_ack" and self.floor_holder:
+        if not isinstance(msg, dict):
+            return
+        if msg.get("type") == "screen_ack" and self.floor_holder:
             _send(self.operators.get(self.floor_holder), {"type": "screen_ack", "ts": msg.get("ts")})
+        elif msg.get("type") == "question_answer":
+            self._answer_question(msg.get("id"), msg.get("choice"))
 
     def _send_screen_state(self) -> None:
         _send(

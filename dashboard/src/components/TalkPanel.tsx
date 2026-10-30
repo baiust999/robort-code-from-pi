@@ -6,6 +6,7 @@ import {
   type VideoSource,
 } from '../hooks/useTalkback';
 import { LEVEL_FLOOR_DB, useReplyListener, useSoundLevel } from '../hooks/useSoundLevel';
+import { QuestionPanel } from './QuestionPanel';
 
 const DISPLAY_MODES: { id: DisplayMode; label: string }[] = [
   { id: 'robot', label: '🖥 Robot Display' },
@@ -269,6 +270,8 @@ export function TalkPanel(props: {
           Clear
         </button>
       </form>
+
+      <QuestionPanel talk={talk} blocked={blocked} />
 
       <div className="min-h-4 text-xs">
         {talk.error ? (

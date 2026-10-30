@@ -11,6 +11,24 @@ export type Floor = 'free' | 'you' | 'other';
 export type DisplayMode = 'robot' | 'vnc';
 
 export const SCREEN_TEXT_MAX = 280;
+/** Limits on a tap-to-answer question; P2 enforces the same (talkback.py). */
+export const QUESTION_OPTIONS_MIN = 2;
+export const QUESTION_OPTIONS_MAX = 4;
+export const QUESTION_OPTION_MAX = 40;
+
+/** The question on the robot screen and what became of it, as P2 reports it. */
+export interface QuestionStatus {
+  id: number;
+  text: string;
+  options: string[];
+  status: 'waiting' | 'answered' | 'expired' | 'cleared';
+  /** Index into options once answered. */
+  answer: number | null;
+  /** Seconds until it times out, while waiting. */
+  remainingS: number | null;
+  /** Local clock when this status arrived, to count remainingS down from. */
+  receivedAt: number;
+}
 
 /** Canvas size for still images, matched to the robot's 1024×600 display. */
 const IMAGE_WIDTH = 1024;
@@ -41,6 +59,7 @@ export interface TalkbackState {
   previewStream: MediaStream | null;
   /** Timestamp of the last message the robot screen confirmed showing. */
   lastAckTs: number | null;
+  question: QuestionStatus | null;
   error: string | null;
   startTalking: () => void;
   stopTalking: () => void;
@@ -49,6 +68,9 @@ export interface TalkbackState {
   /** Returns the message timestamp (matched against lastAckTs), or null if not sent. */
   sendText: (text: string) => number | null;
   clearText: () => void;
+  /** Returns false if the question could not be sent. */
+  askQuestion: (text: string, options: string[]) => boolean;
+  clearQuestion: () => void;
   release: () => void;
   setDisplayMode: (mode: DisplayMode) => void;
 }
@@ -83,8 +105,9 @@ function loadImage(file: File): Promise<HTMLImageElement> {
  *
  * Push-to-talk toggles the laptop mic track's `enabled` flag rather than
  * swapping tracks, so talking starts without a renegotiation or a fresh
- * permission prompt. The first action (talk, show video, send text) claims
- * the robot screen; P2 refuses it while another operator holds it.
+ * permission prompt. The first action (talk, show video, send text or a
+ * question) claims the robot screen; P2 refuses it while another operator
+ * holds it.
  */
 export function useTalkback(link: TalkLink | null): TalkbackState {
   const mediaDevicesAvailable =
@@ -101,6 +124,7 @@ export function useTalkback(link: TalkLink | null): TalkbackState {
   const [videoSource, setVideoSource] = useState<VideoSource>('none');
   const [previewStream, setPreviewStream] = useState<MediaStream | null>(null);
   const [lastAckTs, setLastAckTs] = useState<number | null>(null);
+  const [question, setQuestion] = useState<QuestionStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const micRef = useRef<MediaStreamTrack | null>(null);
@@ -164,6 +188,16 @@ export function useTalkback(link: TalkLink | null): TalkbackState {
         setDisplayModeState(msg.display_mode === 'vnc' ? 'vnc' : 'robot');
       } else if (msg.type === 'screen_ack') {
         setLastAckTs(typeof msg.ts === 'number' ? msg.ts : null);
+      } else if (msg.type === 'question_status') {
+        setQuestion({
+          id: Number(msg.id),
+          text: String(msg.text ?? ''),
+          options: Array.isArray(msg.options) ? msg.options.map(String) : [],
+          status: msg.status as QuestionStatus['status'],
+          answer: typeof msg.answer === 'number' ? msg.answer : null,
+          remainingS: typeof msg.remaining_s === 'number' ? msg.remaining_s : null,
+          receivedAt: Date.now(),
+        });
       } else if (msg.type === 'floor_denied') {
         setError('Another operator is using the robot screen.');
       } else if (msg.type === 'view_only') {
@@ -210,6 +244,7 @@ export function useTalkback(link: TalkLink | null): TalkbackState {
       setFloor('free');
       setDisplayModeState('robot');
       setLastAckTs(null);
+      setQuestion(null);
     };
   }, [link, stopVideoTrack]);
 
@@ -408,6 +443,21 @@ export function useTalkback(link: TalkLink | null): TalkbackState {
     send({ type: 'screen_clear' });
   }, [send]);
 
+  const askQuestion = useCallback(
+    (text: string, options: string[]) => {
+      const q = text.trim().slice(0, SCREEN_TEXT_MAX);
+      const opts = options.map((o) => o.trim().slice(0, QUESTION_OPTION_MAX)).filter(Boolean);
+      if (!q || opts.length < QUESTION_OPTIONS_MIN || opts.length > QUESTION_OPTIONS_MAX) return false;
+      setError(null);
+      return send({ type: 'question_ask', text: q, options: opts });
+    },
+    [send],
+  );
+
+  const clearQuestion = useCallback(() => {
+    send({ type: 'question_clear' });
+  }, [send]);
+
   const release = useCallback(() => {
     stopCallOutRef.current?.();
     stopTalking();
@@ -441,6 +491,7 @@ export function useTalkback(link: TalkLink | null): TalkbackState {
     videoSource,
     previewStream,
     lastAckTs,
+    question,
     error,
     startTalking: () => void startTalking(),
     stopTalking,
@@ -448,6 +499,8 @@ export function useTalkback(link: TalkLink | null): TalkbackState {
     showVideo: (source, image) => void showVideo(source, image),
     sendText,
     clearText,
+    askQuestion,
+    clearQuestion,
     release,
     setDisplayMode,
   };

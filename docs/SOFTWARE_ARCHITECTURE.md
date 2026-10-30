@@ -588,6 +588,10 @@ A rescue robot that reaches a conscious victim is more useful if it can reassure
 | `media_state` `{talking, video}` | Dashboard → P2 → screen (as `screen_state`) | What the operator is sending; the screen hides the idle overlay only while a video source is active |
 | `screen_text` `{text, ts}` / `screen_clear` | Dashboard → P2 → screen | Text banner, trimmed and capped at 280 characters |
 | `screen_ack` `{ts}` | Screen → P2 → floor holder | Confirms a message is displayed |
+| `question_ask` `{text, options}` / `question_clear` | Dashboard → P2 | A question with 2-4 operator-written answers (each capped at 40 characters); replaces any current one and claims the floor |
+| `question_show` `{id, text, options}` / `question_hide` `{id}` | P2 → screen | Shows the question as tap-to-answer buttons, or takes it off (cleared, timed out after 5 minutes, or floor released) |
+| `question_answer` `{id, choice}` | Screen → P2 | The tapped option's index; only the first answer to the current question counts |
+| `question_status` `{id, text, options, status, answer, remaining_s}` | P2 → every dashboard | `waiting`, `answered`, `expired` or `cleared`; observers see it too, and a reconnecting dashboard gets it at once |
 | `floor_release` | Dashboard → P2 | Gives up the robot screen; also released on disconnect |
 | `talk_status` `{screen_online, floor, display_mode}` | P2 → every dashboard | Drives the panel's status, enables or disables its controls, and sets the display-mode radio buttons |
 | `floor_denied` | P2 → dashboard | Another operator holds the screen |

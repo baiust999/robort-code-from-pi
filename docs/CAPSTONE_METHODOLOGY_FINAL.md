@@ -900,6 +900,10 @@ watch/listen-only.
 | `screen_clear` | Operator → Robot | `{"type":"screen_clear"}` | Removes the banner |
 | `screen_ack` | Robot → Operator | `{"type":"screen_ack","ts":1727430000}` | Confirms the text is on screen (dashboard shows ✓) |
 | `media_state` | Operator → Robot | `{"type":"media_state","talking":true,"video":"camera"}` | Relayed as `screen_state`; shows "🎤 Rescuer is speaking" and hides the idle screen while video is active |
+| `question_ask` | Operator → P2 | `{"type":"question_ask","text":"Are you hurt?","options":["Yes","No"]}` | Shows the question with 2-4 tap-to-answer buttons; replaces any current question |
+| `question_clear` | Operator → P2 | `{"type":"question_clear"}` | Takes the question off the robot screen |
+| `question_answer` | Robot → P2 | `{"type":"question_answer","id":1,"choice":0}` | The button the victim tapped; first answer wins |
+| `question_status` | P2 → Operator | `{"type":"question_status","id":1,"status":"answered","answer":0,...}` | Waiting (with time left), answered, expired after 5 min, or cleared |
 | `floor_release` | Operator → P2 | `{"type":"floor_release"}` | Frees the robot screen and clears it to idle |
 | `talk_status` | P2 → Operator | `{"type":"talk_status","screen_online":true,"floor":"you","display_mode":"robot"}` | Robot-screen status and who holds the floor (`free`/`you`/`other`) |
 | `floor_denied` | P2 → Operator | `{"type":"floor_denied"}` | Another operator holds the screen |
@@ -2138,7 +2142,7 @@ Each extra viewer adds another video + audio stream.
 | Crash recovery | Automatic, ~15 s | P3 (tests F3, F4) |
 | Watchdog recovery | Automatic | systemd (test F5) |
 | Reboot to operational | Unattended | Test F9 |
-| Automated tests | All pass | `pytest` in `pi/`: 146 tests passing (2026-10-30) |
+| Automated tests | All pass | `pytest` in `pi/`: 156 tests passing (2026-10-30) |
 
 No field reliability figures (uptime, packet loss, MTBF) have been
 measured yet; they belong in `TEST_REPORT.md` once the field test is run.
@@ -2210,7 +2214,7 @@ CRITICAL PATH (Motor Safety):
 ├─ Kiosk: Chromium in kiosk mode, bash launcher
 ├─ Network: ordinary Wi-Fi network (WPA2/WPA3)
 ├─ Supervision: systemd (P3), P3 (P1, P2)
-└─ Tests: pytest (146 tests: command validation, telemetry parsing,
+└─ Tests: pytest (156 tests: command validation, telemetry parsing,
    mission state, ring buffer, dead-man emulation, shared capture,
    talk-back, controller access, Wi-Fi signal, victim marks)
 ```
