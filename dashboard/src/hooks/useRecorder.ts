@@ -231,6 +231,9 @@ export function useRecorder(
   const remove = useCallback((meta: RecordingMeta) => {
     deleteRecording(meta.id).catch(() => {});
     setSaved((list) => list.filter((m) => m.id !== meta.id));
+    // The "Recording saved: <file>" line would otherwise outlive the recording.
+    const name = fileName(meta);
+    setMessage((msg) => (msg?.endsWith(name) ? null : msg));
   }, []);
 
   return { supported, recording, elapsedMs, sizeBytes, crashSafe, message, start, stop, saved, save, remove };
