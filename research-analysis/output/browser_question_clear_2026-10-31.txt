@@ -1,0 +1,34 @@
+Browser functional check of the dashboard Clear button, 2026-10-31T12:31:18Z
+Commit under test: a1a3d29; harness: research-analysis/tests/browser_question_clear/
+Real QuestionPanel + useTalkback in headless Chromium 152.0.7977.82 built on Debian GNU/Linux 12 (bookworm), real ScreenHub (pi/p2_media/talkback.py); WebRTC data channel replaced by a WebSocket; robot screen is a recording stub.
+
+PASS fresh page: Clear disabled, no result
+PASS question reaches robot screen
+PASS dashboard shows waiting
+PASS dashboard shows 'Answer: yes'
+PASS Clear ENABLED after answer (was the bug)
+PASS after Clear: answer gone from dashboard  [Ask a question (victim taps an answer) | + Add answer | Send questionClear]
+PASS after Clear: Clear disabled again
+PASS P2 forgot the question
+PASS P2 sent question_dismissed
+PASS after reload: answer does not come back
+PASS waiting: Clear enabled
+PASS waiting + Clear: robot screen got question_hide
+PASS waiting + Clear: dashboard empty
+
+13/13 passed
+
+Control run, same harness and checks, against the code before the fix
+(commit 5f5e54e, checked out in a temporary worktree), 2026-10-31 about
+12:25 UTC; console output copied from that session, not saved at the time:
+  PASS fresh page / question reaches robot screen / dashboard shows waiting /
+       dashboard shows 'Answer: yes' / after Clear: Clear disabled again /
+       waiting: Clear enabled / waiting + Clear: robot screen got question_hide
+  FAIL Clear ENABLED after answer
+  FAIL after Clear: answer gone from dashboard  [... "can you" | Answer: yes]
+  FAIL P2 forgot the question
+  FAIL P2 sent question_dismissed
+  FAIL after reload: answer does not come back
+  FAIL waiting + Clear: dashboard empty
+  7/13 passed
+The checks therefore detect the reported fault.

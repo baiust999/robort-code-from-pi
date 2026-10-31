@@ -1,0 +1,96 @@
+[2026-10-28T14:08:46.679+00:00][P3][INFO][P3_START][watchdog starting]{enable_overlay=False}
+[2026-10-28T14:08:46.692+00:00][P3][INFO][PROC_SPAWN][process started]{name=P1 pid=923 cmd="/home/pi/robot/venv/bin/python -m p1_control.main"}
+[2026-10-28T14:08:46.694+00:00][P3][INFO][PROC_SPAWN][process started]{name=P2 pid=925 cmd="/home/pi/robot/venv/bin/python -m p2_media.main"}
+[2026-10-28T14:08:47.699+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P1 misses=1}
+[2026-10-28T14:08:47.700+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P2 misses=1}
+[2026-10-29T22:07:17.601+00:00][P3][ERROR][PROC_CRASH][process exited unexpectedly]{name=P1 exit_code=-15 restart_count=1}
+[2026-10-29T22:07:28.633+00:00][P3][INFO][PROC_SPAWN][process started]{name=P1 pid=47434 cmd="/home/pi/robot/venv/bin/python -m p1_control.main"}
+[2026-10-29T22:07:29.642+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P1 misses=1}
+[2026-10-29T23:13:47.350+00:00][P3][ERROR][PROC_CRASH][process exited unexpectedly]{name=P1 exit_code=-15 restart_count=2}
+[2026-10-29T23:13:58.356+00:00][P3][INFO][PROC_SPAWN][process started]{name=P1 pid=111734 cmd="/home/pi/robot/venv/bin/python -m p1_control.main"}
+[2026-10-29T23:13:59.361+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P1 misses=1}
+[2026-10-29T23:46:50.610+00:00][P3][INFO][P3_START][watchdog starting]{enable_overlay=False}
+[2026-10-29T23:46:50.624+00:00][P3][INFO][PROC_SPAWN][process started]{name=P1 pid=916 cmd="/home/pi/robot/venv/bin/python -m p1_control.main"}
+[2026-10-29T23:46:50.626+00:00][P3][INFO][PROC_SPAWN][process started]{name=P2 pid=918 cmd="/home/pi/robot/venv/bin/python -m p2_media.main"}
+[2026-10-29T23:46:51.630+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P1 misses=1}
+[2026-10-29T23:46:51.631+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P2 misses=1}
+[2026-10-30T08:31:21.811+00:00][P3][ERROR][PROC_CRASH][process exited unexpectedly]{name=P1 exit_code=-15 restart_count=1}
+[2026-10-30T08:31:32.815+00:00][P3][INFO][PROC_SPAWN][process started]{name=P1 pid=11095 cmd="/home/pi/robot/venv/bin/python -m p1_control.main"}
+[2026-10-30T08:31:33.819+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P1 misses=1}
+[2026-10-30T08:31:43.841+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P1 misses=2}
+[2026-10-30T08:58:36.100+00:00][P3][ERROR][PROC_CRASH][process exited unexpectedly]{name=P1 exit_code=-15 restart_count=2}
+[2026-10-30T08:58:47.103+00:00][P3][INFO][PROC_SPAWN][process started]{name=P1 pid=23492 cmd="/home/pi/robot/venv/bin/python -m p1_control.main"}
+[2026-10-30T08:58:48.111+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P1 misses=1}
+[2026-10-30T11:03:20.682+00:00][P3][INFO][P3_START][watchdog starting]{enable_overlay=False}
+[2026-10-30T11:03:20.693+00:00][P3][INFO][PROC_SPAWN][process started]{name=P1 pid=923 cmd="/home/pi/robot/venv/bin/python -m p1_control.main"}
+[2026-10-30T11:03:20.694+00:00][P3][INFO][PROC_SPAWN][process started]{name=P2 pid=924 cmd="/home/pi/robot/venv/bin/python -m p2_media.main"}
+[2026-10-30T11:03:21.699+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P1 misses=1}
+[2026-10-30T11:03:21.738+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P2 misses=1}
+[2026-10-30T15:49:09.226+00:00][P3][INFO][P3_SIGNAL][shutdown signal received]{signal=SIGTERM}
+[2026-10-30T15:49:09.259+00:00][P3][WARNING][PROC_KILL][supervisor shutting down]{name=P1 pid=923}
+[2026-10-30T15:49:09.280+00:00][P3][WARNING][PROC_KILL][supervisor shutting down]{name=P2 pid=924}
+[2026-10-30T15:49:09.334+00:00][P3][ERROR][PROC_CRASH][process exited unexpectedly]{name=P1 exit_code=-9 restart_count=1}
+[2026-10-30T15:49:10.140+00:00][P3][ERROR][PROC_CRASH][process exited unexpectedly]{name=P2 exit_code=-9 restart_count=1}
+[2026-10-30T15:49:10.151+00:00][P3][INFO][P3_STOP][watchdog stopped]
+[2026-10-30T15:49:11.794+00:00][P3][INFO][P3_START][watchdog starting]{enable_overlay=False}
+[2026-10-30T15:49:11.802+00:00][P3][INFO][PROC_SPAWN][process started]{name=P1 pid=29969 cmd="/home/pi/robot/venv/bin/python -m p1_control.main"}
+[2026-10-30T15:49:11.803+00:00][P3][INFO][PROC_SPAWN][process started]{name=P2 pid=29970 cmd="/home/pi/robot/venv/bin/python -m p2_media.main"}
+[2026-10-30T15:49:12.807+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P1 misses=1}
+[2026-10-30T15:49:12.810+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P2 misses=1}
+[2026-10-30T15:57:36.533+00:00][P3][INFO][P3_START][watchdog starting]{enable_overlay=False}
+[2026-10-30T15:57:36.549+00:00][P3][INFO][PROC_SPAWN][process started]{name=P1 pid=920 cmd="/home/pi/robot/venv/bin/python -m p1_control.main"}
+[2026-10-30T15:57:36.550+00:00][P3][INFO][PROC_SPAWN][process started]{name=P2 pid=921 cmd="/home/pi/robot/venv/bin/python -m p2_media.main"}
+[2026-10-30T15:57:37.556+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P1 misses=1}
+[2026-10-30T15:57:37.557+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P2 misses=1}
+[2026-10-30T16:02:18.986+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P1 misses=1}
+[2026-10-30T16:04:32.046+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P2 misses=1}
+[2026-10-30T16:04:36.727+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P1 misses=1}
+[2026-10-30T16:04:45.653+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P2 misses=2}
+[2026-10-30T16:04:47.893+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P1 misses=2}
+[2026-10-30T16:04:54.627+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P2 misses=3}
+[2026-10-30T16:04:55.173+00:00][P3][WARNING][PROC_KILL][health check hang: killing for respawn]{name=P2 pid=921}
+[2026-10-30T16:04:56.932+00:00][P3][ERROR][PROC_CRASH][process exited unexpectedly]{name=P2 exit_code=None restart_count=1}
+[2026-10-30T16:05:10.231+00:00][P3][INFO][PROC_SPAWN][process started]{name=P2 pid=16295 cmd="/home/pi/robot/venv/bin/python -m p2_media.main"}
+[2026-10-30T16:05:12.058+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P2 misses=1}
+[2026-10-30T16:05:22.749+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P2 misses=2}
+[2026-10-30T16:05:33.101+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P2 misses=3}
+[2026-10-30T16:05:33.102+00:00][P3][WARNING][PROC_KILL][health check hang: killing for respawn]{name=P2 pid=16295}
+[2026-10-30T16:05:33.181+00:00][P3][ERROR][PROC_CRASH][process exited unexpectedly]{name=P2 exit_code=None restart_count=2}
+[2026-10-30T16:05:44.198+00:00][P3][INFO][PROC_SPAWN][process started]{name=P2 pid=17705 cmd="/home/pi/robot/venv/bin/python -m p2_media.main"}
+[2026-10-30T16:05:45.207+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P2 misses=1}
+[2026-10-30T16:13:59.152+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P2 misses=1}
+[2026-10-30T16:14:11.858+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P1 misses=1}
+[2026-10-30T16:14:32.675+00:00][P3][INFO][P3_START][watchdog starting]{enable_overlay=False}
+[2026-10-30T16:14:32.700+00:00][P3][INFO][PROC_SPAWN][process started]{name=P1 pid=926 cmd="/home/pi/robot/venv/bin/python -m p1_control.main"}
+[2026-10-30T16:14:32.701+00:00][P3][INFO][PROC_SPAWN][process started]{name=P2 pid=927 cmd="/home/pi/robot/venv/bin/python -m p2_media.main"}
+[2026-10-30T16:14:33.705+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P1 misses=1}
+[2026-10-30T16:14:33.707+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P2 misses=1}
+[2026-10-30T18:39:54.910+00:00][P3][INFO][P3_SIGNAL][shutdown signal received]{signal=SIGTERM}
+[2026-10-30T18:39:54.920+00:00][P3][WARNING][PROC_KILL][supervisor shutting down]{name=P1 pid=926}
+[2026-10-30T18:39:54.945+00:00][P3][WARNING][PROC_KILL][supervisor shutting down]{name=P2 pid=927}
+[2026-10-30T18:39:55.259+00:00][P3][ERROR][PROC_CRASH][process exited unexpectedly]{name=P2 exit_code=-9 restart_count=1}
+[2026-10-30T18:39:55.595+00:00][P3][ERROR][PROC_CRASH][process exited unexpectedly]{name=P1 exit_code=-9 restart_count=1}
+[2026-10-30T18:39:55.599+00:00][P3][INFO][P3_STOP][watchdog stopped]
+[2026-10-30T18:39:57.511+00:00][P3][INFO][P3_START][watchdog starting]{enable_overlay=False}
+[2026-10-30T18:39:57.515+00:00][P3][INFO][PROC_SPAWN][process started]{name=P1 pid=100171 cmd="/home/pi/robot/venv/bin/python -m p1_control.main"}
+[2026-10-30T18:39:57.517+00:00][P3][INFO][PROC_SPAWN][process started]{name=P2 pid=100172 cmd="/home/pi/robot/venv/bin/python -m p2_media.main"}
+[2026-10-30T18:39:58.520+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P1 misses=1}
+[2026-10-30T18:39:58.521+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P2 misses=1}
+[2026-10-30T18:57:25.637+00:00][P3][ERROR][PROC_CRASH][process exited unexpectedly]{name=P1 exit_code=-15 restart_count=1}
+[2026-10-30T18:57:36.641+00:00][P3][INFO][PROC_SPAWN][process started]{name=P1 pid=108083 cmd="/home/pi/robot/venv/bin/python -m p1_control.main"}
+[2026-10-30T18:57:37.646+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P1 misses=1}
+[2026-10-30T19:26:39.147+00:00][P3][INFO][P3_START][watchdog starting]{enable_overlay=False}
+[2026-10-30T19:26:39.160+00:00][P3][INFO][PROC_SPAWN][process started]{name=P1 pid=939 cmd="/home/pi/robot/venv/bin/python -m p1_control.main"}
+[2026-10-30T19:26:39.161+00:00][P3][INFO][PROC_SPAWN][process started]{name=P2 pid=940 cmd="/home/pi/robot/venv/bin/python -m p2_media.main"}
+[2026-10-30T19:26:40.167+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P1 misses=1}
+[2026-10-30T19:26:40.168+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P2 misses=1}
+[2026-10-31T11:18:18.995+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P2 misses=1}
+[2026-10-31T11:18:19.094+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P1 misses=1}
+[2026-10-31T12:05:18.563+00:00][P3][INFO][P3_START][watchdog starting]{enable_overlay=False}
+[2026-10-31T12:05:18.578+00:00][P3][INFO][PROC_SPAWN][process started]{name=P1 pid=925 cmd="/home/pi/robot/venv/bin/python -m p1_control.main"}
+[2026-10-31T12:05:18.580+00:00][P3][INFO][PROC_SPAWN][process started]{name=P2 pid=926 cmd="/home/pi/robot/venv/bin/python -m p2_media.main"}
+[2026-10-31T12:05:19.584+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P1 misses=1}
+[2026-10-31T12:05:19.585+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P2 misses=1}
+[2026-10-31T12:19:01.491+00:00][P3][ERROR][PROC_CRASH][process exited unexpectedly]{name=P2 exit_code=-15 restart_count=1}
+[2026-10-31T12:19:12.496+00:00][P3][INFO][PROC_SPAWN][process started]{name=P2 pid=7182 cmd="/home/pi/robot/venv/bin/python -m p2_media.main"}
+[2026-10-31T12:19:13.500+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P2 misses=1}

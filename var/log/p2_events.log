@@ -1,0 +1,719 @@
+[2026-10-28T13:33:21.856+00:00][P2][INFO][DISPLAY_MODE][robot display switched to vnc]{source=local:127.0.0.1:kiosk}
+[2026-10-28T13:33:25.931+00:00][P2][INFO][WEBRTC_ROLE][viewer from 192.168.0.103 is controller]{host=192.168.0.103 role=controller auth=ok}
+[2026-10-28T13:33:26.489+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s1 kind=video}
+[2026-10-28T13:33:26.489+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s1 kind=audio}
+[2026-10-28T13:33:26.592+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s1}
+[2026-10-28T13:33:26.594+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s1 state=connecting}
+[2026-10-28T13:33:26.751+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s1 state=connected}
+[2026-10-28T13:33:53.224+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=closed}
+[2026-10-28T13:34:48.522+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s1 state=closed}
+[2026-10-28T13:35:09.721+00:00][P2][INFO][WEBRTC_ROLE][viewer from 192.168.0.103 is controller]{host=192.168.0.103 role=controller auth=ok}
+[2026-10-28T13:35:10.280+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s2 kind=video}
+[2026-10-28T13:35:10.281+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s2 kind=audio}
+[2026-10-28T13:35:10.384+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s2}
+[2026-10-28T13:35:10.387+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s2 state=connecting}
+[2026-10-28T13:35:10.568+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s2 state=connected}
+[2026-10-28T14:03:02.696+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s2 state=closed}
+[2026-10-28T14:03:02.810+00:00][P2][INFO][TALK_CONTROLLER][talk now follows P1 controller]{host=None}
+[2026-10-28T14:03:02.988+00:00][P2][INFO][WEBRTC_ROLE][viewer from 192.168.0.103 is controller]{host=192.168.0.103 role=controller auth=ok}
+[2026-10-28T14:03:03.474+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s3 kind=video}
+[2026-10-28T14:03:03.475+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s3 kind=audio}
+[2026-10-28T14:03:03.564+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s3}
+[2026-10-28T14:03:03.566+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s3 state=connecting}
+[2026-10-28T14:03:03.911+00:00][P2][INFO][TALK_CONTROLLER][talk now follows P1 controller]{host=192.168.0.103}
+[2026-10-28T14:03:04.289+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s3 state=connected}
+[2026-10-28T14:08:52.529+00:00][P2][INFO][P2_START][media server starting]{mock=False port=8443}
+[2026-10-28T14:09:02.582+00:00][P2][INFO][SCREEN_OFFER][robot screen connected]
+[2026-10-28T14:09:02.585+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=connecting}
+[2026-10-28T14:09:02.670+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=connected}
+[2026-10-29T21:20:46.674+00:00][P2][INFO][DISPLAY_MODE][robot display switched to vnc]{source=local:127.0.0.1:kiosk}
+[2026-10-29T21:21:16.777+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=closed}
+[2026-10-29T21:38:25.031+00:00][P2][INFO][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=no_key}
+[2026-10-29T21:38:25.715+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s1 kind=video}
+[2026-10-29T21:38:25.716+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s1 kind=audio}
+[2026-10-29T21:38:25.870+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s1}
+[2026-10-29T21:38:25.873+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s1 state=connecting}
+[2026-10-29T21:38:26.268+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s1 state=connected}
+[2026-10-29T21:39:24.802+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s1 state=closed}
+[2026-10-29T21:39:27.265+00:00][P2][INFO][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=no_key}
+[2026-10-29T21:39:27.799+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s2 kind=video}
+[2026-10-29T21:39:27.801+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s2 kind=audio}
+[2026-10-29T21:39:27.948+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s2}
+[2026-10-29T21:39:27.957+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s2 state=connecting}
+[2026-10-29T21:39:28.130+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s2 state=connected}
+[2026-10-29T21:42:09.837+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s2 state=closed}
+[2026-10-29T21:42:19.081+00:00][P2][INFO][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=no_key}
+[2026-10-29T21:42:19.655+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s3 kind=video}
+[2026-10-29T21:42:19.657+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s3 kind=audio}
+[2026-10-29T21:42:19.762+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s3}
+[2026-10-29T21:42:19.765+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s3 state=connecting}
+[2026-10-29T21:42:20.110+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s3 state=connected}
+[2026-10-29T21:44:09.056+00:00][P2][INFO][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=no_key}
+[2026-10-29T21:44:09.119+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s4 kind=video}
+[2026-10-29T21:44:09.126+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s4 kind=audio}
+[2026-10-29T21:44:09.313+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s4}
+[2026-10-29T21:44:09.326+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s4 state=connecting}
+[2026-10-29T21:44:10.620+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s4 state=connected}
+[2026-10-29T21:44:21.821+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s3 state=closed}
+[2026-10-29T21:45:03.425+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s4 state=closed}
+[2026-10-29T21:46:36.937+00:00][P2][INFO][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=no_key}
+[2026-10-29T21:46:37.512+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s5 kind=video}
+[2026-10-29T21:46:37.513+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s5 kind=audio}
+[2026-10-29T21:46:37.619+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s5}
+[2026-10-29T21:46:37.622+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s5 state=connecting}
+[2026-10-29T21:46:38.423+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s5 state=connected}
+[2026-10-29T21:47:19.548+00:00][P2][INFO][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=no_key}
+[2026-10-29T21:47:19.585+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s6 kind=video}
+[2026-10-29T21:47:19.587+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s6 kind=audio}
+[2026-10-29T21:47:19.715+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s6}
+[2026-10-29T21:47:19.721+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s6 state=connecting}
+[2026-10-29T21:47:20.997+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s6 state=connected}
+[2026-10-29T21:47:37.017+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s5 state=closed}
+[2026-10-29T21:48:05.823+00:00][P2][INFO][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=no_key}
+[2026-10-29T21:48:05.908+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s7 kind=video}
+[2026-10-29T21:48:05.909+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s7 kind=audio}
+[2026-10-29T21:48:06.047+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s7}
+[2026-10-29T21:48:06.049+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s7 state=connecting}
+[2026-10-29T21:48:10.182+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s7 state=connected}
+[2026-10-29T21:48:16.078+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s6 state=closed}
+[2026-10-29T21:48:50.849+00:00][P2][INFO][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=no_key}
+[2026-10-29T21:48:50.882+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s8 kind=video}
+[2026-10-29T21:48:50.887+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s8 kind=audio}
+[2026-10-29T21:48:51.041+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s8}
+[2026-10-29T21:48:51.044+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s8 state=connecting}
+[2026-10-29T21:48:53.110+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s8 state=connected}
+[2026-10-29T21:49:04.305+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s7 state=closed}
+[2026-10-29T21:49:48.772+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s8 state=closed}
+[2026-10-29T21:50:00.438+00:00][P2][INFO][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=no_key}
+[2026-10-29T21:50:01.009+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s9 kind=video}
+[2026-10-29T21:50:01.010+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s9 kind=audio}
+[2026-10-29T21:50:01.210+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s9}
+[2026-10-29T21:50:01.217+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s9 state=connecting}
+[2026-10-29T21:50:01.793+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s9 state=connected}
+[2026-10-29T21:50:54.354+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s9 state=closed}
+[2026-10-29T21:51:45.260+00:00][P2][INFO][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=no_key}
+[2026-10-29T21:51:45.854+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s10 kind=video}
+[2026-10-29T21:51:45.855+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s10 kind=audio}
+[2026-10-29T21:51:45.935+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s10}
+[2026-10-29T21:51:45.949+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s10 state=connecting}
+[2026-10-29T21:51:46.198+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s10 state=connected}
+[2026-10-29T21:52:47.765+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s10 state=closed}
+[2026-10-29T21:53:07.253+00:00][P2][INFO][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=no_key}
+[2026-10-29T21:53:07.834+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s11 kind=video}
+[2026-10-29T21:53:07.834+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s11 kind=audio}
+[2026-10-29T21:53:07.957+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s11}
+[2026-10-29T21:53:07.964+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s11 state=connecting}
+[2026-10-29T21:53:08.426+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s11 state=connected}
+[2026-10-29T21:56:46.466+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s11 state=closed}
+[2026-10-29T21:56:52.329+00:00][P2][INFO][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=no_key}
+[2026-10-29T21:56:52.905+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s12 kind=video}
+[2026-10-29T21:56:52.906+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s12 kind=audio}
+[2026-10-29T21:56:53.040+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s12}
+[2026-10-29T21:56:53.043+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s12 state=connecting}
+[2026-10-29T21:56:53.435+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s12 state=connected}
+[2026-10-29T22:00:56.883+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s12 state=closed}
+[2026-10-29T22:01:43.028+00:00][P2][INFO][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=no_key}
+[2026-10-29T22:01:43.600+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s13 kind=video}
+[2026-10-29T22:01:43.600+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s13 kind=audio}
+[2026-10-29T22:01:43.734+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s13}
+[2026-10-29T22:01:43.739+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s13 state=connecting}
+[2026-10-29T22:01:44.280+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s13 state=connected}
+[2026-10-29T22:05:07.137+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s13 state=closed}
+[2026-10-29T22:14:17.194+00:00][P2][INFO][WEBRTC_ROLE][viewer from 192.168.0.103 is controller]{host=192.168.0.103 role=controller auth=ok}
+[2026-10-29T22:14:17.747+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s14 kind=video}
+[2026-10-29T22:14:17.747+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s14 kind=audio}
+[2026-10-29T22:14:17.831+00:00][P2][INFO][TALK_CONTROLLER][talk now follows P1 controller]{host=192.168.0.103}
+[2026-10-29T22:14:17.849+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s14}
+[2026-10-29T22:14:17.851+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s14 state=connecting}
+[2026-10-29T22:14:18.201+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s14 state=connected}
+[2026-10-29T22:26:07.456+00:00][P2][INFO][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=no_key}
+[2026-10-29T22:26:07.501+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s15 kind=video}
+[2026-10-29T22:26:07.502+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s15 kind=audio}
+[2026-10-29T22:26:07.615+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s15}
+[2026-10-29T22:26:07.618+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s15 state=connecting}
+[2026-10-29T22:26:15.231+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s15 state=connected}
+[2026-10-29T22:27:24.357+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s15 state=closed}
+[2026-10-29T22:28:17.174+00:00][P2][INFO][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=no_key}
+[2026-10-29T22:28:17.227+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s16 kind=video}
+[2026-10-29T22:28:17.232+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s16 kind=audio}
+[2026-10-29T22:28:17.356+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s16}
+[2026-10-29T22:28:17.359+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s16 state=connecting}
+[2026-10-29T22:28:27.018+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s16 state=connected}
+[2026-10-29T22:29:30.227+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s16 state=closed}
+[2026-10-29T22:30:18.199+00:00][P2][INFO][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=no_key}
+[2026-10-29T22:30:18.241+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s17 kind=video}
+[2026-10-29T22:30:18.241+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s17 kind=audio}
+[2026-10-29T22:30:18.379+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s17}
+[2026-10-29T22:30:18.390+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s17 state=connecting}
+[2026-10-29T22:30:24.860+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s17 state=connected}
+[2026-10-29T22:31:29.432+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s17 state=closed}
+[2026-10-29T22:32:09.192+00:00][P2][INFO][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=no_key}
+[2026-10-29T22:32:09.239+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s18 kind=video}
+[2026-10-29T22:32:09.241+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s18 kind=audio}
+[2026-10-29T22:32:09.386+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s18}
+[2026-10-29T22:32:09.395+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s18 state=connecting}
+[2026-10-29T22:32:14.088+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s18 state=connected}
+[2026-10-29T22:33:35.949+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s18 state=closed}
+[2026-10-29T22:33:38.684+00:00][P2][INFO][TALK_CONTROLLER][talk now follows P1 controller]{host=None}
+[2026-10-29T22:34:09.352+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s14 state=closed}
+[2026-10-29T22:37:30.683+00:00][P2][INFO][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=no_key}
+[2026-10-29T22:37:31.305+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s19 kind=video}
+[2026-10-29T22:37:31.308+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s19 kind=audio}
+[2026-10-29T22:37:31.405+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s19}
+[2026-10-29T22:37:31.408+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s19 state=connecting}
+[2026-10-29T22:37:35.921+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s19 state=connected}
+[2026-10-29T22:39:03.059+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s19 state=closed}
+[2026-10-29T22:41:15.333+00:00][P2][INFO][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=no_key}
+[2026-10-29T22:41:15.938+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s20 kind=video}
+[2026-10-29T22:41:15.941+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s20 kind=audio}
+[2026-10-29T22:41:16.043+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s20}
+[2026-10-29T22:41:16.051+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s20 state=connecting}
+[2026-10-29T22:41:16.842+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s20 state=connected}
+[2026-10-29T22:42:25.165+00:00][P2][INFO][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=no_key}
+[2026-10-29T22:42:25.224+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s21 kind=video}
+[2026-10-29T22:42:25.225+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s21 kind=audio}
+[2026-10-29T22:42:25.362+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s21}
+[2026-10-29T22:42:25.387+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s21 state=connecting}
+[2026-10-29T22:42:26.504+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s21 state=connected}
+[2026-10-29T22:42:36.037+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s20 state=closed}
+[2026-10-29T22:43:34.282+00:00][P2][INFO][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=no_key}
+[2026-10-29T22:43:34.316+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s22 kind=video}
+[2026-10-29T22:43:34.317+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s22 kind=audio}
+[2026-10-29T22:43:34.488+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s22}
+[2026-10-29T22:43:34.493+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s22 state=connecting}
+[2026-10-29T22:43:36.765+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s22 state=connected}
+[2026-10-29T22:43:46.666+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s21 state=closed}
+[2026-10-29T22:44:43.418+00:00][P2][INFO][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=no_key}
+[2026-10-29T22:44:43.464+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s23 kind=video}
+[2026-10-29T22:44:43.467+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s23 kind=audio}
+[2026-10-29T22:44:43.594+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s23}
+[2026-10-29T22:44:43.599+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s23 state=connecting}
+[2026-10-29T22:44:44.880+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s23 state=connected}
+[2026-10-29T22:44:55.940+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s22 state=closed}
+[2026-10-29T22:46:03.111+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s23 state=closed}
+[2026-10-29T22:46:14.424+00:00][P2][INFO][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=no_key}
+[2026-10-29T22:46:15.023+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s24 kind=video}
+[2026-10-29T22:46:15.023+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s24 kind=audio}
+[2026-10-29T22:46:15.098+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s24}
+[2026-10-29T22:46:15.102+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s24 state=connecting}
+[2026-10-29T22:46:15.652+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s24 state=connected}
+[2026-10-29T22:47:25.773+00:00][P2][INFO][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=no_key}
+[2026-10-29T22:47:25.813+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s25 kind=video}
+[2026-10-29T22:47:25.816+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s25 kind=audio}
+[2026-10-29T22:47:25.940+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s25}
+[2026-10-29T22:47:25.943+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s25 state=connecting}
+[2026-10-29T22:47:27.584+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s25 state=connected}
+[2026-10-29T22:47:37.403+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s24 state=closed}
+[2026-10-29T22:48:49.112+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s25 state=closed}
+[2026-10-29T22:53:10.317+00:00][P2][INFO][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=no_key}
+[2026-10-29T22:53:10.894+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s26 kind=video}
+[2026-10-29T22:53:10.896+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s26 kind=audio}
+[2026-10-29T22:53:11.027+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s26}
+[2026-10-29T22:53:11.030+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s26 state=connecting}
+[2026-10-29T22:53:11.272+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s26 state=connected}
+[2026-10-29T22:54:21.056+00:00][P2][INFO][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=no_key}
+[2026-10-29T22:54:21.140+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s27 kind=video}
+[2026-10-29T22:54:21.141+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s27 kind=audio}
+[2026-10-29T22:54:21.310+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s27}
+[2026-10-29T22:54:21.313+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s27 state=connecting}
+[2026-10-29T22:54:22.546+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s27 state=connected}
+[2026-10-29T22:54:30.967+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s26 state=closed}
+[2026-10-29T22:55:29.871+00:00][P2][INFO][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=no_key}
+[2026-10-29T22:55:29.897+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s28 kind=video}
+[2026-10-29T22:55:29.900+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s28 kind=audio}
+[2026-10-29T22:55:30.091+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s28}
+[2026-10-29T22:55:30.095+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s28 state=connecting}
+[2026-10-29T22:55:31.195+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s28 state=connected}
+[2026-10-29T22:55:42.989+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s27 state=closed}
+[2026-10-29T22:56:37.195+00:00][P2][INFO][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=no_key}
+[2026-10-29T22:56:37.231+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s29 kind=video}
+[2026-10-29T22:56:37.234+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s29 kind=audio}
+[2026-10-29T22:56:37.366+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s29}
+[2026-10-29T22:56:37.372+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s29 state=connecting}
+[2026-10-29T22:56:39.667+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s29 state=connected}
+[2026-10-29T22:56:52.759+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s28 state=closed}
+[2026-10-29T22:58:00.812+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s29 state=closed}
+[2026-10-29T22:58:28.727+00:00][P2][INFO][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=no_key}
+[2026-10-29T22:58:29.338+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s30 kind=video}
+[2026-10-29T22:58:29.340+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s30 kind=audio}
+[2026-10-29T22:58:29.461+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s30}
+[2026-10-29T22:58:29.466+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s30 state=connecting}
+[2026-10-29T22:58:29.937+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s30 state=connected}
+[2026-10-29T22:59:38.941+00:00][P2][INFO][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=no_key}
+[2026-10-29T22:59:38.982+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s31 kind=video}
+[2026-10-29T22:59:38.985+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s31 kind=audio}
+[2026-10-29T22:59:39.111+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s31}
+[2026-10-29T22:59:39.118+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s31 state=connecting}
+[2026-10-29T22:59:41.397+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s31 state=connected}
+[2026-10-29T22:59:49.039+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s30 state=closed}
+[2026-10-29T23:01:00.980+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s31 state=closed}
+[2026-10-29T23:02:41.363+00:00][P2][INFO][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=no_key}
+[2026-10-29T23:02:41.934+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s32 kind=video}
+[2026-10-29T23:02:41.937+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s32 kind=audio}
+[2026-10-29T23:02:42.041+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s32}
+[2026-10-29T23:02:42.046+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s32 state=connecting}
+[2026-10-29T23:02:42.649+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s32 state=connected}
+[2026-10-29T23:03:51.414+00:00][P2][INFO][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=no_key}
+[2026-10-29T23:03:51.479+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s33 kind=video}
+[2026-10-29T23:03:51.481+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s33 kind=audio}
+[2026-10-29T23:03:51.629+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s33}
+[2026-10-29T23:03:51.633+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s33 state=connecting}
+[2026-10-29T23:03:54.007+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s33 state=connected}
+[2026-10-29T23:04:03.352+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s32 state=closed}
+[2026-10-29T23:05:02.046+00:00][P2][INFO][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=no_key}
+[2026-10-29T23:05:02.071+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s34 kind=video}
+[2026-10-29T23:05:02.072+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s34 kind=audio}
+[2026-10-29T23:05:02.190+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s34}
+[2026-10-29T23:05:02.199+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s34 state=connecting}
+[2026-10-29T23:05:04.254+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s34 state=connected}
+[2026-10-29T23:05:12.133+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s33 state=closed}
+[2026-10-29T23:06:10.849+00:00][P2][INFO][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=no_key}
+[2026-10-29T23:06:10.872+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s35 kind=video}
+[2026-10-29T23:06:10.873+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s35 kind=audio}
+[2026-10-29T23:06:10.991+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s35}
+[2026-10-29T23:06:10.998+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s35 state=connecting}
+[2026-10-29T23:06:12.220+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s35 state=connected}
+[2026-10-29T23:06:21.589+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s34 state=closed}
+[2026-10-29T23:07:33.273+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s35 state=closed}
+[2026-10-29T23:07:33.958+00:00][P2][INFO][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=no_key}
+[2026-10-29T23:07:34.485+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s36 kind=video}
+[2026-10-29T23:07:34.488+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s36 kind=audio}
+[2026-10-29T23:07:34.597+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s36}
+[2026-10-29T23:07:34.601+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s36 state=connecting}
+[2026-10-29T23:07:35.284+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s36 state=connected}
+[2026-10-29T23:08:44.530+00:00][P2][INFO][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=no_key}
+[2026-10-29T23:08:44.567+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s37 kind=video}
+[2026-10-29T23:08:44.568+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s37 kind=audio}
+[2026-10-29T23:08:44.704+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s37}
+[2026-10-29T23:08:44.709+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s37 state=connecting}
+[2026-10-29T23:08:46.117+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s37 state=connected}
+[2026-10-29T23:08:57.690+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s36 state=closed}
+[2026-10-29T23:10:11.499+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s37 state=closed}
+[2026-10-29T23:16:39.719+00:00][P2][INFO][WEBRTC_ROLE][viewer from 192.168.0.103 is controller]{host=192.168.0.103 role=controller auth=ok}
+[2026-10-29T23:16:40.281+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s38 kind=video}
+[2026-10-29T23:16:40.282+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s38 kind=audio}
+[2026-10-29T23:16:40.389+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s38}
+[2026-10-29T23:16:40.392+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s38 state=connecting}
+[2026-10-29T23:16:40.574+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s38 state=connected}
+[2026-10-29T23:16:40.638+00:00][P2][INFO][TALK_CONTROLLER][talk now follows P1 controller]{host=192.168.0.103}
+[2026-10-29T23:18:36.383+00:00][P2][INFO][DISPLAY_MODE][robot display switched to robot]{source=s38}
+[2026-10-29T23:18:42.949+00:00][P2][INFO][SCREEN_OFFER][robot screen connected]
+[2026-10-29T23:18:42.956+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=connecting}
+[2026-10-29T23:18:43.184+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=connected}
+[2026-10-29T23:18:46.513+00:00][P2][INFO][DISPLAY_MODE][robot display switched to vnc]{source=s38}
+[2026-10-29T23:19:14.680+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=closed}
+[2026-10-29T23:31:42.217+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s38 state=closed}
+[2026-10-29T23:31:42.700+00:00][P2][INFO][WEBRTC_ROLE][viewer from 192.168.0.103 is controller]{host=192.168.0.103 role=controller auth=ok}
+[2026-10-29T23:31:43.187+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s39 kind=video}
+[2026-10-29T23:31:43.187+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s39 kind=audio}
+[2026-10-29T23:31:43.317+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s39}
+[2026-10-29T23:31:43.318+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s39 state=connecting}
+[2026-10-29T23:31:43.639+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s39 state=connected}
+[2026-10-29T23:41:37.357+00:00][P2][INFO][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=no_key}
+[2026-10-29T23:41:37.391+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s40 kind=video}
+[2026-10-29T23:41:37.392+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s40 kind=audio}
+[2026-10-29T23:41:37.525+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s40}
+[2026-10-29T23:41:37.529+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s40 state=connecting}
+[2026-10-29T23:41:38.112+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s40 state=connected}
+[2026-10-29T23:42:05.901+00:00][P2][INFO][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=no_key}
+[2026-10-29T23:42:05.940+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s41 kind=video}
+[2026-10-29T23:42:05.941+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s41 kind=audio}
+[2026-10-29T23:42:06.137+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s41}
+[2026-10-29T23:42:06.151+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s41 state=connecting}
+[2026-10-29T23:42:06.739+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s41 state=connected}
+[2026-10-29T23:42:16.992+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s40 state=closed}
+[2026-10-29T23:42:40.930+00:00][P2][INFO][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=no_key}
+[2026-10-29T23:42:40.964+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s42 kind=video}
+[2026-10-29T23:42:40.965+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s42 kind=audio}
+[2026-10-29T23:42:41.184+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s42}
+[2026-10-29T23:42:41.218+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s42 state=connecting}
+[2026-10-29T23:42:44.218+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s42 state=connected}
+[2026-10-29T23:42:46.348+00:00][P2][INFO][TALK_CONTROLLER][talk now follows P1 controller]{host=None}
+[2026-10-29T23:42:48.745+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s41 state=closed}
+[2026-10-29T23:43:17.621+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s39 state=closed}
+[2026-10-29T23:43:22.923+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s42 state=closed}
+[2026-10-29T23:45:04.754+00:00][P2][INFO][WEBRTC_ROLE][viewer from 192.168.0.103 is controller]{host=192.168.0.103 role=controller auth=ok}
+[2026-10-29T23:45:05.324+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s43 kind=video}
+[2026-10-29T23:45:05.325+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s43 kind=audio}
+[2026-10-29T23:45:05.405+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s43}
+[2026-10-29T23:45:05.408+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s43 state=connecting}
+[2026-10-29T23:45:05.647+00:00][P2][INFO][TALK_CONTROLLER][talk now follows P1 controller]{host=192.168.0.103}
+[2026-10-29T23:45:05.683+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s43 state=connected}
+[2026-10-29T23:46:56.524+00:00][P2][INFO][P2_START][media server starting]{mock=False port=8443}
+[2026-10-29T23:47:06.726+00:00][P2][INFO][SCREEN_OFFER][robot screen connected]
+[2026-10-29T23:47:06.730+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=connecting}
+[2026-10-29T23:47:06.824+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=connected}
+[2026-10-30T08:22:03.104+00:00][P2][INFO][WEBRTC_ROLE][viewer from 192.168.0.103 is controller]{host=192.168.0.103 role=controller auth=ok}
+[2026-10-30T08:22:03.777+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s1 kind=video}
+[2026-10-30T08:22:03.780+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s1 kind=audio}
+[2026-10-30T08:22:03.884+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s1}
+[2026-10-30T08:22:03.892+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s1 state=connecting}
+[2026-10-30T08:22:03.905+00:00][P2][INFO][TALK_CONTROLLER][talk now follows P1 controller]{host=192.168.0.103}
+[2026-10-30T08:22:04.086+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s1 state=connected}
+[2026-10-30T08:23:08.667+00:00][P2][INFO][DISPLAY_MODE][robot display switched to vnc]{source=local:127.0.0.1:kiosk}
+[2026-10-30T08:23:40.945+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=closed}
+[2026-10-30T08:24:48.514+00:00][P2][INFO][TALK_CONTROLLER][talk now follows P1 controller]{host=None}
+[2026-10-30T08:24:50.511+00:00][P2][INFO][TALK_CONTROLLER][talk now follows P1 controller]{host=192.168.0.103}
+[2026-10-30T08:24:53.518+00:00][P2][INFO][TALK_CONTROLLER][talk now follows P1 controller]{host=None}
+[2026-10-30T08:24:55.505+00:00][P2][INFO][TALK_CONTROLLER][talk now follows P1 controller]{host=192.168.0.103}
+[2026-10-30T08:24:58.511+00:00][P2][INFO][TALK_CONTROLLER][talk now follows P1 controller]{host=None}
+[2026-10-30T08:25:01.184+00:00][P2][INFO][TALK_CONTROLLER][talk now follows P1 controller]{host=192.168.0.103}
+[2026-10-30T08:25:14.943+00:00][P2][INFO][TALK_CONTROLLER][talk now follows P1 controller]{host=None}
+[2026-10-30T08:25:16.108+00:00][P2][INFO][TALK_CONTROLLER][talk now follows P1 controller]{host=192.168.0.103}
+[2026-10-30T08:26:12.976+00:00][P2][INFO][TALK_CONTROLLER][talk now follows P1 controller]{host=None}
+[2026-10-30T08:26:40.601+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s1 state=closed}
+[2026-10-30T08:52:50.505+00:00][P2][INFO][WEBRTC_ROLE][viewer from 192.168.0.103 is controller]{host=192.168.0.103 role=controller auth=ok}
+[2026-10-30T08:52:51.430+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s2 kind=video}
+[2026-10-30T08:52:51.432+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s2 kind=audio}
+[2026-10-30T08:52:51.526+00:00][P2][INFO][TALK_CONTROLLER][talk now follows P1 controller]{host=192.168.0.103}
+[2026-10-30T08:52:51.572+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s2}
+[2026-10-30T08:52:51.574+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s2 state=connecting}
+[2026-10-30T08:52:51.820+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s2 state=connected}
+[2026-10-30T08:58:34.062+00:00][P2][INFO][TALK_CONTROLLER][talk now follows P1 controller]{host=None}
+[2026-10-30T08:59:06.197+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s2 state=closed}
+[2026-10-30T08:59:28.331+00:00][P2][INFO][WEBRTC_ROLE][viewer from 192.168.0.103 is controller]{host=192.168.0.103 role=controller auth=ok}
+[2026-10-30T08:59:28.893+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s3 kind=video}
+[2026-10-30T08:59:28.894+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s3 kind=audio}
+[2026-10-30T08:59:28.954+00:00][P2][INFO][TALK_CONTROLLER][talk now follows P1 controller]{host=192.168.0.103}
+[2026-10-30T08:59:29.011+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s3}
+[2026-10-30T08:59:29.013+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s3 state=connecting}
+[2026-10-30T08:59:29.192+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s3 state=connected}
+[2026-10-30T09:02:56.288+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s3 state=closed}
+[2026-10-30T09:02:56.709+00:00][P2][INFO][WEBRTC_ROLE][viewer from 192.168.0.103 is controller]{host=192.168.0.103 role=controller auth=ok}
+[2026-10-30T09:02:57.213+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s4 kind=video}
+[2026-10-30T09:02:57.215+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s4 kind=audio}
+[2026-10-30T09:02:57.227+00:00][P2][INFO][WEBRTC_ROLE][viewer from 192.168.0.103 is controller]{host=192.168.0.103 role=controller auth=ok}
+[2026-10-30T09:02:57.242+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s5 kind=video}
+[2026-10-30T09:02:57.243+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s5 kind=audio}
+[2026-10-30T09:02:57.337+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s5}
+[2026-10-30T09:02:57.341+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s4}
+[2026-10-30T09:02:57.342+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s5 state=connecting}
+[2026-10-30T09:02:57.343+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s4 state=connecting}
+[2026-10-30T09:02:57.526+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s5 state=connected}
+[2026-10-30T09:03:29.334+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s5 state=closed}
+[2026-10-30T09:03:29.615+00:00][P2][INFO][WEBRTC_ROLE][viewer from 192.168.0.103 is controller]{host=192.168.0.103 role=controller auth=ok}
+[2026-10-30T09:03:29.625+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s6 kind=video}
+[2026-10-30T09:03:29.626+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s6 kind=audio}
+[2026-10-30T09:03:29.692+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s6}
+[2026-10-30T09:03:29.694+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s6 state=connecting}
+[2026-10-30T09:03:29.826+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s6 state=connected}
+[2026-10-30T09:06:17.060+00:00][P2][INFO][TALK_CONTROLLER][talk now follows P1 controller]{host=None}
+[2026-10-30T09:06:46.582+00:00][P2][INFO][WEBRTC_ROLE][viewer from 192.168.0.103 is controller]{host=192.168.0.103 role=controller auth=ok}
+[2026-10-30T09:06:46.611+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s7 kind=video}
+[2026-10-30T09:06:46.612+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s7 kind=audio}
+[2026-10-30T09:06:46.713+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s7}
+[2026-10-30T09:06:46.715+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s7 state=connecting}
+[2026-10-30T09:06:46.751+00:00][P2][INFO][TALK_CONTROLLER][talk now follows P1 controller]{host=192.168.0.103}
+[2026-10-30T09:06:46.871+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s7 state=connected}
+[2026-10-30T09:06:47.891+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s6 state=closed}
+[2026-10-30T09:08:52.598+00:00][P2][INFO][DISPLAY_MODE][robot display switched to robot]{source=s7}
+[2026-10-30T09:08:56.912+00:00][P2][INFO][SCREEN_OFFER][robot screen connected]
+[2026-10-30T09:08:56.935+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=connecting}
+[2026-10-30T09:08:57.101+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=connected}
+[2026-10-30T09:09:13.684+00:00][P2][INFO][DISPLAY_MODE][robot display switched to vnc]{source=local:127.0.0.1:kiosk}
+[2026-10-30T09:09:42.080+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=closed}
+[2026-10-30T10:16:53.696+00:00][P2][INFO][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=no_key}
+[2026-10-30T10:16:53.887+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s8 kind=video}
+[2026-10-30T10:16:53.888+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s8 kind=audio}
+[2026-10-30T10:16:54.045+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s8}
+[2026-10-30T10:16:54.049+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s8 state=connecting}
+[2026-10-30T10:16:54.479+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s8 state=connected}
+[2026-10-30T10:17:24.427+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s8 state=closed}
+[2026-10-30T10:17:26.349+00:00][P2][INFO][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=no_key}
+[2026-10-30T10:17:26.393+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s9 kind=video}
+[2026-10-30T10:17:26.395+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s9 kind=audio}
+[2026-10-30T10:17:26.502+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s9}
+[2026-10-30T10:17:26.509+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s9 state=connecting}
+[2026-10-30T10:17:27.098+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s9 state=connected}
+[2026-10-30T10:18:11.599+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s9 state=closed}
+[2026-10-30T10:20:21.954+00:00][P2][INFO][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=no_key}
+[2026-10-30T10:20:22.013+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s10 kind=video}
+[2026-10-30T10:20:22.019+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s10 kind=audio}
+[2026-10-30T10:20:22.200+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s10}
+[2026-10-30T10:20:22.205+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s10 state=connecting}
+[2026-10-30T10:20:24.077+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s10 state=connected}
+[2026-10-30T10:20:46.398+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s10 state=closed}
+[2026-10-30T10:20:49.392+00:00][P2][INFO][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=no_key}
+[2026-10-30T10:20:49.489+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s11 kind=video}
+[2026-10-30T10:20:49.493+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s11 kind=audio}
+[2026-10-30T10:20:49.707+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s11}
+[2026-10-30T10:20:49.719+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s11 state=connecting}
+[2026-10-30T10:20:50.585+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s11 state=connected}
+[2026-10-30T10:21:33.201+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s11 state=closed}
+[2026-10-30T10:21:40.790+00:00][P2][INFO][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=no_key}
+[2026-10-30T10:21:40.813+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s12 kind=video}
+[2026-10-30T10:21:40.814+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s12 kind=audio}
+[2026-10-30T10:21:40.920+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s12}
+[2026-10-30T10:21:40.934+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s12 state=connecting}
+[2026-10-30T10:21:41.537+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s12 state=connected}
+[2026-10-30T10:22:39.063+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s12 state=closed}
+[2026-10-30T10:35:21.716+00:00][P2][INFO][TALK_CONTROLLER][talk now follows P1 controller]{host=None}
+[2026-10-30T10:35:49.479+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s7 state=closed}
+[2026-10-30T10:52:13.565+00:00][P2][INFO][WEBRTC_ROLE][viewer from 192.168.0.103 is controller]{host=192.168.0.103 role=controller auth=ok}
+[2026-10-30T10:52:13.583+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s13 kind=video}
+[2026-10-30T10:52:13.583+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s13 kind=audio}
+[2026-10-30T10:52:13.673+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s13}
+[2026-10-30T10:52:13.674+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s13 state=connecting}
+[2026-10-30T10:52:13.915+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s13 state=connected}
+[2026-10-30T10:52:14.315+00:00][P2][INFO][TALK_CONTROLLER][talk now follows P1 controller]{host=192.168.0.103}
+[2026-10-30T10:52:28.580+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s13 state=closed}
+[2026-10-30T10:52:28.845+00:00][P2][INFO][TALK_CONTROLLER][talk now follows P1 controller]{host=None}
+[2026-10-30T10:52:29.047+00:00][P2][INFO][WEBRTC_ROLE][viewer from 192.168.0.103 is controller]{host=192.168.0.103 role=controller auth=ok}
+[2026-10-30T10:52:29.056+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s14 kind=video}
+[2026-10-30T10:52:29.056+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s14 kind=audio}
+[2026-10-30T10:52:29.150+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s14}
+[2026-10-30T10:52:29.152+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s14 state=connecting}
+[2026-10-30T10:52:29.359+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s14 state=connected}
+[2026-10-30T10:52:29.848+00:00][P2][INFO][TALK_CONTROLLER][talk now follows P1 controller]{host=192.168.0.103}
+                                                                                                      [2026-10-30T11:03:26.527+00:00][P2][INFO][P2_START][media server starting]{mock=False port=8443}
+[2026-10-30T11:03:36.617+00:00][P2][INFO][SCREEN_OFFER][robot screen connected]
+[2026-10-30T11:03:36.626+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=connecting}
+[2026-10-30T11:03:36.739+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=connected}
+[2026-10-30T15:15:17.129+00:00][P2][INFO][DISPLAY_MODE][robot display switched to vnc]{source=local:127.0.0.1:kiosk}
+[2026-10-30T15:15:48.733+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=closed}
+[2026-10-30T15:49:13.920+00:00][P2][INFO][P2_START][media server starting]{mock=False port=8443}
+[2026-10-30T15:49:17.558+00:00][P2][INFO][SCREEN_OFFER][robot screen connected]
+[2026-10-30T15:49:17.565+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=connecting}
+[2026-10-30T15:49:17.653+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=connected}
+[2026-10-30T15:51:14.351+00:00][P2][INFO][DISPLAY_MODE][robot display switched to vnc]{source=local:127.0.0.1:kiosk}
+[2026-10-30T15:51:43.294+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=closed}
+[2026-10-30T15:57:42.513+00:00][P2][INFO][P2_START][media server starting]{mock=False port=8443}
+[2026-10-30T15:57:55.874+00:00][P2][INFO][SCREEN_OFFER][robot screen connected]
+[2026-10-30T15:57:55.878+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=connecting}
+[2026-10-30T15:57:56.080+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=connected}
+[2026-10-30T15:58:49.998+00:00][P2][INFO][DISPLAY_MODE][robot display switched to vnc]{source=local:127.0.0.1:kiosk}
+[2026-10-30T15:59:23.058+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=closed}
+[2026-10-30T16:05:50.877+00:00][P2][INFO][P2_START][media server starting]{mock=False port=8443}
+[2026-10-30T16:06:01.545+00:00][P2][INFO][SCREEN_OFFER][robot screen connected]
+[2026-10-30T16:06:01.550+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=connecting}
+[2026-10-30T16:06:01.705+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=connected}
+[2026-10-30T16:06:10.383+00:00][P2][INFO][DISPLAY_MODE][robot display switched to vnc]{source=local:127.0.0.1:kiosk}
+[2026-10-30T16:06:39.639+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=closed}
+[2026-10-30T16:14:38.522+00:00][P2][INFO][P2_START][media server starting]{mock=False port=8443}
+[2026-10-30T16:14:49.826+00:00][P2][INFO][SCREEN_OFFER][robot screen connected]
+[2026-10-30T16:14:49.829+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=connecting}
+[2026-10-30T16:14:50.017+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=connected}
+[2026-10-30T16:14:57.967+00:00][P2][INFO][DISPLAY_MODE][robot display switched to vnc]{source=local:127.0.0.1:kiosk}
+[2026-10-30T16:16:12.313+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=closed}
+[2026-10-30T16:35:04.774+00:00][P2][INFO][WEBRTC_ROLE][viewer from 192.168.0.103 is controller]{host=192.168.0.103 role=controller auth=ok}
+[2026-10-30T16:35:05.370+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s1 kind=video}
+[2026-10-30T16:35:05.370+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s1 kind=audio}
+[2026-10-30T16:35:05.480+00:00][P2][INFO][TALK_CONTROLLER][talk now follows P1 controller]{host=192.168.0.103}
+[2026-10-30T16:35:05.485+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s1}
+[2026-10-30T16:35:05.486+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s1 state=connecting}
+[2026-10-30T16:35:05.818+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s1 state=connected}
+[2026-10-30T16:35:34.054+00:00][P2][INFO][FLOOR_CLAIM][operator took the robot screen]{session=s1}
+[2026-10-30T16:35:34.054+00:00][P2][INFO][QUESTION_ASK][question sent to robot screen]{session=s1 id=1 options=2}
+[2026-10-30T16:35:42.113+00:00][P2][INFO][DISPLAY_MODE][robot display switched to robot]{source=s1}
+[2026-10-30T16:35:46.138+00:00][P2][INFO][SCREEN_OFFER][robot screen connected]
+[2026-10-30T16:35:46.146+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=connecting}
+[2026-10-30T16:35:46.326+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=connected}
+[2026-10-30T16:36:21.812+00:00][P2][INFO][QUESTION_ASK][question sent to robot screen]{session=s1 id=2 options=2}
+[2026-10-30T16:36:40.078+00:00][P2][INFO][DISPLAY_MODE][robot display switched to vnc]{source=local:127.0.0.1:kiosk}
+[2026-10-30T16:37:11.395+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=closed}
+[2026-10-30T16:40:34.989+00:00][P2][INFO][DISPLAY_MODE][robot display switched to robot]{source=s1}
+[2026-10-30T16:40:39.463+00:00][P2][INFO][SCREEN_OFFER][robot screen connected]
+[2026-10-30T16:40:39.467+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=connecting}
+[2026-10-30T16:40:39.571+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=connected}
+[2026-10-30T16:40:43.389+00:00][P2][INFO][QUESTION_ANSWER][victim answered the question]{id=2 choice=0}
+[2026-10-30T16:40:55.598+00:00][P2][INFO][TALK_CONTROLLER][talk now follows P1 controller]{host=None}
+[2026-10-30T16:40:55.599+00:00][P2][INFO][FLOOR_RELEASE][robot screen released]{session=s1}
+[2026-10-30T16:41:06.313+00:00][P2][INFO][DISPLAY_MODE][robot display switched to vnc]{source=local:127.0.0.1:kiosk}
+[2026-10-30T16:41:27.558+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s1 state=closed}
+[2026-10-30T16:41:39.275+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=closed}
+[2026-10-30T17:33:09.818+00:00][P2][INFO][WEBRTC_ROLE][viewer from 192.168.0.103 is controller]{host=192.168.0.103 role=controller auth=ok}
+[2026-10-30T17:33:10.390+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s2 kind=video}
+[2026-10-30T17:33:10.391+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s2 kind=audio}
+[2026-10-30T17:33:10.498+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s2}
+[2026-10-30T17:33:10.501+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s2 state=connecting}
+[2026-10-30T17:33:10.520+00:00][P2][INFO][TALK_CONTROLLER][talk now follows P1 controller]{host=192.168.0.103}
+[2026-10-30T17:33:10.669+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s2 state=connected}
+[2026-10-30T17:33:20.351+00:00][P2][INFO][WEBRTC_ROLE][viewer from 192.168.0.103 is controller]{host=192.168.0.103 role=controller auth=ok}
+[2026-10-30T17:33:20.835+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s3 kind=video}
+[2026-10-30T17:33:20.836+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s3 kind=audio}
+[2026-10-30T17:33:20.841+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s2 state=closed}
+[2026-10-30T17:33:20.937+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s3}
+[2026-10-30T17:33:20.938+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s3 state=connecting}
+[2026-10-30T17:33:21.094+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s3 state=connected}
+[2026-10-30T17:38:47.676+00:00][P2][INFO][TALK_CONTROLLER][talk now follows P1 controller]{host=None}
+[2026-10-30T17:39:20.489+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s3 state=closed}
+[2026-10-30T18:30:49.144+00:00][P2][INFO][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=no_key}
+[2026-10-30T18:30:49.777+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s4 kind=video}
+[2026-10-30T18:30:49.778+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s4 kind=audio}
+[2026-10-30T18:30:49.903+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s4}
+[2026-10-30T18:30:49.906+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s4 state=connecting}
+[2026-10-30T18:30:50.001+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s4 state=connected}
+[2026-10-30T18:31:20.742+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s4 state=closed}
+[2026-10-30T18:40:00.045+00:00][P2][INFO][P2_START][media server starting]{mock=False port=8443}
+[2026-10-30T18:40:07.483+00:00][P2][INFO][SCREEN_OFFER][robot screen connected]
+[2026-10-30T18:40:07.487+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=connecting}
+[2026-10-30T18:40:07.623+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=connected}
+[2026-10-30T18:42:04.919+00:00][P2][INFO][WEBRTC_ROLE][viewer from 192.168.0.103 is controller]{host=192.168.0.103 role=controller auth=ok}
+[2026-10-30T18:42:05.552+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s1 kind=video}
+[2026-10-30T18:42:05.553+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s1 kind=audio}
+[2026-10-30T18:42:05.689+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s1}
+[2026-10-30T18:42:05.702+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s1 state=connecting}
+[2026-10-30T18:42:05.855+00:00][P2][INFO][TALK_CONTROLLER][talk now follows P1 controller]{host=192.168.0.103}
+[2026-10-30T18:42:05.896+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s1 state=connected}
+[2026-10-30T18:42:31.807+00:00][P2][INFO][FLOOR_CLAIM][operator took the robot screen]{session=s1}
+[2026-10-30T18:42:31.812+00:00][P2][INFO][QUESTION_ASK][question sent to robot screen]{session=s1 id=1 options=2}
+[2026-10-30T18:42:37.764+00:00][P2][INFO][QUESTION_ANSWER][victim answered the question]{id=1 choice=0}
+[2026-10-30T18:46:33.859+00:00][P2][INFO][TALK_CONTROLLER][talk now follows P1 controller]{host=None}
+[2026-10-30T18:46:33.861+00:00][P2][INFO][FLOOR_RELEASE][robot screen released]{session=s1}
+[2026-10-30T18:46:42.444+00:00][P2][INFO][WEBRTC_ROLE][viewer from 192.168.0.103 is controller]{host=192.168.0.103 role=controller auth=ok}
+[2026-10-30T18:46:42.500+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s2 kind=video}
+[2026-10-30T18:46:42.502+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s2 kind=audio}
+[2026-10-30T18:46:42.638+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s2}
+[2026-10-30T18:46:42.639+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s2 state=connecting}
+[2026-10-30T18:46:42.657+00:00][P2][INFO][TALK_CONTROLLER][talk now follows P1 controller]{host=192.168.0.103}
+[2026-10-30T18:46:42.886+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s2 state=connected}
+[2026-10-30T18:47:06.733+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s1 state=closed}
+[2026-10-30T18:47:07.075+00:00][P2][INFO][DISPLAY_MODE][robot display switched to vnc]{source=local:127.0.0.1:kiosk}
+[2026-10-30T18:47:37.741+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=closed}
+[2026-10-30T18:50:12.120+00:00][P2][INFO][TALK_CONTROLLER][talk now follows P1 controller]{host=None}
+[2026-10-30T18:50:42.983+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s2 state=closed}
+[2026-10-30T19:24:15.590+00:00][P2][INFO][WEBRTC_ROLE][viewer from 192.168.0.103 is controller]{host=192.168.0.103 role=controller auth=ok}
+[2026-10-30T19:24:16.182+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s3 kind=video}
+[2026-10-30T19:24:16.183+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s3 kind=audio}
+[2026-10-30T19:24:16.294+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s3}
+[2026-10-30T19:24:16.297+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s3 state=connecting}
+[2026-10-30T19:24:16.421+00:00][P2][INFO][TALK_CONTROLLER][talk now follows P1 controller]{host=192.168.0.103}
+[2026-10-30T19:24:16.492+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s3 state=connected}
+[2026-10-30T19:25:40.968+00:00][P2][INFO][TALK_CONTROLLER][talk now follows P1 controller]{host=None}
+[2026-10-30T19:26:10.366+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s3 state=closed}
+[2026-10-30T19:26:45.072+00:00][P2][INFO][P2_START][media server starting]{mock=False port=8443}
+[2026-10-30T19:26:55.042+00:00][P2][INFO][SCREEN_OFFER][robot screen connected]
+[2026-10-30T19:26:55.045+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=connecting}
+[2026-10-30T19:26:55.150+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=connected}
+[2026-10-31T11:15:38.015+00:00][P2][INFO][DISPLAY_MODE][robot display switched to vnc]{source=local:127.0.0.1:kiosk}
+[2026-10-31T11:16:08.373+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=closed}
+[2026-10-31T11:16:59.910+00:00][P2][INFO][WEBRTC_ROLE][viewer from 192.168.0.101 is controller]{host=192.168.0.101 role=controller auth=ok}
+[2026-10-31T11:17:00.528+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s1 kind=video}
+[2026-10-31T11:17:00.529+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s1 kind=audio}
+[2026-10-31T11:17:00.626+00:00][P2][INFO][TALK_CONTROLLER][talk now follows P1 controller]{host=192.168.0.101}
+[2026-10-31T11:17:00.629+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s1}
+[2026-10-31T11:17:00.632+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s1 state=connecting}
+[2026-10-31T11:17:01.040+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s1 state=connected}
+[2026-10-31T11:17:41.089+00:00][P2][INFO][FLOOR_CLAIM][operator took the robot screen]{session=s1}
+[2026-10-31T11:17:41.090+00:00][P2][INFO][QUESTION_ASK][question sent to robot screen]{session=s1 id=1 options=4}
+[2026-10-31T11:17:54.357+00:00][P2][INFO][DISPLAY_MODE][robot display switched to robot]{source=s1}
+[2026-10-31T11:17:57.233+00:00][P2][INFO][TALK_CONTROLLER][talk now follows P1 controller]{host=None}
+[2026-10-31T11:17:57.233+00:00][P2][INFO][FLOOR_RELEASE][robot screen released]{session=s1}
+[2026-10-31T11:17:57.233+00:00][P2][INFO][QUESTION_CLEAR][question cleared]{id=1}
+[2026-10-31T11:17:58.453+00:00][P2][INFO][TALK_CONTROLLER][talk now follows P1 controller]{host=192.168.0.101}
+[2026-10-31T11:18:01.462+00:00][P2][INFO][TALK_CONTROLLER][talk now follows P1 controller]{host=None}
+[2026-10-31T11:18:05.789+00:00][P2][INFO][TALK_CONTROLLER][talk now follows P1 controller]{host=192.168.0.101}
+[2026-10-31T11:18:12.811+00:00][P2][INFO][TALK_CONTROLLER][talk now follows P1 controller]{host=None}
+[2026-10-31T11:18:20.212+00:00][P2][INFO][TALK_CONTROLLER][talk now follows P1 controller]{host=192.168.0.101}
+[2026-10-31T11:18:22.796+00:00][P2][INFO][SCREEN_OFFER][robot screen connected]
+[2026-10-31T11:18:22.811+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=connecting}
+[2026-10-31T11:18:22.946+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=connected}
+[2026-10-31T11:18:51.160+00:00][P2][INFO][FLOOR_CLAIM][operator took the robot screen]{session=s1}
+[2026-10-31T11:18:51.161+00:00][P2][INFO][QUESTION_ASK][question sent to robot screen]{session=s1 id=2 options=2}
+[2026-10-31T11:18:57.655+00:00][P2][INFO][QUESTION_ANSWER][victim answered the question]{id=2 choice=0}
+[2026-10-31T11:19:13.490+00:00][P2][INFO][FLOOR_RELEASE][robot screen released]{session=s1}
+[2026-10-31T11:19:13.599+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s1 state=closed}
+[2026-10-31T11:19:14.086+00:00][P2][INFO][WEBRTC_ROLE][viewer from 192.168.0.101 is controller]{host=192.168.0.101 role=controller auth=ok}
+[2026-10-31T11:19:14.639+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s2 kind=video}
+[2026-10-31T11:19:14.639+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s2 kind=audio}
+[2026-10-31T11:19:14.724+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s2}
+[2026-10-31T11:19:14.728+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s2 state=connecting}
+[2026-10-31T11:19:14.904+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s2 state=connected}
+[2026-10-31T11:21:25.537+00:00][P2][INFO][DISPLAY_MODE][robot display switched to vnc]{source=local:127.0.0.1:kiosk}
+[2026-10-31T11:22:00.625+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=closed}
+[2026-10-31T11:22:30.924+00:00][P2][INFO][TALK_CONTROLLER][talk now follows P1 controller]{host=None}
+[2026-10-31T11:23:02.348+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s2 state=closed}
+[2026-10-31T11:34:27.281+00:00][P2][WARNING][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=bad_key}
+[2026-10-31T11:34:27.864+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s3 kind=video}
+[2026-10-31T11:34:27.868+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s3 kind=audio}
+[2026-10-31T11:34:27.956+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s3}
+[2026-10-31T11:34:27.960+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s3 state=connecting}
+[2026-10-31T11:34:28.502+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s3 state=connected}
+[2026-10-31T11:34:45.122+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s3 state=closed}
+[2026-10-31T11:34:46.364+00:00][P2][WARNING][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=bad_key}
+[2026-10-31T11:34:46.885+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s4 kind=video}
+[2026-10-31T11:34:46.887+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s4 kind=audio}
+[2026-10-31T11:34:46.984+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s4}
+[2026-10-31T11:34:46.987+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s4 state=connecting}
+[2026-10-31T11:34:47.573+00:00][P2][WARNING][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=bad_key}
+[2026-10-31T11:34:47.600+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s5 kind=video}
+[2026-10-31T11:34:47.600+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s5 kind=audio}
+[2026-10-31T11:34:47.857+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s5}
+[2026-10-31T11:34:47.863+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s5 state=connecting}
+[2026-10-31T11:34:48.297+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s5 state=connected}
+[2026-10-31T11:35:54.750+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s5 state=closed}
+[2026-10-31T11:35:55.418+00:00][P2][WARNING][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=bad_key}
+[2026-10-31T11:35:55.444+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s6 kind=video}
+[2026-10-31T11:35:55.444+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s6 kind=audio}
+[2026-10-31T11:35:55.549+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s6}
+[2026-10-31T11:35:55.553+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s6 state=connecting}
+[2026-10-31T11:35:56.624+00:00][P2][WARNING][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=locked}
+[2026-10-31T11:35:56.639+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s7 kind=video}
+[2026-10-31T11:35:56.640+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s7 kind=audio}
+[2026-10-31T11:35:56.746+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s7}
+[2026-10-31T11:35:56.752+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s7 state=connecting}
+[2026-10-31T11:35:57.415+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s7 state=connected}
+[2026-10-31T11:36:09.426+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s7 state=closed}
+[2026-10-31T11:36:10.201+00:00][P2][WARNING][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=locked}
+[2026-10-31T11:36:10.225+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s8 kind=video}
+[2026-10-31T11:36:10.226+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s8 kind=audio}
+[2026-10-31T11:36:10.306+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s8}
+[2026-10-31T11:36:10.312+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s8 state=connecting}
+[2026-10-31T11:36:10.761+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s8 state=connected}
+[2026-10-31T11:37:13.058+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s8 state=closed}
+[2026-10-31T11:37:14.980+00:00][P2][WARNING][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=locked}
+[2026-10-31T11:37:15.012+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s9 kind=video}
+[2026-10-31T11:37:15.015+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s9 kind=audio}
+[2026-10-31T11:37:20.040+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s9}
+[2026-10-31T11:37:20.049+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s9 state=connecting}
+[2026-10-31T11:37:20.692+00:00][P2][WARNING][WEBRTC_ROLE][viewer from 127.0.0.1 is observer]{host=127.0.0.1 role=observer auth=locked}
+[2026-10-31T11:37:20.710+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s10 kind=video}
+[2026-10-31T11:37:20.711+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s10 kind=audio}
+[2026-10-31T11:37:20.834+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s10}
+[2026-10-31T11:37:20.838+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s10 state=connecting}
+[2026-10-31T11:37:21.510+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s10 state=connected}
+[2026-10-31T11:39:37.040+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s10 state=closed}
+[2026-10-31T11:58:28.519+00:00][P2][INFO][WEBRTC_ROLE][viewer from 192.168.0.101 is controller]{host=192.168.0.101 role=controller auth=ok}
+[2026-10-31T11:58:28.544+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s11 kind=video}
+[2026-10-31T11:58:28.545+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s11 kind=audio}
+[2026-10-31T11:58:29.048+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s11}
+[2026-10-31T11:58:29.051+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s11 state=connecting}
+[2026-10-31T11:58:29.298+00:00][P2][INFO][TALK_CONTROLLER][talk now follows P1 controller]{host=192.168.0.101}
+[2026-10-31T11:58:30.081+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s11 state=connected}
+[2026-10-31T12:05:24.560+00:00][P2][INFO][P2_START][media server starting]{mock=False port=8443}
+[2026-10-31T12:05:25.845+00:00][P2][INFO][TALK_CONTROLLER][talk now follows P1 controller]{host=192.168.0.101}
+[2026-10-31T12:05:36.549+00:00][P2][INFO][SCREEN_OFFER][robot screen connected]
+[2026-10-31T12:05:36.553+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=connecting}
+[2026-10-31T12:05:36.687+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=connected}
+[2026-10-31T12:07:51.239+00:00][P2][INFO][DISPLAY_MODE][robot display switched to vnc]{source=local:127.0.0.1:kiosk}
+[2026-10-31T12:08:25.977+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=closed}
+[2026-10-31T12:10:04.220+00:00][P2][INFO][WEBRTC_ROLE][viewer from 192.168.0.101 is controller]{host=192.168.0.101 role=controller auth=ok}
+[2026-10-31T12:10:04.815+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s1 kind=video}
+[2026-10-31T12:10:04.816+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s1 kind=audio}
+[2026-10-31T12:10:04.912+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s1}
+[2026-10-31T12:10:04.915+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s1 state=connecting}
+[2026-10-31T12:10:05.566+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s1 state=connected}
+[2026-10-31T12:19:15.120+00:00][P2][INFO][P2_START][media server starting]{mock=False port=8443}
+[2026-10-31T12:19:15.233+00:00][P2][INFO][TALK_CONTROLLER][talk now follows P1 controller]{host=192.168.0.101}
+[2026-10-31T12:19:19.230+00:00][P2][INFO][SCREEN_OFFER][robot screen connected]
+[2026-10-31T12:19:19.238+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=connecting}
+[2026-10-31T12:19:19.356+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=connected}
+[2026-10-31T12:19:24.350+00:00][P2][INFO][DISPLAY_MODE][robot display switched to vnc]{source=local:127.0.0.1:kiosk}
+[2026-10-31T12:19:56.532+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=closed}
+[2026-10-31T12:19:56.938+00:00][P2][INFO][WEBRTC_ROLE][viewer from 192.168.0.101 is controller]{host=192.168.0.101 role=controller auth=ok}
+[2026-10-31T12:19:57.503+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s1 kind=video}
+[2026-10-31T12:19:57.504+00:00][P2][INFO][WEBRTC_TRACK_IN][operator track received]{session=s1 kind=audio}
+[2026-10-31T12:19:57.590+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s1}
+[2026-10-31T12:19:57.593+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s1 state=connecting}
+[2026-10-31T12:19:58.058+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s1 state=connected}
+[2026-10-31T12:20:04.460+00:00][P2][INFO][FLOOR_CLAIM][operator took the robot screen]{session=s1}
+[2026-10-31T12:20:04.461+00:00][P2][INFO][QUESTION_ASK][question sent to robot screen]{session=s1 id=1 options=2}
+[2026-10-31T12:20:07.096+00:00][P2][INFO][QUESTION_CLEAR][question cleared]{id=1}
+[2026-10-31T12:20:07.096+00:00][P2][INFO][QUESTION_DISMISS][question removed from dashboards]{id=1}
+[2026-10-31T12:20:25.751+00:00][P2][INFO][FLOOR_RELEASE][robot screen released]{session=s1}
+[2026-10-31T12:20:28.965+00:00][P2][INFO][DISPLAY_MODE][robot display switched to robot]{source=s1}
+[2026-10-31T12:20:33.578+00:00][P2][INFO][SCREEN_OFFER][robot screen connected]
+[2026-10-31T12:20:33.590+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=connecting}
+[2026-10-31T12:20:33.728+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=connected}
+[2026-10-31T12:21:00.761+00:00][P2][INFO][DISPLAY_MODE][robot display switched to vnc]{source=local:127.0.0.1:kiosk}
+[2026-10-31T12:21:31.741+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=closed}

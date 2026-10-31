@@ -54,7 +54,7 @@ turns the CSVs into the aggregate tables the paper's Section 5 needs.
 | `test_mock_deadman.py` | 10 | Simulated firmware: dead-man timer trips after 2 s and stops the motors; heartbeat re-arms it; oversized and unknown commands are rejected; PWM is clamped; telemetry arrives at the expected rate. | PASS |
 | `test_ring_buffer.py` | 9 | The 300-slot telemetry buffer keeps order, overwrites the oldest entries, returns only newer frames on resume, and reports gaps. | PASS |
 | `test_telemetry_parser.py` | 8 | Arduino telemetry lines are parsed correctly; wrong field counts, non-numeric, out-of-range, empty and oversized lines are rejected. | PASS |
-| `test_talkback.py` | 32 | Only one operator can hold the robot screen; release and disconnect free it; messages reach the screen; a reconnecting screen gets the current text; Robot Display / VNC mode switching; a session without the controller key can't talk, show video, send text or switch the display, and its media never reaches the screen; a session with the key but not from P1's current controller is also view-only; a takeover moves talk to the new controller and frees the floor. Tap-to-answer questions (10 tests, added 2026-10-30): question text and 2-4 answers are trimmed and capped, and 1 or 5 answers are refused; a question reaches the screen and the tapped answer reaches every dashboard; a late, repeated, out-of-range or non-integer tap is ignored; a new question replaces the old one; expiry and Clear take it off the screen, and expiry after an answer changes nothing; releasing the screen clears it; an observer can't ask but sees the status; a reconnecting screen gets a question that is still waiting; the timeout fires on the real event loop. | PASS |
+| `test_talkback.py` | 33 | Only one operator can hold the robot screen; release and disconnect free it; messages reach the screen; a reconnecting screen gets the current text; Robot Display / VNC mode switching; a session without the controller key can't talk, show video, send text or switch the display, and its media never reaches the screen; a session with the key but not from P1's current controller is also view-only; a takeover moves talk to the new controller and frees the floor. Tap-to-answer questions (11 tests: 10 added 2026-10-30, 1 on 2026-10-31): question text and 2-4 answers are trimmed and capped, and 1 or 5 answers are refused; a question reaches the screen and the tapped answer reaches every dashboard; a late, repeated, out-of-range or non-integer tap is ignored; a new question replaces the old one; expiry and Clear take it off the screen, and expiry after an answer changes nothing; Clear after an answer removes the question from every dashboard and a dashboard connecting later does not get it back; releasing the screen clears it; an observer can't ask but sees the status; a reconnecting screen gets a question that is still waiting; the timeout fires on the real event loop. | PASS |
 | `test_controller_access.py` | 25 | Controller key: the right key makes a dashboard controller, no key or a wrong one makes it an observer; a stranger connecting first doesn't block the operator; a second keyed dashboard takes over, demoting and telling the first and stopping the robot; observers' drive, servo and emergency-stop commands are rejected and their heartbeats ignored; 5 wrong keys lock an IP out for 5 minutes, even for the right key, without affecting other IPs; no `CONTROLLER_KEY` means nobody controls; P2 gives the talk path only to offers with the key; P1 reports its controller's host to P2 on a localhost-only endpoint. | PASS |
 | `test_shared_capture.py` | 5 | Several video sessions share one camera device; the device closes after the last session and reopens; open errors are reported; each session gets its own yuv420p copy of every camera frame (never a shared frame object), from YUYV or yuv420p cameras. | PASS |
 | `test_resilient_audio.py` | 4 | The robot mic track sends silence while the mic is missing and switches to it once it opens; a mic lost mid-session is reopened; each outage is reported once; output is one continuous stream of 60 ms Opus packets, paced in real time. | PASS |
@@ -252,6 +252,33 @@ store by the script. The page also received the live camera through P2
 (view only). These checks found Issue 11. Not yet checked on the
 operator laptop or a phone (I30).
 
+**Addendum, 2026-10-31 (Clear after an answer).** Once the victim had
+answered, **Clear** was greyed out and P2 ignored `question_clear` for a
+question that was not waiting, so the last question and its answer
+stayed on every dashboard and came back after a reload (Issue 12). Clear
+now stays available while a question or result is shown; P2 takes a
+waiting question off the screen as before, then drops the question
+whatever its state and sends `question_dismissed` to every dashboard,
+which removes it. One test was changed and one added in
+`test_talkback.py`. Full suite on 2026-10-31 (same command): **173
+passed, 0 failed** = the 172 of the new-mission addendum plus this 1;
+output in
+`research-analysis/output/rerun_full_venv_2026-10-31_question-clear.txt`.
+The dashboard type-checked, linted without errors and built. A browser
+check ran the real `QuestionPanel` and `useTalkback` in headless
+Chromium against the real `ScreenHub`, with the WebRTC data channel
+replaced by a WebSocket and the robot screen by a recording stub
+(harness in `research-analysis/tests/browser_question_clear/`): **13 of
+13 checks passed**, covering send, answer, Clear after the answer
+(result gone, Clear greyed again, P2 holding no question), a reload
+(answer not back) and Clear of a waiting question (screen told to hide
+it). The same checks against the code before the fix passed 7 of 13 and
+failed exactly on the reported fault; output of both in
+`research-analysis/output/browser_question_clear_2026-10-31.txt`. P2 on
+the robot was restarted with the fix at 12:19:01 UTC (logged as
+`PROC_CRASH P2 exit_code=-15`; a deliberate restart, not a crash). Not
+yet checked on the physical display (I29).
+
 **Limitation:** these tests use simulated hardware. They prove the software
 logic, not the real motors, sensors or radio link, which are covered in the
 sections below.
@@ -319,7 +346,7 @@ ending: Newline), or test through the dashboard where noted.
 | I25 | Call out | Click **📢 Call out** with the clip installed. | Message heard clearly from the robot speaker; meter shows *(speaker playing)*, then *Listening for a reply…* for 10 s. | | | |
 | I26 | Reply cue | After a call-out, a person 2 m and 5 m from the robot knocks three times, then shouts; repeat once with nobody responding. | "sound after call-out" in Alerts for the knock/shout; record the dB rise shown; no alert when nobody responds (note background noise). | | | |
 | I27 | Mark victim | Click **📍 Mark victim here**, type a note, Save; then reload the page; then open a second (observer) dashboard. | Mark in *Victims found* and on the map (faded + without GPS); `victim-<id>.jpg` and `.txt` in Downloads; after reload the mark and its snapshot link are still there; the observer sees the mark but no snapshot and cannot mark; `victims/victims.jsonl` on the Pi has the mark and no image. | | | |
-| I29 | Tap-to-answer question | With the display's touch cable connected and **Robot Display** on: in *Ask a question* type "Are you hurt?" with Yes / No, **Send question**; tap **Yes** on the robot's touchscreen. Repeat with 3 and 4 answers; then send one and click **Clear**; then send one and leave it for 5 minutes. | Question and large buttons fill the robot display; after a tap "Answer sent ✓" for about 2 s, then the question goes and the dashboard shows **Answer: Yes**; 3 answers in one row, 4 in two; Clear removes it at once; unanswered, it goes after 5 minutes and the dashboard shows "No answer (5 min)". Note whether the buttons are easy to read and tap at arm's length. | | | |
+| I29 | Tap-to-answer question | With the display's touch cable connected and **Robot Display** on: in *Ask a question* type "Are you hurt?" with Yes / No, **Send question**; tap **Yes** on the robot's touchscreen. Repeat with 3 and 4 answers; then send one and click **Clear**; then send one and leave it for 5 minutes. | Question and large buttons fill the robot display; after a tap "Answer sent ✓" for about 2 s, then the question goes and the dashboard shows **Answer: Yes**; 3 answers in one row, 4 in two; Clear removes it at once; after an answer, Clear removes **Answer: Yes** from the dashboard and it does not return on reload; unanswered, it goes after 5 minutes and the dashboard shows "No answer (5 min)". Note whether the buttons are easy to read and tap at arm's length. | | | |
 | I28 | Session recording | On the operator laptop with the key: **⏺ Record**; speak with push-to-talk; **📢 Call out**; let someone speak near the robot; walk the robot out of Wi-Fi range for about 5 s and back; **⏹ Stop recording**. Then record again and reload the page midway. | `robot-session-<time>.mp4` in Downloads plays in the laptop's own player and in VLC, shows its full length and can be seeked to near the end, with the video, the robot mic, your voice and the call-out, without gaps and in step; one file despite the short drop; listed under *Recordings on this computer*; after the reload the second is listed as *(unfinished)* and **Save to device** gives a playable file. | | | |
 | I30 | Delete a mark | As controller, mark a victim, then click **delete mark** in the saved message: first **Cancel** the confirm, then confirm. Mark another and delete it with **delete** in *Victims found*, with a second dashboard open. | Cancel keeps the mark; after confirming, the mark leaves the list and map on both dashboards and `victims/victims.jsonl`, the message reads *Mark deleted.* without links, and the browser no longer lists its snapshot; the files in Downloads stay. | | | |
 
@@ -417,6 +444,7 @@ List every failure or unexpected behaviour found during testing.
 | 9 | I28 | With MP4 recording, a recording cut off by a reload was recovered empty. Chrome's MP4 writer emits data only at key frames: with steady, camera-like video and no key-frame request it wrote nothing until Stop (headless test, 8 s), so a crash would lose the whole recording; WebM wrote every second. | High | Yes, 2026-10-30 | The recorder now asks for a key frame every second (`videoKeyFrameIntervalDuration`); MP4 then wrote every 1-2 s and the recovered recording played. |
 | 10 | I30 | Deleting a mark left its snapshot in the browser's IndexedDB, with no way to remove it short of clearing the site data, so photos of victims built up on the operator's computer. Found by reading the code on 2026-10-31. | Low | Yes, 2026-10-31 | Both delete actions now call `forgetSnapshot()`; the headless check confirmed the store no longer holds the deleted mark's snapshot. Files already in Downloads are not touched. |
 | 11 | I30 | After a mark was deleted from *Victims found*, the message under **Mark victim here** still read "Saved ✓ … Photo kept on this device" (headless test, 2026-10-31); before that change its links stayed too, and a second delete gave an error. | Low | Yes, 2026-10-31 | The message now reads *Mark deleted.* and hides its links once the mark is not in the list; rechecked in the same test. |
+| 12 | I29 | After the victim answered, the question and **Answer: …** stayed on the dashboard for good: **Clear** was greyed out once the question was no longer waiting, P2 ignored `question_clear` for an answered question, and P2 sent the old result again to any dashboard that connected or reloaded. Reported by the operator on 2026-10-31. | Low | Yes, 2026-10-31 | Clear now stays enabled while a result is shown; P2 drops the question and sends `question_dismissed`, and dashboards remove it. Browser check 13/13 (7/13 before the fix). |
 
 ---
 
@@ -424,7 +452,7 @@ List every failure or unexpected behaviour found during testing.
 
 | Area | Tests | Passed | Failed | Not run |
 |---|---|---|---|---|
-| Unit tests | 156 | 156 | 0 | 0 |
+| Unit tests | 173 | 173 | 0 | 0 |
 | Hardware | 15 | | | |
 | Integration | 35 | | | |
 | Network | 8 | | | |

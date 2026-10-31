@@ -763,6 +763,11 @@ sequenceDiagram
     D->>D: shows "Answer: Yes"
     K->>K: "Answer sent ✓" for 2 s, then hide
     Note over P2,K: no tap in 5 min, Clear, or release: question_hide + status expired / cleared
+    O->>D: Clear (waiting or already answered)
+    D->>P2: {"type":"question_clear"}
+    P2->>P2: hide it if still waiting, then drop the question
+    P2-->>D: {"type":"question_dismissed", id} (to every dashboard)
+    D->>D: question and answer removed
 ```
 
 ---

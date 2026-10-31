@@ -1,0 +1,14 @@
+[2026-07-18T10:51:41.505+00:00][P2][INFO][MOCK_HARDWARE][using synthetic media tracks]
+[2026-07-18T10:51:41.525+00:00][P2][INFO][P2_START][media server starting]{mock=True port=8443}
+[2026-07-18T10:52:32.477+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s1}
+[2026-07-18T10:52:32.478+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s1 state=connecting}
+[2026-07-18T10:52:32.514+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s1 state=connected}
+[2026-07-18T10:52:33.494+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s1 state=closed}
+[2026-07-18T11:05:18.672+00:00][P2][INFO][MOCK_HARDWARE][using synthetic media tracks]
+[2026-07-18T11:05:18.690+00:00][P2][INFO][P2_START][media server starting]{mock=True port=8443}
+[2026-07-18T11:05:33.047+00:00][P2][INFO][WEBRTC_OFFER][negotiated peer connection]{session=s1}
+[2026-07-18T11:05:33.048+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s1 state=connecting}
+[2026-07-18T11:05:33.082+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s1 state=connected}
+[2026-07-18T12:17:08.944+00:00][P2][INFO][WEBRTC_STATE][peer connection state changed]{session=s1 state=closed}
+[2026-10-30T17:44:18.019+00:00][P2][INFO][P2_START][media server starting]{mock=False port=8443}
+[2026-10-30T17:44:18.020+00:00][P2][WARNING][NO_CONTROLLER_KEY][CONTROLLER_KEY is not set; nobody can talk to the victim]

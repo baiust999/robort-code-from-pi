@@ -280,7 +280,9 @@ the question but can't answer.
 
 - Only one question is on screen at a time. Sending a new one replaces it
   (the button then reads **Replace question**).
-- Click **Clear** to take the question off the robot screen.
+- Click **Clear** to take the question off the robot screen. After an
+  answer (or *"No answer"*), **Clear** removes the result from the panel,
+  on every dashboard; it does not come back when you reload.
 - If nobody answers within **5 minutes**, the question disappears by itself
   and the panel shows *"No answer (5 min)"*.
 - Questions and answers are not saved. Note anything important in the

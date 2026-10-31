@@ -896,7 +896,8 @@ holds the floor until it releases it or disconnects; others get
 types a question with 2-4 answers of their own (each at most 40
 characters). P2 holds the one current question and its 5-minute timer; a
 new question replaces it, and Clear, the timeout or a floor release take
-it off the screen. The robot screen shows one large button per answer and
+it off the screen. Clear also removes an answered or expired question from
+the dashboards: P2 drops it and sends `question_dismissed` (2026-10-31). The robot screen shows one large button per answer and
 returns the tapped answer's index; P2 accepts only the first tap on the
 current question and reports it to every dashboard. Nothing is stored
 (the event log keeps only ids, answer counts and the chosen index).
@@ -910,10 +911,11 @@ current question and reports it to every dashboard. Nothing is stored
 | `screen_ack` | Robot → Operator | `{"type":"screen_ack","ts":1727430000}` | Confirms the text is on screen (dashboard shows ✓) |
 | `media_state` | Operator → Robot | `{"type":"media_state","talking":true,"video":"camera"}` | Relayed as `screen_state`; shows "🎤 Rescuer is speaking" and hides the idle screen while video is active |
 | `question_ask` | Operator → P2 | `{"type":"question_ask","text":"Are you hurt?","options":["Yes","No"]}` | Shows the question with 2-4 tap-to-answer buttons; replaces any current question |
-| `question_clear` | Operator → P2 | `{"type":"question_clear"}` | Takes the question off the robot screen |
+| `question_clear` | Operator → P2 | `{"type":"question_clear"}` | Takes a waiting question off the robot screen, then drops the question in any state |
 | `question_show` / `question_hide` | P2 → Robot | `{"type":"question_show","id":1,"text":"Are you hurt?","options":["Yes","No"]}` / `{"type":"question_hide","id":1}` | Show the question as one large button per answer, or take it off (cleared, timed out, floor released) |
 | `question_answer` | Robot → P2 | `{"type":"question_answer","id":1,"choice":0}` | The button the victim tapped; first answer wins |
 | `question_status` | P2 → Operator | `{"type":"question_status","id":1,"status":"answered","answer":0,...}` | Waiting (with time left), answered, expired after 5 min, or cleared |
+| `question_dismissed` | P2 → Operator | `{"type":"question_dismissed","id":1}` | The question was cleared; the dashboard stops showing it and its answer |
 | `floor_release` | Operator → P2 | `{"type":"floor_release"}` | Frees the robot screen and clears it to idle |
 | `talk_status` | P2 → Operator | `{"type":"talk_status","screen_online":true,"floor":"you","display_mode":"robot"}` | Robot-screen status and who holds the floor (`free`/`you`/`other`) |
 | `floor_denied` | P2 → Operator | `{"type":"floor_denied"}` | Another operator holds the screen |
@@ -2182,7 +2184,7 @@ Each extra viewer adds another video + audio stream.
 | Crash recovery | Automatic, ~15 s | P3 (tests F3, F4) |
 | Watchdog recovery | Automatic | systemd (test F5) |
 | Reboot to operational | Unattended | Test F9 |
-| Automated tests | All pass | `pytest` in `pi/`: 172 tests passing (2026-10-30, after the delete and new-mission endpoints) |
+| Automated tests | All pass | `pytest` in `pi/`: 173 tests passing (2026-10-31, after the question-Clear fix) |
 
 No field reliability figures (uptime, packet loss, MTBF) have been
 measured yet; they belong in `TEST_REPORT.md` once the field test is run.
@@ -2254,7 +2256,7 @@ CRITICAL PATH (Motor Safety):
 ├─ Kiosk: Chromium in kiosk mode, bash launcher
 ├─ Network: ordinary Wi-Fi network (WPA2/WPA3)
 ├─ Supervision: systemd (P3), P3 (P1, P2)
-└─ Tests: pytest (172 tests: command validation, telemetry parsing,
+└─ Tests: pytest (173 tests: command validation, telemetry parsing,
    mission state, ring buffer, dead-man emulation, shared capture,
    talk-back, controller access, Wi-Fi signal, victim marks including
    delete and new-mission)

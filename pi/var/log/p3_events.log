@@ -1,0 +1,16 @@
+[2026-07-18T10:47:22.639+00:00][P3][INFO][P3_START][watchdog starting]{enable_overlay=False}
+[2026-07-18T10:47:22.644+00:00][P3][INFO][PROC_SPAWN][process started]{name=P1 pid=22064 cmd="C:\Program Files\Python314\python.exe -m p1_control.main"}
+[2026-07-18T10:47:22.651+00:00][P3][INFO][PROC_SPAWN][process started]{name=P2 pid=4020 cmd="python /tmp/fake_p2.py 8443"}
+[2026-07-18T10:47:23.647+00:00][P3][WARNING][PROC_LOCK_HELD][process exited: lock already held]{name=P1}
+[2026-07-18T10:47:23.663+00:00][P3][ERROR][PROC_CRASH][process exited unexpectedly]{name=P2 exit_code=2 restart_count=1}
+[2026-07-18T10:47:34.680+00:00][P3][INFO][PROC_SPAWN][process started]{name=P1 pid=21992 cmd="C:\Program Files\Python314\python.exe -m p1_control.main"}
+[2026-07-18T10:47:34.682+00:00][P3][INFO][PROC_SPAWN][process started]{name=P2 pid=19800 cmd="python /tmp/fake_p2.py 8443"}
+[2026-07-18T10:47:35.683+00:00][P3][WARNING][PROC_LOCK_HELD][process exited: lock already held]{name=P1}
+[2026-07-18T10:47:35.683+00:00][P3][ERROR][PROC_CRASH][process exited unexpectedly]{name=P2 exit_code=2 restart_count=2}
+[2026-07-18T10:47:53.171+00:00][P3][INFO][P3_START][watchdog starting]{enable_overlay=False}
+[2026-07-18T10:47:53.176+00:00][P3][INFO][PROC_SPAWN][process started]{name=P1 pid=15668 cmd="C:\Program Files\Python314\python.exe -m p1_control.main"}
+[2026-07-18T10:47:53.182+00:00][P3][INFO][PROC_SPAWN][process started]{name=P2 pid=7420 cmd="python fake_p2.py 8443"}
+[2026-07-18T10:47:56.210+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P1 misses=1}
+[2026-07-18T10:48:21.482+00:00][P3][ERROR][PROC_CRASH][process exited unexpectedly]{name=P1 exit_code=4294967295 restart_count=1}
+[2026-07-18T10:48:32.506+00:00][P3][INFO][PROC_SPAWN][process started]{name=P1 pid=16928 cmd="C:\Program Files\Python314\python.exe -m p1_control.main"}
+[2026-07-18T10:48:35.554+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P1 misses=1}

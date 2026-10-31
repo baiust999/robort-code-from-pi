@@ -1,0 +1,4 @@
+[2026-10-21T20:23:03.365+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P2 misses=1}
+[2026-10-21T20:23:04.368+00:00][P3][ERROR][PROC_CRASH][process exited unexpectedly]{name=P2 exit_code=-15 restart_count=1}
+[2026-10-21T20:23:15.372+00:00][P3][INFO][PROC_SPAWN][process started]{name=P2 pid=56939 cmd="/home/pi/robot/venv/bin/python -m p2_media.main"}
+[2026-10-21T20:23:16.377+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P2 misses=1}
