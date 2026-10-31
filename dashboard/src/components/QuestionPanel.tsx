@@ -120,7 +120,7 @@ export function QuestionPanel(props: { talk: TalkbackState; blocked: boolean }) 
         </button>
         <button
           type="button"
-          disabled={blocked || !waiting}
+          disabled={blocked || !talk.question}
           onClick={talk.clearQuestion}
           className="rounded bg-white/10 px-4 py-1 hover:bg-white/20 disabled:opacity-40"
         >

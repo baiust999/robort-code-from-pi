@@ -261,7 +261,7 @@ class ScreenHub:
         elif msg["type"] == "question_ask":
             self._ask_question(msg["text"], msg["options"], session_id)
         elif msg["type"] == "question_clear":
-            self._end_question("cleared")
+            self._clear_question()
 
     def _claim_floor(self, session_id: str) -> bool:
         if self.floor_holder == session_id:
@@ -351,6 +351,18 @@ class ScreenHub:
         event = "QUESTION_EXPIRE" if status == "expired" else "QUESTION_CLEAR"
         self.log.info(event, f"question {status}", id=self.question["id"])
         self._broadcast_question()
+
+    def _clear_question(self) -> None:
+        """Operator's Clear: take a waiting question off the screen, then
+        forget the question (answered or not) so no dashboard shows it again."""
+        if self.question is None:
+            return
+        self._end_question("cleared")  # no-op unless still waiting
+        qid = self.question["id"]
+        self.question = None
+        self.log.info("QUESTION_DISMISS", "question removed from dashboards", id=qid)
+        for channel in list(self.operators.values()):
+            _send(channel, {"type": "question_dismissed", "id": qid})
 
     def _answer_question(self, qid: Any, choice: Any) -> None:
         q = self.question

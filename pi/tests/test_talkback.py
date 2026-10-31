@@ -449,8 +449,26 @@ def test_expiry_and_clear_take_question_off_screen(hub):
 
     hub.handle_operator_message("s1", _ask())
     hub.handle_operator_message("s1", _msg(type="question_clear"))
-    assert hub.question["status"] == "cleared"
+    assert hub.question is None
     assert screen.of_type("question_hide")[-1]["id"] == 2
+    assert op.of_type("question_dismissed")[-1] == {"type": "question_dismissed", "id": 2}
+
+
+def test_clear_after_answer_removes_it_from_dashboards(hub):
+    op, viewer = FakeChannel(), FakeChannel()
+    connect_controller(hub, "s1", op)
+    hub.operator_connected("s2", viewer)
+    hub.handle_operator_message("s1", _ask())
+    hub.handle_screen_message(_msg(type="question_answer", id=1, choice=0))
+
+    hub.handle_operator_message("s1", _msg(type="question_clear"))
+    assert hub.question is None
+    for channel in (op, viewer):
+        assert channel.of_type("question_dismissed")[-1]["id"] == 1
+
+    late = FakeChannel()
+    hub.operator_connected("s3", late)
+    assert not late.of_type("question_status")
 
 
 def test_expiry_after_answer_changes_nothing(hub):

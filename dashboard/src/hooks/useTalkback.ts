@@ -188,6 +188,8 @@ export function useTalkback(link: TalkLink | null): TalkbackState {
         setDisplayModeState(msg.display_mode === 'vnc' ? 'vnc' : 'robot');
       } else if (msg.type === 'screen_ack') {
         setLastAckTs(typeof msg.ts === 'number' ? msg.ts : null);
+      } else if (msg.type === 'question_dismissed') {
+        setQuestion((q) => (q && q.id === Number(msg.id) ? null : q));
       } else if (msg.type === 'question_status') {
         setQuestion({
           id: Number(msg.id),
