@@ -59,7 +59,7 @@ const fileName = (meta: RecordingMeta) =>
 
 /**
  * Records the session to this device: the robot's camera, with the robot's
- * mic and the operator's outgoing audio (talk-back mic or call-out clip)
+ * mic and the operator's outgoing audio (the talk-back mic)
  * mixed into one track. The mix reads whatever is on the audio sender, so
  * the recording holds what the robot actually played.
  *

@@ -35,8 +35,17 @@ const IMAGE_WIDTH = 1024;
 const IMAGE_HEIGHT = 576;
 /** Repaint interval for a still image; P2 repeats the last frame after 1 s. */
 const IMAGE_REPAINT_MS = 500;
-/** The recorded call-out message; the operator installs it (see OPERATOR_MANUAL). */
-const CALL_OUT_CLIP = `${import.meta.env.BASE_URL}audio/callout-en.mp3`;
+
+/** The looping voice message held by P2, as it reports it. */
+export interface VoiceStatus {
+  /** Bumped by P2 on every upload; null when no message is stored. */
+  id: number | null;
+  hasClip: boolean;
+  playing: boolean;
+  durationS: number | null;
+}
+
+export type VoiceCommand = 'voice_loop_start' | 'voice_loop_stop' | 'voice_clear';
 
 export interface TalkbackState {
   /** Mic and camera need a secure context; images and text work regardless. */
@@ -48,10 +57,6 @@ export interface TalkbackState {
   /** As reported by P2, so it reflects switches made on the robot too. */
   displayMode: DisplayMode;
   talking: boolean;
-  /** The recorded call-out message is playing on the robot speaker. */
-  callingOut: boolean;
-  /** The call-out clip is installed; null while still checking. */
-  callOutAvailable: boolean | null;
   /** The laptop mic is open and attached; until then a press only enables it. */
   micReady: boolean;
   videoSource: VideoSource;
@@ -60,10 +65,10 @@ export interface TalkbackState {
   /** Timestamp of the last message the robot screen confirmed showing. */
   lastAckTs: number | null;
   question: QuestionStatus | null;
+  voice: VoiceStatus | null;
   error: string | null;
   startTalking: () => void;
   stopTalking: () => void;
-  callOut: () => void;
   showVideo: (source: VideoSource, image?: File) => void;
   /** Returns the message timestamp (matched against lastAckTs), or null if not sent. */
   sendText: (text: string) => number | null;
@@ -73,6 +78,9 @@ export interface TalkbackState {
   clearQuestion: () => void;
   release: () => void;
   setDisplayMode: (mode: DisplayMode) => void;
+  /** Start/stop/clear the robot-side voice loop; returns false if not sent. */
+  sendVoiceCommand: (command: VoiceCommand) => boolean;
+  setError: (error: string | null) => void;
 }
 
 function drawContained(ctx: CanvasRenderingContext2D, img: HTMLImageElement) {
@@ -118,13 +126,12 @@ export function useTalkback(link: TalkLink | null): TalkbackState {
   const [floor, setFloor] = useState<Floor>('free');
   const [displayMode, setDisplayModeState] = useState<DisplayMode>('robot');
   const [talking, setTalking] = useState(false);
-  const [callingOut, setCallingOut] = useState(false);
-  const [callOutAvailable, setCallOutAvailable] = useState<boolean | null>(null);
   const [micReady, setMicReady] = useState(false);
   const [videoSource, setVideoSource] = useState<VideoSource>('none');
   const [previewStream, setPreviewStream] = useState<MediaStream | null>(null);
   const [lastAckTs, setLastAckTs] = useState<number | null>(null);
   const [question, setQuestion] = useState<QuestionStatus | null>(null);
+  const [voice, setVoice] = useState<VoiceStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const micRef = useRef<MediaStreamTrack | null>(null);
@@ -135,9 +142,6 @@ export function useTalkback(link: TalkLink | null): TalkbackState {
   const videoTrackRef = useRef<MediaStreamTrack | null>(null);
   const repaintTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const talkingRef = useRef(false);
-  const callingOutRef = useRef(false);
-  // Stops a call-out in progress and puts the mic back on the sender.
-  const stopCallOutRef = useRef<(() => void) | null>(null);
   const sourceRef = useRef<VideoSource>('none');
   // Bumped on every showVideo() so a slow getUserMedia can't win a race
   // against a newer choice.
@@ -155,7 +159,7 @@ export function useTalkback(link: TalkLink | null): TalkbackState {
   const sendMediaState = useCallback(() => {
     send({
       type: 'media_state',
-      talking: talkingRef.current || callingOutRef.current,
+      talking: talkingRef.current,
       video: sourceRef.current,
     });
   }, [send]);
@@ -200,6 +204,13 @@ export function useTalkback(link: TalkLink | null): TalkbackState {
           remainingS: typeof msg.remaining_s === 'number' ? msg.remaining_s : null,
           receivedAt: Date.now(),
         });
+      } else if (msg.type === 'voice_status') {
+        setVoice({
+          id: typeof msg.id === 'number' ? msg.id : null,
+          hasClip: msg.has_clip === true,
+          playing: msg.playing === true,
+          durationS: typeof msg.duration_s === 'number' ? msg.duration_s : null,
+        });
       } else if (msg.type === 'floor_denied') {
         setError('Another operator is using the robot screen.');
       } else if (msg.type === 'view_only') {
@@ -219,18 +230,9 @@ export function useTalkback(link: TalkLink | null): TalkbackState {
     };
   }, [link, sendMediaState]);
 
-  // Vite and P1 answer a missing file with the dashboard page, so only an
-  // audio response counts as installed.
-  useEffect(() => {
-    fetch(CALL_OUT_CLIP, { method: 'HEAD' })
-      .then((r) => setCallOutAvailable(r.ok && (r.headers.get('content-type') ?? '').startsWith('audio/')))
-      .catch(() => setCallOutAvailable(false));
-  }, []);
-
   // A new connection starts from nothing: drop local media and state.
   useEffect(() => {
     return () => {
-      stopCallOutRef.current?.();
       micGeneration.current++;
       micRequest.current = null;
       micRef.current?.stop();
@@ -267,9 +269,8 @@ export function useTalkback(link: TalkLink | null): TalkbackState {
             return;
           }
           track.enabled = false;
-          // A call-out owns the sender until it ends, then attaches micRef.
           micRef.current = track;
-          if (!callingOutRef.current) await link.audioSender.replaceTrack(track);
+          await link.audioSender.replaceTrack(track);
           setMicReady(true);
         } catch (err) {
           if (generation === micGeneration.current) micRequest.current = null;
@@ -293,7 +294,7 @@ export function useTalkback(link: TalkLink | null): TalkbackState {
   }, [link, mediaDevicesAvailable, acquireMic]);
 
   const startTalking = useCallback(async () => {
-    if (!link || callingOutRef.current) return;
+    if (!link) return;
     if (!mediaDevicesAvailable) {
       setError('Microphone needs HTTPS or the Chrome insecure-origin flag.');
       return;
@@ -322,46 +323,6 @@ export function useTalkback(link: TalkLink | null): TalkbackState {
     if (micRef.current) micRef.current.enabled = false;
     sendMediaState();
   }, [sendMediaState]);
-
-  // Plays the recorded message to the victim through the same audio sender
-  // as the mic, so P2 forwards it like speech; no laptop mic is needed.
-  const callOut = useCallback(async () => {
-    if (!link || talkingRef.current || callingOutRef.current) return;
-    setError(null);
-    callingOutRef.current = true;
-    setCallingOut(true);
-    const ctx = new AudioContext();
-    let finished = false;
-    const finish = () => {
-      if (finished) return;
-      finished = true;
-      stopCallOutRef.current = null;
-      ctx.close().catch(() => {});
-      callingOutRef.current = false;
-      setCallingOut(false);
-      link.audioSender.replaceTrack(micRef.current).catch(() => {});
-      sendMediaState();
-    };
-    stopCallOutRef.current = finish;
-    try {
-      const resp = await fetch(CALL_OUT_CLIP);
-      if (!resp.ok) throw new Error('call-out clip not found');
-      const buffer = await ctx.decodeAudioData(await resp.arrayBuffer());
-      if (finished) return;
-      const destination = ctx.createMediaStreamDestination();
-      const player = ctx.createBufferSource();
-      player.buffer = buffer;
-      player.connect(destination);
-      player.onended = finish;
-      await link.audioSender.replaceTrack(destination.stream.getAudioTracks()[0]);
-      if (finished) return;
-      sendMediaState();
-      player.start();
-    } catch (err) {
-      setError(err instanceof Error ? `Call out: ${err.message}` : 'Call out failed');
-      finish();
-    }
-  }, [link, sendMediaState]);
 
   const showVideo = useCallback(
     async (source: VideoSource, image?: File) => {
@@ -461,7 +422,6 @@ export function useTalkback(link: TalkLink | null): TalkbackState {
   }, [send]);
 
   const release = useCallback(() => {
-    stopCallOutRef.current?.();
     stopTalking();
     videoRequest.current++;
     stopVideoTrack();
@@ -480,6 +440,15 @@ export function useTalkback(link: TalkLink | null): TalkbackState {
     [send],
   );
 
+  const sendVoiceCommand = useCallback(
+    (command: VoiceCommand) => {
+      const sent = send({ type: command });
+      if (!sent) setError('Not connected to the robot.');
+      return sent;
+    },
+    [send],
+  );
+
   return {
     mediaDevicesAvailable,
     screenOnline,
@@ -487,17 +456,15 @@ export function useTalkback(link: TalkLink | null): TalkbackState {
     floor,
     displayMode,
     talking,
-    callingOut,
-    callOutAvailable,
     micReady,
     videoSource,
     previewStream,
     lastAckTs,
     question,
+    voice,
     error,
     startTalking: () => void startTalking(),
     stopTalking,
-    callOut: () => void callOut(),
     showVideo: (source, image) => void showVideo(source, image),
     sendText,
     clearText,
@@ -505,5 +472,7 @@ export function useTalkback(link: TalkLink | null): TalkbackState {
     clearQuestion,
     release,
     setDisplayMode,
+    sendVoiceCommand,
+    setError,
   };
 }

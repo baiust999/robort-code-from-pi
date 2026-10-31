@@ -69,7 +69,7 @@ flowchart TB
         D_ALERT["Alert engine\ntemp/gas/range thresholds"]
         D_MSTATE["Mission state\nSTOP / LIMITED / READY / DRIVING"]
         D_UI["3-region UI\nDriveControl+EStop | Video+Map | Sensors+Alerts"]
-        D_FIND["Victim finding (on the laptop)\nAI person detection · call-out + mic meter\nMark victim → snapshot kept on laptop\nSession recording → kept on laptop"]
+        D_FIND["Victim finding (on the laptop)\nAI person detection · mic meter\nMark victim → snapshot kept on laptop\nSession recording → kept on laptop"]
         D_WS --> D_MSTATE --> D_UI
         D_WS --> D_ALERT --> D_UI
         D_RTC --> D_UI
@@ -105,7 +105,7 @@ flowchart TB
 | 🟦 Indigo | Application services (control, media, dashboard) |
 | 🟧 Rust | Safety & supervision (watchdog, dead-man, alerts) |
 | ⬜ Grey | Local Wi-Fi network |
-| ⬚ Dashed | Victim-facing features: talk-to-victim path (operator → robot display + speaker) and victim-finding tools (AI, call-out, victim marks) |
+| ⬚ Dashed | Victim-facing features: talk-to-victim path (operator → robot display + speaker) and victim-finding tools (AI, victim marks); the repeating voice message is part of the talk-to-victim path |
 
 **Data path:** Sensors/commands ↔ Arduino ↔ UART ↔ P1 (Pi) ↔ WebSocket/WebRTC ↔ Wi-Fi ↔ Dashboard. P3 supervises P1/P2 independently of the data path.
 

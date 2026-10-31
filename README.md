@@ -7,7 +7,8 @@ a victim through a screen and speaker mounted on the robot; a victim who
 cannot speak can answer the operator's questions by tapping a button on the
 robot's screen. Victim-finding
 aids help the operator search: AI person detection on the video (run in the
-browser), a recorded call-out with a reply cue, and victim marks on the map.
+browser), a voice message the robot repeats on its speaker until stopped, and
+victim marks on the map.
 The operator can also record the session (video and both sides of the
 conversation) to their own device.
 
@@ -149,17 +150,9 @@ laptop and add `http://raspberrypi.local:8080`. Use the hostname rather than
 the IP address: the flag matches on the exact origin, so an address issued by
 DHCP would silently stop matching after the robot joins another network, and
 push-to-talk and the operator camera would fail while the rest of the
-dashboard kept working. Video, images, text messages and the call-out work
-without this. AI person detection needs Chrome's *Use graphics acceleration*
+dashboard kept working. Video, images and text messages work without this
+(recording the voice message needs the mic, so it needs it too). AI person detection needs Chrome's *Use graphics acceleration*
 setting on (WebGL).
-
-### Call-out clip
-
-The **Call out** button plays `dashboard/public/audio/callout-en.mp3`, which
-is not in the repository. Record about 5 s of clear speech (for example
-*"This is the rescue team. If you can hear me, shout, or knock three
-times."*), save it under that name and rebuild the dashboard. Until then the
-button reads *No call-out clip installed*.
 
 ## Logs
 

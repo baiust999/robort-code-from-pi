@@ -279,6 +279,44 @@ the robot was restarted with the fix at 12:19:01 UTC (logged as
 `PROC_CRASH P2 exit_code=-15`; a deliberate restart, not a crash). Not
 yet checked on the physical display (I29).
 
+**Addendum, 2026-10-31 (repeating voice message; call-out removed).** The
+call-out button was removed (its clip was never installed) and replaced by
+a voice message the operator records and P2 loops on the robot speaker
+(`POST /voice`, `voice_loop_start` / `voice_loop_stop` / `voice_clear`).
+Thirteen tests were added (8 in `test_talkback.py`, 5 in
+`test_controller_access.py`): 186 passed. An end-to-end check over real
+WebRTC then found Issue 13; one test was added for it. Full suite on
+2026-10-31 (same command): **187 passed, 0 failed**; output in
+`research-analysis/output/rerun_full_venv_2026-10-31_voice-loop-fix.txt`.
+(In an earlier run of the 186, the existing timing test
+`test_silence_is_paced_in_real_time` failed once under load and passed in
+six reruns; `..._voice-loop_run1-timing-flake.txt`.)
+
+- *End-to-end, WebRTC* (`research-analysis/tests/voice_loop_webrtc/run.py`):
+  a P2 started on its own port with mock hardware, its own key and data
+  folder, and a fake P1; aiortc peers act as the dashboard (always sending
+  audio: silence, or 440 Hz while "talking") and the kiosk, which
+  classifies what it receives. With a 1 s, 1 kHz message: **24 of 24
+  checks passed** after the fix (22 of 24 before it). Covered: wrong key
+  403, unreadable clip 422, repeats of ~1.08 s tone with the 1.5 s gap,
+  the operator's voice replacing the loop while talking, the loop
+  returning after release, the loop surviving the dashboard's
+  disconnect, a reconnecting dashboard told it is playing, an observer
+  unable to stop it, Stop, Clear, and all six `VOICE_*` events logged.
+- *Browser* (`research-analysis/tests/browser_voice_message/`): the real
+  `TalkPanel` in headless Chromium with its fake mic, against the real
+  `ScreenHub` and `decode_voice_clip`: **21 of 21 checks passed**: no
+  Call out button, record / stop / preview, upload of a 2.7 s and a 29.6 s
+  (auto-stopped at 30 s) WebM/Opus recording, the playing state after a
+  reload, replaying the robot's copy without a new upload, Clear.
+
+Output of both in `research-analysis/output/e2e_voice_loop_webrtc_2026-10-31.txt`
+and `browser_voice_message_2026-10-31.txt`. P2 on the robot was restarted
+with the voice message at 13:26:23 UTC and with the Issue 13 fix at
+14:06:58 UTC (both logged as `PROC_CRASH P2 exit_code=-15`; deliberate
+restarts, not crashes). Not yet heard on the robot speaker or tried with a
+real operator mic (I25, I26).
+
 **Limitation:** these tests use simulated hardware. They prove the software
 logic, not the real motors, sensors or radio link, which are covered in the
 sections below.
@@ -343,11 +381,11 @@ ending: Newline), or test through the dashboard where noted.
 | I19 | Robot audio | Click **Listen** and speak near the robot for a minute. | Voice is heard clearly on the dashboard, without dropouts, and stays in step with the video. | | | |
 | I23 | AI person detection | With "AI: on", have a person stand, sit, then lie down at 1, 3 and 5 m from the camera, in good and dim light. Then point the camera at an empty room for 2 minutes. | Note for each pose/distance/light whether a box appears and its %; *POSSIBLE PERSON* shows within about 1 s of a clear view; count false boxes in the empty room. | | | |
 | I24 | AI does not slow the controls | With AI on, drive and press EMERGENCY STOP on the slowest laptop that will be used. | No noticeable lag; if the laptop is too slow, AI switches itself off with a message. | | | |
-| I25 | Call out | Click **📢 Call out** with the clip installed. | Message heard clearly from the robot speaker; meter shows *(speaker playing)*, then *Listening for a reply…* for 10 s. | | | |
-| I26 | Reply cue | After a call-out, a person 2 m and 5 m from the robot knocks three times, then shouts; repeat once with nobody responding. | "sound after call-out" in Alerts for the knock/shout; record the dB rise shown; no alert when nobody responds (note background noise). | | | |
+| I25 | Repeating voice message | With **Robot Display** on: **🎙 Record Voice**, say about 5 s, **⏹ Stop**; play the preview; **▶ Start Play**. Hold **Hold to talk** for a few seconds mid-message, then let go. Close the dashboard tab for 30 s, reopen it; **⏹ Stop Play**; **🗑 Clear Voice**. Then try **Start Play** from an observer dashboard. | Message repeats on the robot speaker with about 1.5 s between repeats, at a clear level; *Repeating on robot speaker* and *(speaker playing)* on the meter; while talking only your live voice is heard, and the message carries on from where it paused; it keeps repeating with the tab closed and the reopened dashboard shows it playing; Stop and Clear end it at once; the observer's buttons are greyed out. `VOICE_SET`, `VOICE_LOOP_START`, `VOICE_LOOP_STOP`, `VOICE_CLEAR` in `p2_events.log`. (Replaced the call-out test, 2026-10-31.) | | | |
+| I26 | Voice message understood at a distance | With the message looping, a listener stands 2 m and 5 m from the robot, in quiet and with background noise, and writes down what they hear. | Record how much of the message each listener understood at each distance and noise level. (Replaced the reply-cue test, 2026-10-31.) | | | |
 | I27 | Mark victim | Click **📍 Mark victim here**, type a note, Save; then reload the page; then open a second (observer) dashboard. | Mark in *Victims found* and on the map (faded + without GPS); `victim-<id>.jpg` and `.txt` in Downloads; after reload the mark and its snapshot link are still there; the observer sees the mark but no snapshot and cannot mark; `victims/victims.jsonl` on the Pi has the mark and no image. | | | |
 | I29 | Tap-to-answer question | With the display's touch cable connected and **Robot Display** on: in *Ask a question* type "Are you hurt?" with Yes / No, **Send question**; tap **Yes** on the robot's touchscreen. Repeat with 3 and 4 answers; then send one and click **Clear**; then send one and leave it for 5 minutes. | Question and large buttons fill the robot display; after a tap "Answer sent ✓" for about 2 s, then the question goes and the dashboard shows **Answer: Yes**; 3 answers in one row, 4 in two; Clear removes it at once; after an answer, Clear removes **Answer: Yes** from the dashboard and it does not return on reload; unanswered, it goes after 5 minutes and the dashboard shows "No answer (5 min)". Note whether the buttons are easy to read and tap at arm's length. | | | |
-| I28 | Session recording | On the operator laptop with the key: **⏺ Record**; speak with push-to-talk; **📢 Call out**; let someone speak near the robot; walk the robot out of Wi-Fi range for about 5 s and back; **⏹ Stop recording**. Then record again and reload the page midway. | `robot-session-<time>.mp4` in Downloads plays in the laptop's own player and in VLC, shows its full length and can be seeked to near the end, with the video, the robot mic, your voice and the call-out, without gaps and in step; one file despite the short drop; listed under *Recordings on this computer*; after the reload the second is listed as *(unfinished)* and **Save to device** gives a playable file. | | | |
+| I28 | Session recording | On the operator laptop with the key: **⏺ Record**; speak with push-to-talk; let someone speak near the robot; walk the robot out of Wi-Fi range for about 5 s and back; **⏹ Stop recording**. Then record again and reload the page midway. | `robot-session-<time>.mp4` in Downloads plays in the laptop's own player and in VLC, shows its full length and can be seeked to near the end, with the video, the robot mic and your voice, without gaps and in step; one file despite the short drop; listed under *Recordings on this computer*; after the reload the second is listed as *(unfinished)* and **Save to device** gives a playable file. | | | |
 | I30 | Delete a mark | As controller, mark a victim, then click **delete mark** in the saved message: first **Cancel** the confirm, then confirm. Mark another and delete it with **delete** in *Victims found*, with a second dashboard open. | Cancel keeps the mark; after confirming, the mark leaves the list and map on both dashboards and `victims/victims.jsonl`, the message reads *Mark deleted.* without links, and the browser no longer lists its snapshot; the files in Downloads stay. | | | |
 
 ---
@@ -402,9 +440,9 @@ Run one complete simulated rescue:
 2. Drive the robot through a course with at least one obstacle and one turn
    to a "victim" (a person or mannequin).
 3. Use pan/tilt to find the victim on video.
-4. Before the victim is in view, use **📢 Call out** and note whether the
-   reply cue fires; note when the AI first boxes the victim and when the
-   operator first sees them.
+4. On the way in, loop a **repeating voice message** asking the victim to
+   shout or knock; note whether they hear and answer it, when the AI first
+   boxes the victim and when the operator first sees them.
 5. Talk to the victim, show an image and send a text message.
 6. **Mark victim here** with a note; record the sensor readings and GPS
    position at the victim, and compare the mark's position with the
@@ -415,7 +453,7 @@ Run one complete simulated rescue:
 |---|---|
 | Course length / description | |
 | Time to reach the victim | |
-| Call-out reply cue fired? (rise in dB) | |
+| Voice message heard and answered by the victim? (distance in m) | |
 | AI first box vs operator first sighting (s) | |
 | Victim-mark position error (m), or "no fix" | |
 | Number of collisions | |
@@ -444,6 +482,7 @@ List every failure or unexpected behaviour found during testing.
 | 9 | I28 | With MP4 recording, a recording cut off by a reload was recovered empty. Chrome's MP4 writer emits data only at key frames: with steady, camera-like video and no key-frame request it wrote nothing until Stop (headless test, 8 s), so a crash would lose the whole recording; WebM wrote every second. | High | Yes, 2026-10-30 | The recorder now asks for a key frame every second (`videoKeyFrameIntervalDuration`); MP4 then wrote every 1-2 s and the recovered recording played. |
 | 10 | I30 | Deleting a mark left its snapshot in the browser's IndexedDB, with no way to remove it short of clearing the site data, so photos of victims built up on the operator's computer. Found by reading the code on 2026-10-31. | Low | Yes, 2026-10-31 | Both delete actions now call `forgetSnapshot()`; the headless check confirmed the store no longer holds the deleted mark's snapshot. Files already in Downloads are not touched. |
 | 11 | I30 | After a mark was deleted from *Victims found*, the message under **Mark victim here** still read "Saved ✓ … Photo kept on this device" (headless test, 2026-10-31); before that change its links stayed too, and a second delete gave an error. | Low | Yes, 2026-10-31 | The message now reads *Mark deleted.* and hides its links once the mark is not in the list; rechecked in the same test. |
+| 13 | I25 | The repeating voice message broke into scraps once the operator had used **Hold to talk**: a dashboard holding the robot screen keeps sending its muted mic's silence, which P2 played as live voice in preference to the loop. End-to-end WebRTC test, 2026-10-31: tone share after release 0.09 (runs of 0.06-0.42 s) against 0.42 before talking. Missed by the unit tests, which fed no audio between presses. | High | Yes, 2026-10-31 | While the loop plays, P2 now drops the floor holder's audio except while talking and for 0.5 s after release (`live_voice_active`, `VOICE_RESUME_S`); same test: 0.48, whole 1.08 s tones. Regression test `test_loop_is_not_chopped_by_a_muted_mic`. |
 | 12 | I29 | After the victim answered, the question and **Answer: …** stayed on the dashboard for good: **Clear** was greyed out once the question was no longer waiting, P2 ignored `question_clear` for an answered question, and P2 sent the old result again to any dashboard that connected or reloaded. Reported by the operator on 2026-10-31. | Low | Yes, 2026-10-31 | Clear now stays enabled while a result is shown; P2 drops the question and sends `question_dismissed`, and dashboards remove it. Browser check 13/13 (7/13 before the fix). |
 
 ---
@@ -452,7 +491,7 @@ List every failure or unexpected behaviour found during testing.
 
 | Area | Tests | Passed | Failed | Not run |
 |---|---|---|---|---|
-| Unit tests | 173 | 173 | 0 | 0 |
+| Unit tests | 187 | 187 | 0 | 0 |
 | Hardware | 15 | | | |
 | Integration | 35 | | | |
 | Network | 8 | | | |

@@ -1,0 +1,26 @@
+Browser functional check of the voice-message panel, 2026-10-31
+Harness: research-analysis/tests/browser_voice_message/ (real TalkPanel + VoiceMessagePanel + useTalkback in headless Chromium 152.0.7977.82, real ScreenHub and decode_voice_clip; data channel replaced by a WebSocket, /voice by a stub; Chromium fake mic)
+
+PASS Call out button is gone
+PASS voice message box is shown
+PASS fresh: Record enabled, Start Play and Clear disabled
+PASS recording: button shows Stop with a timer  [⏹ Stop 0:02]
+PASS recording: Start Play disabled
+PASS recorded: preview player shown
+PASS recorded: hint says listen, then Start Play
+PASS recorded: nothing uploaded yet
+PASS Start Play: recording uploaded once and decoded (~2.5 s)  [{'type': 'audio/webm;codecs=opus', 'bytes': 43704, 'duration_s': 2.7}]
+PASS Start Play: uploaded as WebM/Opus  [audio/webm;codecs=opus]
+PASS Start Play: P2 is looping
+PASS playing: Stop Play shown and 'Repeating on robot speaker'
+PASS playing: Record disabled
+PASS after reload: still shows playing (state from P2)
+PASS Stop Play: P2 stopped, clip kept
+PASS after reload + stop: 'Robot has a message loaded', Start Play enabled
+PASS Start Play with no local recording replays the robot's copy, no new upload
+PASS Clear Voice: deleted on P2, Start Play disabled again
+PASS recording stops by itself at 30 s
+PASS 30 s recording accepted by P2's decoder (29-31 s)  [{'type': 'audio/webm;codecs=opus', 'bytes': 480869, 'duration_s': 29.6}]
+PASS no error shown on the panel
+
+21/21 passed

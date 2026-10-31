@@ -181,9 +181,10 @@ SUBSYSTEM 1: OPERATOR CONTROL
 ├─ Video: robot camera 640×480 @ 10 fps (robot → operator)
 ├─ Audio: robot mic (listen toggle); push-to-talk to the victim
 ├─ Talk-to-victim: operator voice, face (laptop camera), image or
-│  screen share, and text messages shown on the robot display
+│  screen share, and text messages shown on the robot display; a
+│  recorded voice message the robot repeats until stopped
 ├─ Victim finding: AI person detection on the video (runs on the
-│  laptop), call-out message + robot-mic level meter and reply cue,
+│  laptop), robot-mic level meter,
 │  "Mark victim here" (marks on the robot, snapshot on the laptop)
 └─ Mission state: READY / DRIVING / DRIVING_LIMITED / STOP
 
@@ -902,6 +903,17 @@ returns the tapped answer's index; P2 accepts only the first tap on the
 current question and reports it to every dashboard. Nothing is stored
 (the event log keeps only ids, answer counts and the chosen index).
 
+**Repeating voice message** (2026-10-31): the controller records up to
+30 s in the dashboard and uploads it once with `POST /voice` (raw body
+≤ 1 MB, `X-Controller-Key`, P1's controller host only). P2 decodes it to
+48 kHz mono, peak-normalises it (at most 8x gain), adds 1.5 s of silence
+and keeps it in memory only. `ScreenAudioTrack` sends the loop unless the
+operator is talking (or let go < 0.5 s ago), then queued operator voice,
+then silence, so Hold to talk pauses the loop where it is; the muted mic's
+silence between presses is dropped while the loop plays. Start/stop/clear need the controller
+but not the floor; a floor release or a disconnect doesn't stop it, so it
+keeps playing through a Wi-Fi drop. A P2 restart deletes it.
+
 ## 16.3 Data Channel — Robot Screen Messages
 
 | Message | Direction | Example | Effect |
@@ -920,6 +932,8 @@ current question and reports it to every dashboard. Nothing is stored
 | `talk_status` | P2 → Operator | `{"type":"talk_status","screen_online":true,"floor":"you","display_mode":"robot"}` | Robot-screen status and who holds the floor (`free`/`you`/`other`) |
 | `floor_denied` | P2 → Operator | `{"type":"floor_denied"}` | Another operator holds the screen |
 | `display_mode` | Operator → P2 | `{"type":"display_mode","mode":"vnc"}` | Switch the robot display (no floor needed) |
+| `voice_loop_start` / `voice_loop_stop` / `voice_clear` | Operator → P2 | `{"type":"voice_loop_start"}` | Start or stop looping the uploaded voice message, or delete it (controller only, no floor needed) |
+| `voice_status` | P2 → Operator | `{"type":"voice_status","id":1,"has_clip":true,"playing":true,"duration_s":4.2}` | Voice message state; sent after every change and on connect |
 
 ## 16.3.1 Display Mode — Robot Display ⇄ VNC
 
@@ -991,12 +1005,13 @@ Robot Screen (on the Pi, after desktop login):
 
 | Endpoint | Method | Purpose | Response |
 |----------|--------|---------|----------|
-| `/health` | GET | Health (P3 supervision) | 200, JSON `{status, camera_open, active_streams, mock_hardware, screen_connected, floor_held, display_mode}` |
+| `/health` | GET | Health (P3 supervision) | 200, JSON `{status, camera_open, active_streams, mock_hardware, screen_connected, floor_held, display_mode, voice_loaded, voice_playing}` |
 | `/webrtc/offer` | POST | WebRTC signalling (operator) | 200 JSON SDP answer, or 500 |
 | `/webrtc/screen-offer` | POST | WebRTC signalling (Robot Screen, localhost only) | 200 JSON SDP answer, or 403 |
 | `/screen` | GET | Robot Screen kiosk page | 200 HTML |
 | `/screen/mode` | GET | Current display mode (`robot` / `vnc`), polled by the kiosk launcher | 200 JSON |
 | `/screen/mode` | POST | Switch display mode (kiosk hold button, desktop shortcut, launcher; localhost only) | 200 JSON, 403 or 422 |
+| `/voice` | POST | Upload the repeating voice message (raw recording ≤ 1 MB, `X-Controller-Key`, P1's controller host only; kept in memory; §16.2) | 200 JSON `{id, duration_s}`, 403, 413 or 422 |
 
 ## 17.3 Health Check Semantics
 
@@ -1120,7 +1135,7 @@ Interface components (components/)
 │  AlertLog, ConnectionStatusBar ─────────────────┘   (commands, heartbeat, telemetry)
 ├─ VideoSurface, TalkPanel ───────────────────────→ useWebrtcVideo + useTalkback ──→ P2
 │                                                     (one peer connection: video, audio, data channel)
-│    └─ usePersonDetection, useSoundLevel / useReplyListener, useRecorder (laptop only, read the received media)
+│    └─ usePersonDetection, useSoundLevel, useRecorder (laptop only, read the received media)
 └─ MapPanel, GpsStatusCard, OfflineMapLayer, ──────→ lib/api.ts ──→ P1  HTTP
    MarkVictimButton, VictimList                       (session, GPS track, map tiles, victim marks, health)
 ```
@@ -1145,13 +1160,10 @@ AI person detection (dashboard, operator laptop — no work on the Pi):
 ├─ Turns itself off if inference averages > 150 ms (controls stay responsive)
 └─ Model and WASM runtime bundled with the dashboard: no internet needed
 
-Call out and listen:
-├─ Plays dashboard/public/audio/callout-en.mp3 (recorded by the team,
-│  not in the repository) on the talk audio track → P2 → robot speaker
-├─ Needs no HTTPS (the laptop mic is not used); excludes push-to-talk
-├─ Robot-mic level meter: RMS in dBFS every 100 ms, floor −80 dBFS
-└─ Reply cue: ≥ 10 dB above the 2 s before the call-out, within 10 s
-   after it (threshold not yet tuned)
+Robot-mic level meter:
+└─ RMS in dBFS every 100 ms, floor −80 dBFS; shows the level only (the
+   call-out button and its 10 dB reply cue were removed on 2026-10-31;
+   use the repeating voice message, §16.2, to call out)
 
 Mark victim here (controller only):
 ├─ Browser → P1: note (≤ 280 chars) + AI score, POST /api/victims
@@ -1174,7 +1186,7 @@ Mark victim here (controller only):
 
 Session recording (any dashboard; nothing recorded on the robot):
 ├─ MediaRecorder: robot video + one mixed audio track
-│  (robot mic + talk sender: operator voice while push-to-talk, call-out)
+│  (robot mic + talk sender: operator voice while push-to-talk)
 ├─ MP4 H.264 + AAC, else MP4 H.264 + Opus, else WebM VP8/Opus (Firefox);
 │  key frame every 1 s; length written into the file header on save;
 │  AI boxes not recorded
@@ -2085,8 +2097,8 @@ OPERATOR LAPTOP:
     Alt+F4 sent through it close the kiosk)
   ☐ Chrome "Use graphics acceleration" on (AI person detection needs
     WebGL)
-  ☐ callout-en.mp3 installed in the dashboard build (the Call out
-    button must not say "No call-out clip installed")
+  ☐ Repeating voice message recorded after the last P2 restart or
+    reboot (it is kept in memory only)
   ☐ Wi-Fi adapter with 2.4 GHz support
 ```
 
@@ -2112,7 +2124,8 @@ OPERATOR LAPTOP:
    ☐ My camera and an image appear on the robot display
    ☐ Text message shown on the robot display; ✓ on the dashboard
    ☐ "AI: on"; a person in front of the camera gets a box
-   ☐ Call out: message heard from the robot speaker; meter moves
+   ☐ Voice message: Start Play repeats it on the robot speaker; Hold
+     to talk pauses it; Stop Play stops it
    ☐ Mark victim here (test mark): appears in Victims found and on the
      map; photo and details land in Downloads
    ☐ Drive: each direction moves correctly and stops on release
@@ -2222,10 +2235,10 @@ ROBOT SCREEN (victim-facing display + speaker)
   └─ Recovery: idle screen until operator media resumes
 
 VICTIM-FINDING TOOLS (dashboard + P1 /api/victims)
-  ├─ Depends on: P2 media (AI, meter, call-out), P1 (marks), laptop
+  ├─ Depends on: P2 media (AI, meter), P1 (marks), laptop
   │  CPU + WebGL (AI)
   ├─ Failure: AI too slow / no WebGL → AI off with a message; P2 down →
-  │  no AI, meter or call-out; P1 down → marks cannot be saved
+  │  no AI or meter; P1 down → marks cannot be saved
   └─ Recovery: marks reload from P1 on reconnect; snapshots and session
      recordings stay in the browser that made them (a recording cut off
      by a crash is listed as unfinished)
@@ -2300,7 +2313,7 @@ CRITICAL PATH (Motor Safety):
    in Sections 13 and 39 are design estimates until tests N1-N8 are run.
 10. **Victim-finding tools not evaluated.** The AI was trained on everyday
    photos and misses people lying down, covered, in dust or in the dark;
-   its accuracy, the 10 dB reply threshold and the laptop load are not
+   its accuracy and the laptop load are not
    measured (tests I23–I28). Snapshots and session recordings exist only
    on the device that made them; recording completeness and its laptop
    load are not measured.
@@ -2317,8 +2330,8 @@ Capabilities:
 ├─ Live video + audio from the robot (WebRTC)
 ├─ Talk-to-victim: operator voice, face/image/screen and text on
 │  the robot's own display and speaker
-├─ Victim finding: AI person detection (on the laptop), call-out with
-│  reply cue, victim marks with position on the map
+├─ Victim finding: AI person detection (on the laptop), a repeating
+│  voice message, victim marks with position on the map
 ├─ Environmental monitoring: temperature, humidity, gas, range, GPS
 ├─ GPS tracking with a saved per-session track
 ├─ No internet needed for control, media or telemetry

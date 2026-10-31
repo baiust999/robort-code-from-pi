@@ -319,3 +319,69 @@ def test_p1_controller_endpoint_is_local_only(server):
     assert asyncio.run(endpoint(FakeRequest("127.0.0.1"))) == {"host": "10.0.0.5"}
     with pytest.raises(HTTPException):
         asyncio.run(endpoint(FakeRequest("10.0.0.7")))
+
+
+# --- P2 voice message upload --------------------------------------------------
+
+
+class FakeUpload(FakeRequest):
+    def __init__(self, host: str, key: str | None, body: bytes) -> None:
+        super().__init__(host)
+        self.headers = {"x-controller-key": key} if key is not None else {}
+        self._body = body
+
+    async def body(self) -> bytes:
+        return self._body
+
+
+@pytest.fixture
+def voice(monkeypatch, tmp_path):
+    from common.config import P2Config
+    from p2_media.main import MediaServer, create_app
+
+    monkeypatch.setenv("ROBOT_ROOT", str(tmp_path))
+    monkeypatch.setenv("MOCK_HARDWARE", "1")
+    monkeypatch.setenv("CONTROLLER_KEY", KEY)
+    srv = MediaServer(P2Config.from_env(), EventLogger(logging.getLogger("test-voice-p2")))
+    srv.hub.set_controller_host("10.0.0.5")
+    monkeypatch.setattr("p2_media.main.decode_voice_clip", lambda data: b"\x00\x00" * 48000 * 3)
+    app = create_app(srv)
+    endpoint = next(r.endpoint for r in app.routes if getattr(r, "path", "") == "/voice")
+    return srv, endpoint
+
+
+def test_p2_voice_upload_by_controller_is_stored(voice):
+    srv, endpoint = voice
+    resp = asyncio.run(endpoint(FakeUpload("10.0.0.5", KEY, b"clip")))
+    assert resp.id == 1 and resp.duration_s == 1.5  # 3 s of PCM minus the 1.5 s gap
+    assert srv.hub.voice_pcm is not None
+
+
+@pytest.mark.parametrize(("host", "key"), [("10.0.0.5", None), ("10.0.0.5", "123"), ("10.0.0.6", KEY)])
+def test_p2_voice_upload_refused_for_non_controller(voice, host, key):
+    from fastapi import HTTPException
+
+    srv, endpoint = voice
+    with pytest.raises(HTTPException) as err:
+        asyncio.run(endpoint(FakeUpload(host, key, b"clip")))
+    assert err.value.status_code == 403
+    assert srv.hub.voice_pcm is None
+
+
+def test_p2_voice_upload_rejects_oversize_and_bad_clips(voice, monkeypatch):
+    from fastapi import HTTPException
+
+    from p2_media.talkback import VOICE_MAX_BYTES
+
+    _, endpoint = voice
+    with pytest.raises(HTTPException) as err:
+        asyncio.run(endpoint(FakeUpload("10.0.0.5", KEY, b"x" * (VOICE_MAX_BYTES + 1))))
+    assert err.value.status_code == 413
+
+    def bad(data):
+        raise ValueError("unreadable recording")
+
+    monkeypatch.setattr("p2_media.main.decode_voice_clip", bad)
+    with pytest.raises(HTTPException) as err:
+        asyncio.run(endpoint(FakeUpload("10.0.0.5", KEY, b"junk")))
+    assert err.value.status_code == 422

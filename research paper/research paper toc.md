@@ -183,7 +183,7 @@
 - 3.10 GPS Localisation and Offline Mapping
 - 3.11 Victim-Finding Aids
   - Person detection in the operator's browser (advisory, not evaluated)
-  - Call-out and reply cue
+  - Repeating voice message (looped by P2; not evaluated)
   - Victim marks (snapshot kept on the operator's device)
   - Session recording (MP4 or WebM on the operator's device, both voices
     mixed; not evaluated)

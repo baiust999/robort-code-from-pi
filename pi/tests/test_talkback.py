@@ -529,3 +529,197 @@ def test_question_times_out_on_the_event_loop(monkeypatch):
         return hub
 
     assert asyncio.run(run()).question["status"] == "expired"
+
+
+# --- voice message loop -----------------------------------------------------
+
+
+def _pcm(samples: int, value: int = 1000) -> bytes:
+    return np.full(samples, value, np.int16).tobytes()
+
+
+def _opus_webm(seconds: float, amplitude: int = 4000) -> bytes:
+    """A WebM/Opus recording like the dashboard's MediaRecorder makes."""
+    import io
+
+    buf = io.BytesIO()
+    with av.open(buf, "w", format="webm") as out:
+        stream = out.add_stream("libopus", rate=48000, layout="mono")
+        n = int(seconds * 48000)
+        tone = (amplitude * np.sin(np.arange(n) / 8)).astype(np.int16)
+        for start in range(0, n, 960):
+            chunk = tone[start:start + 960]
+            frame = av.AudioFrame.from_ndarray(chunk.reshape(1, -1), format="s16", layout="mono")
+            frame.sample_rate = 48000
+            frame.pts = start
+            for packet in stream.encode(frame):
+                out.mux(packet)
+        for packet in stream.encode(None):
+            out.mux(packet)
+    return buf.getvalue()
+
+
+def test_parse_voice_commands():
+    for kind in ("voice_loop_start", "voice_loop_stop", "voice_clear"):
+        assert parse_operator_message(_msg(type=kind, junk=1)) == {"type": kind}
+    assert parse_operator_message(_msg(type="voice_loop")) is None
+
+
+def test_decode_voice_clip_normalises_and_appends_gap():
+    from p2_media.talkback import VOICE_GAP_S, decode_voice_clip
+
+    pcm = np.frombuffer(decode_voice_clip(_opus_webm(1.0, amplitude=6000)), np.int16)
+    gap = int(VOICE_GAP_S * 48000)
+    assert abs(pcm.size - (48000 + gap)) < 2000  # codec padding, give or take
+    assert np.abs(pcm[-gap:]).max() == 0
+    assert np.abs(pcm[:-gap].astype(np.int32)).max() > 25000  # boosted towards 0.9 FS
+    # A faint clip is boosted at most VOICE_MAX_GAIN times, not to full scale.
+    faint = np.frombuffer(decode_voice_clip(_opus_webm(1.0, amplitude=500)), np.int16)
+    assert np.abs(faint.astype(np.int32)).max() < 6000
+
+
+def test_decode_voice_clip_rejects_bad_clips(monkeypatch):
+    from p2_media import talkback
+
+    with pytest.raises(ValueError):
+        talkback.decode_voice_clip(b"")
+    with pytest.raises(ValueError):
+        talkback.decode_voice_clip(b"not audio at all" * 10)
+    monkeypatch.setattr(talkback, "VOICE_MAX_S", 0.5)
+    with pytest.raises(ValueError, match="longer"):
+        talkback.decode_voice_clip(_opus_webm(1.0))
+
+
+def test_voice_loop_needs_controller_but_not_floor(hub):
+    op, viewer = FakeChannel(), FakeChannel()
+    connect_controller(hub, "s1", op)
+    hub.operator_connected("s2", viewer)
+    hub.set_voice_clip(_pcm(10000))
+    assert op.of_type("voice_status")[-1]["has_clip"] is True
+
+    hub.handle_operator_message("s2", _msg(type="voice_loop_start"))
+    assert viewer.of_type("view_only") and not hub.voice_playing
+
+    hub.handle_operator_message("s1", _msg(type="voice_loop_start"))
+    assert hub.voice_playing and hub.floor_holder is None
+    assert viewer.of_type("voice_status")[-1]["playing"] is True
+
+
+def test_voice_loop_survives_floor_release_and_disconnect(hub):
+    op = FakeChannel()
+    connect_controller(hub, "s1", op)
+    hub.set_voice_clip(_pcm(10000))
+    hub.handle_operator_message("s1", _msg(type="voice_loop_start"))
+    hub.handle_operator_message("s1", _msg(type="screen_text", text="hi"))  # claims the floor
+    hub.handle_operator_message("s1", _msg(type="floor_release"))
+    hub.operator_closed("s1")
+    assert hub.voice_playing
+
+    again = FakeChannel()
+    connect_controller(hub, "s3", again)
+    status = again.of_type("voice_status")[-1]
+    assert (status["has_clip"], status["playing"]) == (True, True)
+
+    hub.handle_operator_message("s3", _msg(type="voice_loop_stop"))
+    assert not hub.voice_playing and hub.voice_pcm is not None
+    hub.handle_operator_message("s3", _msg(type="voice_clear"))
+    assert hub.voice_pcm is None
+    assert again.of_type("voice_status")[-1] == {
+        "type": "voice_status", "id": None, "has_clip": False, "playing": False, "duration_s": None,
+    }
+
+
+def test_start_without_clip_is_a_noop(hub):
+    op = FakeChannel()
+    connect_controller(hub, "s1", op)
+    hub.handle_operator_message("s1", _msg(type="voice_loop_start"))
+    assert not hub.voice_playing
+    assert op.of_type("voice_status")[-1]["playing"] is False
+
+
+def test_next_voice_frame_wraps_around(hub):
+    from p2_media.media import AUDIO_PACKET_SAMPLES
+
+    assert hub.next_voice_frame() is None
+    clip = np.arange(AUDIO_PACKET_SAMPLES + 100, dtype=np.int16)
+    hub.set_voice_clip(clip.tobytes())
+    assert hub.next_voice_frame() is None  # loaded but not playing
+    hub.voice_playing = True
+    first = hub.next_voice_frame().to_ndarray().ravel()
+    second = hub.next_voice_frame().to_ndarray().ravel()
+    assert first.size == second.size == AUDIO_PACKET_SAMPLES
+    assert np.array_equal(first, clip[:AUDIO_PACKET_SAMPLES])
+    assert np.array_equal(second[:100], clip[AUDIO_PACKET_SAMPLES:])
+    assert np.array_equal(second[100:], clip[: AUDIO_PACKET_SAMPLES - 100])
+
+
+def test_screen_audio_plays_loop_and_pauses_for_live_talk(hub):
+    from p2_media.media import AUDIO_PACKET_SAMPLES
+
+    # A tone, not a constant: Opus filters out DC.
+    tone = (8000 * np.sin(np.arange(AUDIO_PACKET_SAMPLES * 10) / 5)).astype(np.int16)
+    hub.set_voice_clip(tone.tobytes())
+    hub.voice_playing = True
+    decoder = av.CodecContext.create("libopus", "r")
+
+    def loud(packet) -> bool:
+        return np.abs(np.concatenate([f.to_ndarray().ravel() for f in decoder.decode(packet)])).max() > 2000
+
+    async def run():
+        track = ScreenAudioTrack(hub)
+        playing = [loud(await track.recv()) for _ in range(3)]
+        pos = hub._voice_pos
+        hub.media_state = {"talking": True, "video": "none"}
+        paused = [loud(await track.recv()) for _ in range(3)]
+        assert hub._voice_pos == pos  # not advanced while talking
+        hub.media_state = {"talking": False, "video": "none"}
+        resumed = [loud(await track.recv()) for _ in range(2)]
+        return playing, paused, resumed
+
+    playing, paused, resumed = asyncio.run(run())
+    assert all(playing[1:]) and not any(paused[1:]) and all(resumed[1:])
+
+
+def test_loop_is_not_chopped_by_a_muted_mic(hub, monkeypatch):
+    """A floor holder's open-but-muted mic still sends silence; while the
+    loop plays that must not displace it. Right after Hold to talk is
+    released, live audio still wins for VOICE_RESUME_S."""
+    from p2_media.media import AUDIO_PACKET_SAMPLES
+
+    op = FakeChannel()
+    connect_controller(hub, "s1", op)
+    tone = (8000 * np.sin(np.arange(AUDIO_PACKET_SAMPLES * 10) / 5)).astype(np.int16)
+    hub.set_voice_clip(tone.tobytes())
+    hub.handle_operator_message("s1", _msg(type="voice_loop_start"))
+    hub.handle_operator_message("s1", _msg(type="media_state", talking=True, video="none"))
+    hub.handle_operator_message("s1", _msg(type="media_state", talking=False, video="none"))
+    assert hub.floor_holder == "s1"
+
+    def silent_frame():
+        f = av.AudioFrame.from_ndarray(np.zeros((1, 1920), np.int16), format="s16", layout="stereo")
+        f.sample_rate = 48000
+        return f
+
+    decoder = av.CodecContext.create("libopus", "r")
+
+    def loud(packet) -> bool:
+        return np.abs(np.concatenate([f.to_ndarray().ravel() for f in decoder.decode(packet)])).max() > 2000
+
+    async def run():
+        track = ScreenAudioTrack(hub)
+        assert hub.live_voice_active()  # within the hangover after release
+        pos = hub._voice_pos
+        for _ in range(7):
+            hub._audio_queue.append(silent_frame())
+        await track.recv()
+        assert hub._voice_pos == pos  # hangover: the loop waits
+        monkeypatch.setattr("p2_media.talkback.VOICE_RESUME_S", 0.0)
+        out = []
+        for _ in range(6):
+            for _ in range(3):  # the muted mic keeps sending, 20 ms a frame
+                hub._audio_queue.append(silent_frame())
+            out.append(loud(await track.recv()))
+        return out
+
+    out = asyncio.run(run())
+    assert all(out[1:]), out

@@ -1,0 +1,61 @@
+End-to-end WebRTC check of the repeating voice message, 2026-10-31
+Harness: research-analysis/tests/voice_loop_webrtc/run.py (isolated mock P2 on :18443, fake P1, aiortc dashboard + kiosk peers)
+Working tree on commit e2b6965 plus uncommitted voice-message changes.
+
+== Control: code BEFORE the muted-mic fix ==
+test P2 pid 59488 on :18443
+PASS dashboard with key is controller  [controller]
+PASS kiosk receives audio from P2 in real time  [2.40 s of audio in ~2 s]
+PASS new dashboard gets voice_status (no clip)
+PASS upload with wrong key refused (403)  [403]
+PASS unreadable upload refused (422)  [422]
+PASS upload accepted  [{'id': 1, 'duration_s': 1.0}]
+PASS dashboard told a clip is stored  [[{'type': 'voice_status', 'id': None, 'has_clip': False, 'playing': False, 'duration_s': None}, {'type': 'voice_status', 'id': 1, 'has_clip': True, 'playing': False, 'duration_s': 1.0}]]
+PASS loop: 1 kHz repeats (>= 2 whole tones in 7.5 s)  [[0.84, 1.08, 1.08, 0.18]]
+PASS loop: each whole tone ~1 s (0.85-1.15)  [[0.84, 1.08, 1.08, 0.18]]
+PASS loop: tone share ~40% (1 s on, 1.5 s gap)  [0.42]
+PASS health says playing
+PASS talking: operator 440 Hz heard  [0.88]
+PASS talking: no 1 kHz loop while talking
+PASS after release: floor still held by the dashboard
+PASS after release: loop back within 2.2 s  [0.66]
+FAIL after release: whole tones again, not chopped (0.85-1.15 s)  [[0.36, 0.12, 0.06, 0.42, 0.24]]
+FAIL after release: tone share ~40% despite the silent mic  [0.09]
+PASS dashboard gone: floor released, loop still playing  [{'floor_held': False, 'voice_playing': True}]
+PASS dashboard gone: loop still on the speaker (~40%)  [0.41]
+PASS reconnected dashboard sees playing  [{'type': 'voice_status', 'id': 1, 'has_clip': True, 'playing': True, 'duration_s': 1.0}]
+PASS observer is view-only and can't stop it
+PASS Stop Play: speaker silent
+PASS Clear Voice: clip gone on P2 and dashboard told  [{'type': 'voice_status', 'id': None, 'has_clip': False, 'playing': False, 'duration_s': None}]
+PASS Start with nothing stored does nothing
+P2 voice events: VOICE_DENIED VOICE_BAD_CLIP VOICE_SET VOICE_LOOP_START VOICE_LOOP_STOP VOICE_CLEAR
+22/24 passed
+
+== After the fix (talkback.py live_voice_active / VOICE_RESUME_S) ==
+test P2 pid 61626 on :18443
+PASS dashboard with key is controller  [controller]
+PASS kiosk receives audio from P2 in real time  [2.40 s of audio in ~2 s]
+PASS new dashboard gets voice_status (no clip)
+PASS upload with wrong key refused (403)  [403]
+PASS unreadable upload refused (422)  [422]
+PASS upload accepted  [{'id': 1, 'duration_s': 1.0}]
+PASS dashboard told a clip is stored  [[{'type': 'voice_status', 'id': None, 'has_clip': False, 'playing': False, 'duration_s': None}, {'type': 'voice_status', 'id': 1, 'has_clip': True, 'playing': False, 'duration_s': 1.0}]]
+PASS loop: 1 kHz repeats (>= 2 whole tones in 7.5 s)  [[0.84, 1.08, 1.08, 0.12]]
+PASS loop: each whole tone ~1 s (0.85-1.15)  [[0.84, 1.08, 1.08, 0.12]]
+PASS loop: tone share ~40% (1 s on, 1.5 s gap)  [0.42]
+PASS health says playing
+PASS talking: operator 440 Hz heard  [0.73]
+PASS talking: no 1 kHz loop while talking
+PASS after release: floor still held by the dashboard
+PASS after release: loop back within 2.2 s  [0.78]
+PASS after release: whole tones again, not chopped (0.85-1.15 s)  [[0.42, 1.08, 1.08, 0.84]]
+PASS after release: tone share ~40% despite the silent mic  [0.48]
+PASS dashboard gone: floor released, loop still playing  [{'floor_held': False, 'voice_playing': True}]
+PASS dashboard gone: loop still on the speaker (~40%)  [0.42]
+PASS reconnected dashboard sees playing  [{'type': 'voice_status', 'id': 1, 'has_clip': True, 'playing': True, 'duration_s': 1.0}]
+PASS observer is view-only and can't stop it
+PASS Stop Play: speaker silent
+PASS Clear Voice: clip gone on P2 and dashboard told  [{'type': 'voice_status', 'id': None, 'has_clip': False, 'playing': False, 'duration_s': None}]
+PASS Start with nothing stored does nothing
+P2 voice events: VOICE_DENIED VOICE_BAD_CLIP VOICE_SET VOICE_LOOP_START VOICE_LOOP_STOP VOICE_CLEAR
+24/24 passed

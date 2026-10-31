@@ -29,8 +29,10 @@ Work through this list before the robot is sent in.
       robot, images and text messages still work.
 - [ ] Chrome's *Use graphics acceleration* is on (Settings → System). AI
       person detection needs it.
-- [ ] The **📢 Call out** button does not say *"No call-out clip
-      installed"* (see [Call out and listen](#call-out-and-listen)).
+- [ ] Record the **repeating voice message** you'll use on the way in
+      (see [Repeating voice message](#repeating-voice-message)). The robot
+      forgets it when the media service restarts, so record it after any
+      restart or reboot.
 
 ---
 
@@ -89,7 +91,7 @@ removes it.
 │   STOP       │                                                     │
 │ Talk to      │  (red + markers = victims found)                    │
 │   victim,    │                                                     │
-│   Call out,  │                                                     │
+│   voice msg, │                                                     │
 │   mic meter  │                                                     │
 └──────────────┴─────────────────────────────────────────────────────┘
 ```
@@ -261,6 +263,38 @@ Useful things to tell the victim:
 - Stay still, and cover your nose and mouth if there is dust or gas.
 - Tap or call out so rescuers can locate you.
 
+### Repeating voice message
+
+Use this to have the robot keep calling out while you drive it towards a
+victim. It's in the **Voice message (repeats on robot)** box.
+
+1. Click **🎙 Record Voice** and speak, e.g. *"Help is coming. Stay where you
+   are and shout if you can hear me."* Click **⏹ Stop** when you're done.
+   Recording stops by itself after 30 s.
+2. Listen to it with the small player. To record it again, click **🎙 Record
+   Voice** again; the new recording replaces the old one.
+3. Click **▶ Start Play**. The recording is sent to the robot, which plays it
+   on its speaker over and over, with a short pause between repeats. The box
+   turns red and shows *"Repeating on robot speaker"*.
+4. Click **⏹ Stop Play** to stop it. **🗑 Clear Voice** stops it and deletes
+   the message from the robot and from your laptop.
+
+Good to know:
+- The robot plays the message by itself, so it **keeps playing if your Wi-Fi
+  drops** or you close the dashboard. When you reconnect, the box still shows
+  that it's playing, so you can stop it.
+- **Hold to talk** pauses the message; it carries on from the same place
+  when you let go.
+- While it plays, the **Robot mic level** meter shows *(speaker playing)*:
+  the robot mic is mostly hearing its own speaker. To listen for a reply,
+  click **⏹ Stop Play** and then **🔇 Listen to robot mic** under the video.
+- Only the controller can record, play or clear it. Recording needs the mic,
+  so it needs HTTPS, the same as Hold to talk.
+- The message is kept in the robot's memory only. A P2 restart or a reboot
+  deletes it, and you'll need to record it again.
+- If the **Robot Display** is switched to **VNC mode**, the robot screen is
+  off and nothing plays on the speaker.
+
 ### Asking the victim a question
 
 If the victim can't speak, ask a question they answer by tapping a button
@@ -308,8 +342,10 @@ Always switch back to **Robot Display** before a mission.
 
 **⏺ Record** (bottom-right of the video) records the robot's camera together
 with both sides of the conversation: the robot's microphone, and whatever
-you send to the robot speaker (your voice while you hold talk, or the
-call-out message). The AI boxes are not recorded. Recording works whether
+you send to the robot speaker (your voice while you hold talk). The
+repeating voice message is played by the robot itself, so the recording
+only holds it as far as the robot mic picks it up. The AI boxes are not
+recorded. Recording works whether
 or not **Listen to robot mic** is on.
 
 - While recording, **REC 01:23 · 14 MB** shows top-right of the video.
@@ -371,31 +407,18 @@ buttons, so it switched itself off. *"AI needs WebGL"* means the browser's
 graphics acceleration is off; turn on *Use graphics acceleration* in
 Chrome's settings.
 
-### Call out and listen
+### Listening for a reply
 
-In the **Talk to victim** panel:
+To ask someone to answer, use the
+[repeating voice message](#repeating-voice-message) (for example *"This is
+the rescue team. If you can hear me, shout, or knock three times."*) or
+**Hold to talk**. Then click **⏹ Stop Play** if the message is playing,
+click **🔇 Listen to robot mic** under the video, and listen.
 
-1. Click **📢 Call out**. The robot speaker plays the recorded message
-   (*"This is the rescue team. If you can hear me, shout, or knock three
-   times."*). It works without HTTPS because it doesn't use your laptop mic.
-2. While it plays, the **Robot mic level** meter shows *(speaker playing)*:
-   the robot hears its own speaker, so nothing is judged then.
-3. For 10 s afterwards the meter turns amber, *"Listening for a reply…"*.
-   If the sound gets about 10 dB louder than just before the call-out,
-   the Alerts log shows *"sound after call-out"*. Click **🔇 Listen to robot
-   mic** under the video and listen carefully.
-
-The meter also works at any other time. A faint knock you might not hear
-still shows as a jump in the bar. If it says *"click anywhere to enable
-meter"*, click once anywhere on the page.
-
-The 10 dB threshold is a first guess and still needs tuning in real
-conditions.
-
-**Installing the message:** record about 5 s of clear English speech
-(phone or laptop), save it as an MP3 named `callout-en.mp3`, and put it in
-`dashboard/public/audio/` before building the dashboard. Until then the
-button reads *"No call-out clip installed"*.
+The **Robot mic level** meter in the **Talk to victim** panel helps: a faint
+knock you might not hear still shows as a jump in the bar. It only shows the
+level; it doesn't decide whether anyone answered. If it says *"click
+anywhere to enable meter"*, click once anywhere on the page.
 
 ### Mark victim here
 
@@ -471,11 +494,11 @@ for every connected dashboard, not only yours. Nothing is deleted by
 | `GPS no fix` | Indoors or no sky view. | Normal indoors. Driving is unaffected. |
 | "AI: error" / "AI needs WebGL" | The browser's graphics acceleration is off. | Turn on *Use graphics acceleration* in Chrome settings and reload. |
 | "AI turned off: too slow" | The laptop is too slow to run detection without slowing the controls. | Use a faster laptop, or carry on without AI. |
-| "No call-out clip installed" | `callout-en.mp3` missing from the dashboard build. | See [Call out and listen](#call-out-and-listen). |
+| Voice message doesn't play on the robot | The robot display is in VNC mode, the robot screen is offline, or the media service restarted and forgot the message. | Switch to **Robot Display**, check *robot screen online*, and record the message again. See [Repeating voice message](#repeating-voice-message). |
 | "Mark victim here" greyed out | You're an observer. | Enter the controller key. |
 | No **⏺ Record** button | The video isn't connected. | Wait for the video, or click **Retry video**. |
 | Recording didn't appear in Downloads | Chrome held back the automatic download. | Open *Recordings on this computer* under the video and click **Save to device**. |
-| My voice isn't in the recording | Only what reached the robot speaker is recorded: your voice while **Hold to talk** is held, and the call-out. An observer's recording has the robot side only. | Hold **Hold to talk** while speaking; record from the controller's dashboard. |
+| My voice isn't in the recording | Only what reached the robot speaker is recorded: your voice while **Hold to talk** is held. An observer's recording has the robot side only. | Hold **Hold to talk** while speaking; record from the controller's dashboard. |
 | Recording split into two files | The video was down for more than 15 s, or **Retry video** was pressed. | Both files are saved; press **⏺ Record** again after the video returns. |
 | A player shows no length or can't seek | Usually a `.webm` file (Firefox) in a player that handles WebM poorly. | Play it in Chrome or VLC. |
 

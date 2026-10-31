@@ -47,7 +47,7 @@ from .media import (
     open_mic_track,
 )
 from .signaling import PeerSession, TrackFactory, default_track_factory, negotiate, negotiate_screen
-from .talkback import DISPLAY_MODES, ScreenHub
+from .talkback import DISPLAY_MODES, VOICE_MAX_BYTES, ScreenHub, decode_voice_clip
 
 EXIT_CONFIG_INVALID = 3
 SCREEN_PAGE = Path(__file__).with_name("screen") / "index.html"
@@ -63,6 +63,11 @@ class OfferRequest(BaseModel):
     type: str
     # Controller key; without the right one the session is view-only.
     key: str | None = None
+
+
+class VoiceUploadResponse(BaseModel):
+    id: int
+    duration_s: float
 
 
 class AnswerResponse(BaseModel):
@@ -280,6 +285,30 @@ def create_app(server: MediaServer) -> FastAPI:
         via = "kiosk" if "Mozilla" in agent else (agent.split("/", 1)[0] or "unknown")
         server.hub.set_display_mode(body.mode, source=f"local:{request.client.host}:{via}")
         return DisplayMode(mode=server.hub.display_mode)
+
+    @app.post("/voice", response_model=VoiceUploadResponse)
+    async def upload_voice(request: Request) -> VoiceUploadResponse:
+        """Store the operator's recorded voice message for looping (raw body:
+        the recording file). Only P1's current controller may upload, the
+        same rule as talking; it is kept in memory only, never on disk."""
+        host = request.client.host if request.client else "unknown"
+        auth = server.gate.check(host, request.headers.get("x-controller-key"))
+        if auth != access.OK or host != server.hub.controller_host:
+            server.log.warning("VOICE_DENIED", "voice upload refused", host=host, auth=auth)
+            raise HTTPException(status_code=403, detail="only the robot's controller may upload a voice message")
+        length = request.headers.get("content-length")
+        if length is not None and length.isdigit() and int(length) > VOICE_MAX_BYTES:
+            raise HTTPException(status_code=413, detail="recording too large")
+        data = await request.body()
+        if len(data) > VOICE_MAX_BYTES:
+            raise HTTPException(status_code=413, detail="recording too large")
+        try:
+            pcm = await asyncio.to_thread(decode_voice_clip, data)
+        except ValueError as exc:
+            server.log.warning("VOICE_BAD_CLIP", str(exc), host=host, size=len(data))
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        duration = server.hub.set_voice_clip(pcm, session_id=f"http:{host}")
+        return VoiceUploadResponse(id=server.hub.voice_id, duration_s=duration)
 
     return app
 

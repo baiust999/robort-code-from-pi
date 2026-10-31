@@ -92,6 +92,20 @@ export async function startNewMission(key: string | null): Promise<{ archive: st
   return (await resp.json()) as { archive: string | null };
 }
 
+/** Only P1's current controller may upload; P2 keeps the recording in memory and loops it on the robot speaker. */
+export async function uploadVoice(key: string | null, clip: Blob): Promise<{ id: number; duration_s: number }> {
+  const resp = await fetch(`${P2_HTTP_BASE}/voice`, {
+    method: 'POST',
+    headers: { 'Content-Type': clip.type || 'application/octet-stream', 'X-Controller-Key': key ?? '' },
+    body: clip,
+  });
+  if (!resp.ok) {
+    const detail = await resp.json().then((j: { detail?: string }) => j.detail).catch(() => null);
+    throw new Error(detail ?? `upload failed: ${resp.status}`);
+  }
+  return (await resp.json()) as { id: number; duration_s: number };
+}
+
 export async function fetchMediaHealth(): Promise<{
   status: string;
   camera_open: boolean;

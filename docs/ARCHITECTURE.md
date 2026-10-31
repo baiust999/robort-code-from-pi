@@ -55,9 +55,9 @@ operating area the map comes from `area.pmtiles` on the Pi, which P1 serves
 at `/maps`, so the map works with no internet there.
 
 WebRTC is two-way: the same connection carries the operator's voice, video,
-messages and tap-to-answer questions back to the victim-facing Robot Screen
-— see §14. The
-victim-finding tools (AI person detection, call-out, victim marks) run
+messages, tap-to-answer questions and the commands for a repeating voice
+message back to the victim-facing Robot Screen — see §14. The
+victim-finding tools (AI person detection, victim marks) run
 mostly in the dashboard and use these same two transports plus P1's
 REST API — see §15.
 
@@ -627,11 +627,11 @@ flowchart LR
 
     victim -- "face + voice" --> cam --> p2
     p2 -- "Tracks 1-2: video + audio" --> dash --> operator
-    operator -- "push-to-talk, camera / image / screen, text, questions" --> dash
+    operator -- "push-to-talk, camera / image / screen, text, questions, voice message" --> dash
     dash -- "Tracks 3-4 + data channel 'screen'" --> p2
     p2 -- "decode + re-encode<br/>(localhost peer)" --> screen
     screen --> disp -- "operator face / image + text + answer buttons" --> victim
-    screen --> spk -- "operator voice" --> victim
+    screen --> spk -- "operator voice, repeating voice message" --> victim
 
     classDef added fill:#fff,stroke:#B7791F,stroke-dasharray:5 4,color:#12181A;
     classDef core fill:#fff,stroke:#2F7C9E,color:#12181A;
@@ -694,6 +694,10 @@ sequenceDiagram
 | Robot display left in VNC mode | `talk_status.display_mode = "vnc"` | Dashboard shows an orange "robot screen is OFF" warning; P2 restart resets to `robot` |
 | Kiosk shows a cached page after an update | Questions logged by P2 but never shown | `/screen` is sent with `Cache-Control: no-cache`; found 2026-10-30 (TEST_REPORT Issue 8) |
 | Victim never answers a question | P2's 5-minute timer | Question taken off the screen; dashboard shows "No answer (5 min)" |
+| Voice message upload from a non-controller | P2 key + P1-controller-host check on `POST /voice` | 403 (`VOICE_DENIED` logged); nothing stored |
+| Voice message too big, too long or unreadable | Size check (1 MB), then decode (≤ 35 s) | 413 / 422 (`VOICE_BAD_CLIP` logged); the old message, if any, is kept |
+| Operator's link drops while the voice message loops | — | P2 keeps looping; a reconnecting dashboard gets `voice_status` and can stop it |
+| P2 restarts while a voice message is stored | P3 (existing) | Message lost (memory only); the operator records it again |
 
 ### 14.4 Display mode — Robot Display ⇄ VNC
 
@@ -770,13 +774,62 @@ sequenceDiagram
     D->>D: question and answer removed
 ```
 
+### 14.6 Repeating voice message
+
+**Status: implemented; unit-tested on the P2 side (14 tests), checked end
+to end over WebRTC against a mock-hardware P2 and in headless Chromium;
+not yet heard on the robot speaker.** Added 2026-10-31. It replaced the dashboard's
+call-out button, whose clip was never installed.
+
+The operator records a message once and the robot repeats it until told to
+stop, for example while driving to a victim. Unlike push-to-talk, **P2 plays
+the loop itself**, so it keeps going if the operator's Wi-Fi drops. It is
+robot-owned rather than part of the floor: start / stop / clear need the
+controller but don't claim the floor, and neither a floor release nor a
+disconnect stops it.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant K as Robot Screen (kiosk)
+    participant P2 as P2 Media
+    participant D as Dashboard(s)
+    actor O as Operator
+
+    O->>D: Record Voice ... Stop (MediaRecorder, ≤ 30 s)
+    O->>D: Start Play
+    D->>P2: POST /voice (WebM/Opus body, X-Controller-Key)
+    P2->>P2: key OK and P1's controller host? decode to 48 kHz mono,<br/>normalise, append 1.5 s gap; keep in memory only
+    P2-->>D: {id, duration_s} + voice_status (to every dashboard)
+    D->>P2: data channel {"type":"voice_loop_start"}
+    P2-->>D: voice_status: playing
+    loop every 60 ms audio packet
+        P2->>K: next 60 ms of the loop (only while nobody is talking)
+    end
+    Note over P2,K: Hold to talk: live voice goes out instead, the loop waits at its position
+    O->>D: Stop Play / Clear Voice
+    D->>P2: {"type":"voice_loop_stop"} / {"type":"voice_clear"}
+    P2-->>D: voice_status (to every dashboard)
+```
+
+`ScreenAudioTrack` picks, per 60 ms packet: the loop if it is playing and
+the floor holder isn't talking (or let go less than 0.5 s ago), else
+queued operator voice, else silence. While the loop plays, the floor
+holder's audio between presses is dropped: a muted-but-open mic still sends
+silence, which used to chop the loop (TEST_REPORT Issue 13). The
+clip is decoded once on upload, so looping costs no more than relaying
+live voice. Events: `VOICE_SET`, `VOICE_LOOP_START`, `VOICE_LOOP_STOP`,
+`VOICE_CLEAR`.
+
 ---
 
 ## 15. Victim-Finding Tools
 
 **Status: implemented; not evaluated.** Unit-tested on the robot side
-(16 tests, `pi/tests/test_victim_log.py`); detection accuracy, the reply
-threshold and the load on the operator laptop have not been measured.
+(16 tests, `pi/tests/test_victim_log.py`); detection accuracy and the load
+on the operator laptop have not been measured. The call-out button and its
+reply cue were removed on 2026-10-31 in favour of the repeating voice
+message (§14.6).
 Session recording (§15.3) has only functional checks in headless Chromium. Full
 rationale in [`SOFTWARE_ARCHITECTURE.md` §A.12](./SOFTWARE_ARCHITECTURE.md);
 operator steps in [`OPERATOR_MANUAL.md` §10](./OPERATOR_MANUAL.md).
@@ -787,8 +840,7 @@ operator steps in [`OPERATOR_MANUAL.md` §10](./OPERATOR_MANUAL.md).
 flowchart LR
     subgraph laptop["OPERATOR LAPTOP (dashboard)"]
         det["usePersonDetection<br/>MediaPipe EfficientDet-Lite0<br/>CPU, ≤ 5 Hz"]
-        meter["useSoundLevel + useReplyListener<br/>robot-mic meter, reply cue"]
-        call["useTalkback.callOut<br/>callout-en.mp3"]
+        meter["useSoundLevel<br/>robot-mic level meter"]
         mark["MarkVictimButton<br/>note + snapshot"]
         store["Snapshots: IndexedDB + Downloads<br/>victim-&lt;id&gt;.jpg / .txt<br/>(never sent to the robot)"]
         rec["useRecorder<br/>session recording<br/>IndexedDB + Downloads<br/>robot-session-&lt;time&gt;.mp4"]
@@ -804,21 +856,19 @@ flowchart LR
     det -- "robot video in (WebRTC)" --> p2
     meter -- "robot mic audio in (WebRTC)" --> p2
     rec -- "robot video + mic in, talk audio mixed in" --> p2
-    call -- "clip out on the talk audio track" --> p2
     mark <-- "note + AI score out (key required) /<br/>victim_mark broadcast in" --> p1
     p2 --> spk
     p1 --> jsonl
 
     classDef added fill:#fff,stroke:#B7791F,stroke-dasharray:5 4,color:#12181A;
     classDef core fill:#fff,stroke:#2F7C9E,color:#12181A;
-    class det,meter,call,mark,store,rec added;
+    class det,meter,mark,store,rec added;
     class p1,p2,jsonl,spk core;
 ```
 
 Arrows point from the laptop to the robot; labels give the direction of
-the data. AI inference and the reply check run on the laptop, so the Pi
-does no detection work. The call-out reuses the push-to-talk audio sender, so P2
-relays it like speech (§14). Only the text of a mark reaches the robot; the
+the data. AI inference runs on the laptop, so the Pi does no detection work.
+Only the text of a mark reaches the robot; the
 snapshot stays on the device that took it. Recording also runs on the laptop
 only (§15.3).
 
@@ -855,7 +905,7 @@ robot, and P1/P2 are unchanged.
 useWebrtcVideo.remoteStream ──┬─ robot video track ─────────────────────┐
                               └─ robot mic track ──┐                    │
 talkLink.audioSender.track ───── (polled 250 ms) ──┴─► AudioContext mix ─┤
-  (laptop mic while push-to-talk, or the call-out clip)                 ▼
+  (laptop mic while push-to-talk)                                       ▼
                                                     MediaRecorder (1 s chunks)
                                                       ├─► IndexedDB robot-recordings
                                                       └─► on stop: Downloads
@@ -884,7 +934,6 @@ talkLink.audioSender.track ───── (polled 250 ms) ──┴─► Audio
 | Laptop too slow for AI | Mean inference > 150 ms over 5 frames | AI switches itself off with a message; controls stay responsive |
 | Browser has no WebGL | Checked before loading the model | "AI needs WebGL" message; everything else works |
 | AI misses a person (lying, covered, dark, far) | Not detectable | Operator keeps watching the video; dashboard says so |
-| Call-out clip not installed | `HEAD` on the clip is not `audio/*` | Button reads "No call-out clip installed" |
 | Mark sent without the controller key | P1 key check | 403; nothing stored or broadcast |
 | Oversized mark request | Body > 16 KiB, checked before parsing | 413; P1's event loop is never blocked by the parse |
 | No GPS fix when marking | `gps_fix = false` | Mark keeps the last track point; faded map marker; operator note matters |

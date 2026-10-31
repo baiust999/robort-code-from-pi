@@ -129,7 +129,7 @@ function App() {
             linkUp={video.connected}
             isController={!controlsDisabled}
             videoRef={video.videoRef}
-            onReply={(rise) => pushAlert(`sound after call-out (+${rise} dB): listen to the robot mic`)}
+            controllerKey={controllerKey}
           />
         </aside>
 

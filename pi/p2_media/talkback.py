@@ -32,11 +32,13 @@ import asyncio
 import collections
 import contextlib
 import fractions
+import io
 import json
 import time
 from typing import Any, Protocol
 
 import av
+import numpy as np
 from aiortc import VideoStreamTrack
 from aiortc.mediastreams import MediaStreamError, MediaStreamTrack
 
@@ -78,6 +80,66 @@ AUDIO_BUFFER_MAX_SAMPLES = AUDIO_RATE * 400 // 1000
 VIDEO_REPEAT_S = 1.0
 IDLE_WIDTH = 640
 IDLE_HEIGHT = 480
+# A voice message the operator records and the robot repeats on its speaker
+# until told to stop (e.g. while driving to a victim). P2 holds it in memory
+# only and loops it itself, so it keeps playing if the dashboard's link drops.
+# The dashboard stops recording at 30 s; the server allows a little slack.
+VOICE_MAX_S = 35.0
+VOICE_MAX_BYTES = 1_000_000
+# Silence after each repeat, so the message isn't one run-on sentence.
+VOICE_GAP_S = 1.5
+# Recordings are peak-normalised to this fraction of full scale, but never
+# amplified more than VOICE_MAX_GAIN (so a near-silent clip stays quiet hiss).
+VOICE_PEAK = 0.9
+VOICE_MAX_GAIN = 8.0
+VOICE_COMMANDS = ("voice_loop_start", "voice_loop_stop", "voice_clear")
+# After "Hold to talk" is released the loop waits this long before taking
+# over again, so the operator's last words (still in flight) are not cut.
+VOICE_RESUME_S = 0.5
+
+
+def decode_voice_clip(data: bytes) -> bytes:
+    """Decode an uploaded recording to the loop's PCM: 48 kHz mono s16.
+
+    Any container/codec FFmpeg reads is accepted (the dashboard sends
+    WebM/Opus). The result is peak-normalised and ends in VOICE_GAP_S of
+    silence. Raises ValueError for an unreadable, silent-length or too-long clip.
+    """
+    if not data:
+        raise ValueError("empty recording")
+    if len(data) > VOICE_MAX_BYTES:
+        raise ValueError("recording too large")
+    resampler = av.AudioResampler(format="s16", layout="mono", rate=AUDIO_RATE)
+    chunks: list[np.ndarray] = []
+    total = 0
+    max_samples = int(VOICE_MAX_S * AUDIO_RATE)
+    try:
+        with av.open(io.BytesIO(data)) as container:
+            if not container.streams.audio:
+                raise ValueError("recording has no audio")
+            for frame in container.decode(audio=0):
+                frame.pts = None
+                for mono in resampler.resample(frame):
+                    chunk = mono.to_ndarray().reshape(-1)
+                    chunks.append(chunk)
+                    total += chunk.size
+                if total > max_samples:
+                    raise ValueError(f"recording longer than {VOICE_MAX_S:.0f} s")
+            for mono in resampler.resample(None):
+                chunks.append(mono.to_ndarray().reshape(-1))
+    except av.FFmpegError as exc:
+        raise ValueError(f"unreadable recording: {exc}") from exc
+    pcm = np.concatenate(chunks).astype(np.int16) if chunks else np.zeros(0, np.int16)
+    if pcm.size < AUDIO_PACKET_SAMPLES:
+        raise ValueError("recording too short")
+    if pcm.size > max_samples:
+        raise ValueError(f"recording longer than {VOICE_MAX_S:.0f} s")
+    peak = int(np.abs(pcm.astype(np.int32)).max())
+    if peak > 0:
+        gain = min(VOICE_MAX_GAIN, VOICE_PEAK * 32767 / peak)
+        pcm = np.clip(pcm.astype(np.float32) * gain, -32768, 32767).astype(np.int16)
+    gap = np.zeros(int(VOICE_GAP_S * AUDIO_RATE), np.int16)
+    return np.concatenate([pcm, gap]).tobytes()
 
 
 class Channel(Protocol):
@@ -143,6 +205,8 @@ def parse_operator_message(raw: Any) -> dict[str, Any] | None:
         if mode not in DISPLAY_MODES:
             return None
         return {"type": "display_mode", "mode": mode}
+    if kind in VOICE_COMMANDS:
+        return {"type": kind}
     return None
 
 
@@ -177,6 +241,15 @@ class ScreenHub:
         # Always "robot" after a P2 restart, so a reboot never leaves the
         # victim looking at the Pi desktop.
         self.display_mode = "robot"
+        # The looping voice message: 48 kHz mono s16 PCM (gap included), the
+        # read position, and an id bumped per upload so a dashboard can tell
+        # whether the robot holds the clip it recorded. Robot-owned: neither
+        # releasing the floor nor an operator disconnecting stops it.
+        self.voice_pcm: bytes | None = None
+        self.voice_id = 0
+        self.voice_playing = False
+        self._voice_pos = 0
+        self._talk_ended_at = float("-inf")
 
         self._video_latest: av.VideoFrame | None = None
         self._video_event = asyncio.Event()
@@ -210,6 +283,7 @@ class ScreenHub:
         self._send_status(session_id)
         if self.question is not None:
             _send(channel, self._question_status())
+        _send(channel, self._voice_status())
 
     def operator_closed(self, session_id: str) -> None:
         self.controllers.pop(session_id, None)
@@ -244,11 +318,19 @@ class ScreenHub:
             self.set_display_mode(msg["mode"], source=session_id)
             return
 
+        # The voice loop is the robot's, not a conversation: it neither needs
+        # nor claims the floor, so it can keep going after the operator leaves.
+        if msg["type"] in VOICE_COMMANDS:
+            self._voice_command(msg["type"], session_id)
+            return
+
         if not self._claim_floor(session_id):
             _send(self.operators.get(session_id), {"type": "floor_denied"})
             return
 
         if msg["type"] == "media_state":
+            if self.media_state["talking"] and not msg["talking"]:
+                self._talk_ended_at = time.monotonic()
             self.media_state = {"talking": msg["talking"], "video": msg["video"]}
             self._send_screen_state()
         elif msg["type"] == "screen_text":
@@ -403,6 +485,85 @@ class ScreenHub:
         for channel in list(self.operators.values()):
             _send(channel, status)
 
+    # --- voice message loop ------------------------------------------------
+
+    def set_voice_clip(self, pcm: bytes, session_id: str | None = None) -> float:
+        """Store a decoded recording (see decode_voice_clip), replacing any
+        previous one and stopping playback. Returns its length in seconds."""
+        self.voice_pcm = pcm
+        self.voice_id += 1
+        self.voice_playing = False
+        self._voice_pos = 0
+        duration = self._voice_duration()
+        self.log.info("VOICE_SET", "voice message stored for looping",
+                      session=session_id, id=self.voice_id, duration_s=duration)
+        self._broadcast_voice()
+        return duration
+
+    def _voice_command(self, kind: str, session_id: str) -> None:
+        if kind == "voice_loop_start":
+            if self.voice_pcm is not None and not self.voice_playing:
+                self.voice_playing = True
+                self._voice_pos = 0
+                self.log.info("VOICE_LOOP_START", "voice message looping on robot speaker",
+                              session=session_id, id=self.voice_id)
+        elif kind == "voice_loop_stop":
+            if self.voice_playing:
+                self.voice_playing = False
+                self.log.info("VOICE_LOOP_STOP", "voice message loop stopped",
+                              session=session_id, id=self.voice_id)
+        elif kind == "voice_clear":
+            if self.voice_pcm is not None:
+                self.voice_pcm = None
+                self.voice_playing = False
+                self._voice_pos = 0
+                self.log.info("VOICE_CLEAR", "voice message deleted",
+                              session=session_id, id=self.voice_id)
+        # Always answer, so a dashboard with a stale view is corrected.
+        self._broadcast_voice()
+
+    def live_voice_active(self) -> bool:
+        """The operator is talking, or let go less than VOICE_RESUME_S ago."""
+        return self.media_state["talking"] or time.monotonic() - self._talk_ended_at < VOICE_RESUME_S
+
+    def next_voice_frame(self) -> av.AudioFrame | None:
+        """The next AUDIO_PACKET_SAMPLES of the looping message, wrapping
+        around at its end; None unless it is playing."""
+        pcm = self.voice_pcm
+        if not self.voice_playing or not pcm:
+            return None
+        need = AUDIO_PACKET_SAMPLES * 2  # s16: two bytes a sample
+        pos = self._voice_pos % len(pcm)
+        out = bytearray()
+        while len(out) < need:
+            take = pcm[pos:pos + need - len(out)]
+            out += take
+            pos = (pos + len(take)) % len(pcm)
+        self._voice_pos = pos
+        samples = np.frombuffer(bytes(out), np.int16).reshape(1, -1)
+        frame = av.AudioFrame.from_ndarray(samples, format="s16", layout="mono")
+        frame.sample_rate = AUDIO_RATE
+        return frame
+
+    def _voice_duration(self) -> float | None:
+        if self.voice_pcm is None:
+            return None
+        return round(len(self.voice_pcm) / 2 / AUDIO_RATE - VOICE_GAP_S, 1)
+
+    def _voice_status(self) -> dict[str, Any]:
+        return {
+            "type": "voice_status",
+            "id": self.voice_id if self.voice_pcm is not None else None,
+            "has_clip": self.voice_pcm is not None,
+            "playing": self.voice_playing,
+            "duration_s": self._voice_duration(),
+        }
+
+    def _broadcast_voice(self) -> None:
+        status = self._voice_status()
+        for channel in list(self.operators.values()):
+            _send(channel, status)
+
     # --- robot screen ------------------------------------------------------
 
     def screen_attached(self, channel: Channel) -> None:
@@ -487,6 +648,8 @@ class ScreenHub:
             "screen_connected": self.screen_connected,
             "floor_held": self.floor_holder is not None,
             "display_mode": self.display_mode,
+            "voice_loaded": self.voice_pcm is not None,
+            "voice_playing": self.voice_playing,
         }
 
 
@@ -561,7 +724,8 @@ class ScreenAudioTrack(MediaStreamTrack):
         return encode_packet(self._encoder, self._next_frame())
 
     def _next_frame(self) -> av.AudioFrame:
-        """The next 60 ms of operator voice, or silence while (re)filling the cushion."""
+        """The next 60 ms of operator voice, else the looping voice message,
+        else silence while (re)filling the cushion."""
         while (operator := self.hub.next_audio_frame()) is not None:
             operator.pts = None
             for mono in self._resampler.resample(operator):
@@ -576,7 +740,18 @@ class ScreenAudioTrack(MediaStreamTrack):
         if self._refilling and self._fifo.samples >= AUDIO_CUSHION_SAMPLES:
             self._refilling = False
 
-        if not self._refilling and self._fifo.samples >= AUDIO_PACKET_SAMPLES:
+        # The looping voice message, unless the operator is talking (then it
+        # is not read, so it pauses and resumes where it was). While it plays,
+        # what the floor holder sends between presses is dropped: a dashboard
+        # whose mic is open but muted still sends silence, and treating that
+        # as live voice would chop the loop into pieces (found 2026-10-31).
+        voice = None if self.hub.live_voice_active() else self.hub.next_voice_frame()
+        if voice is not None:
+            if self._fifo.samples:
+                self._fifo.read(self._fifo.samples)
+            self._refilling = True  # live voice that starts later gets its cushion first
+            frame = voice
+        elif not self._refilling and self._fifo.samples >= AUDIO_PACKET_SAMPLES:
             frame = self._fifo.read(AUDIO_PACKET_SAMPLES)
         else:
             # Ran dry (the operator is silent, or their audio is late): send

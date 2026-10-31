@@ -5,8 +5,9 @@ import {
   type TalkbackState,
   type VideoSource,
 } from '../hooks/useTalkback';
-import { LEVEL_FLOOR_DB, useReplyListener, useSoundLevel } from '../hooks/useSoundLevel';
+import { LEVEL_FLOOR_DB, useSoundLevel } from '../hooks/useSoundLevel';
 import { QuestionPanel } from './QuestionPanel';
+import { VoiceMessagePanel } from './VoiceMessagePanel';
 
 const DISPLAY_MODES: { id: DisplayMode; label: string }[] = [
   { id: 'robot', label: '🖥 Robot Display' },
@@ -25,37 +26,35 @@ const meterPercent = (db: number) => Math.min(100, Math.max(0, ((db - LEVEL_FLOO
 
 /**
  * Loudness of the robot mic, so a faint knock or voice shows even when it's
- * hard to hear, and the reply check after a call-out. It owns the 10 Hz level
- * state so that only this meter re-renders, not the whole dashboard.
+ * hard to hear. It owns the 10 Hz level state so that only this meter
+ * re-renders, not the whole dashboard.
  */
 function RobotMicMeter(props: {
   videoRef: React.RefObject<HTMLVideoElement | null>;
   linkUp: boolean;
-  callingOut: boolean;
-  onReply: (riseDb: number) => void;
+  /** The voice message is looping, so the mic mostly hears the robot's own speaker. */
+  speakerPlaying: boolean;
 }) {
-  const { videoRef, linkUp, callingOut, onReply } = props;
+  const { videoRef, linkUp, speakerPlaying } = props;
   const sound = useSoundLevel(videoRef, linkUp);
-  const { listening } = useReplyListener(callingOut, sound, onReply);
   let caption = `${Math.round(sound.levelDb)} dB`;
   if (!linkUp) caption = 'no robot audio';
   else if (sound.needsGesture) caption = 'click anywhere to enable meter';
-  else if (callingOut) caption = '(speaker playing)';
-  else if (listening) caption = 'Listening for a reply…';
+  else if (speakerPlaying) caption = `${caption} (speaker playing)`;
   return (
     // It changes 10 times a second: `contain` keeps each update from re-laying
     // out the rest of the page, and the bars move by transform, not width.
     <div
-      className={`flex flex-col gap-1 rounded p-1 ${listening ? 'bg-amber-500/20 ring-1 ring-amber-400' : ''}`}
+      className="flex flex-col gap-1 rounded p-1"
       style={{ contain: 'layout paint' }}
     >
       <div className="flex justify-between text-xs text-white/50">
         <span>Robot mic level</span>
-        <span className={`tabular-nums ${listening ? 'font-semibold text-amber-300' : ''}`}>{caption}</span>
+        <span className="tabular-nums">{caption}</span>
       </div>
       <div className="relative h-2 w-full overflow-hidden rounded bg-white/10">
         <div
-          className={`h-full w-full origin-left ${callingOut ? 'bg-white/30' : 'bg-green-500'}`}
+          className={`h-full w-full origin-left ${speakerPlaying ? 'bg-white/30' : 'bg-green-500'}`}
           style={{ transform: `scaleX(${meterPercent(sound.levelDb) / 100})` }}
         />
         <div
@@ -75,10 +74,10 @@ export function TalkPanel(props: {
   linkUp: boolean;
   isController: boolean;
   videoRef: React.RefObject<HTMLVideoElement | null>;
-  /** Called when the robot mic picks up a likely reply after a call-out. */
-  onReply: (riseDb: number) => void;
+  /** Sent with the voice-message upload; P2 checks it like the talk session. */
+  controllerKey: string | null;
 }) {
-  const { talk, linkUp, isController, videoRef, onReply } = props;
+  const { talk, linkUp, isController, videoRef, controllerKey } = props;
   // Both must agree: P1 says this dashboard is the controller, and P2 accepts it.
   const canControl = isController && talk.canControl;
   const [text, setText] = useState('');
@@ -166,7 +165,7 @@ export function TalkPanel(props: {
       <div className="flex flex-col gap-2">
         <button
           type="button"
-          disabled={blocked || talk.callingOut || !talk.mediaDevicesAvailable}
+          disabled={blocked || !talk.mediaDevicesAvailable}
           onPointerDown={(e) => {
             e.currentTarget.setPointerCapture(e.pointerId);
             talk.startTalking();
@@ -181,23 +180,9 @@ export function TalkPanel(props: {
           {talk.talking ? '🎤 Talking…' : talk.micReady ? '🎤 Hold to talk' : '🎤 Enable mic'}
         </button>
 
-        <button
-          type="button"
-          disabled={blocked || talk.talking || talk.callingOut || talk.callOutAvailable !== true}
-          onClick={talk.callOut}
-          title="Plays the recorded message on the robot speaker, then listens for a reply"
-          className={`w-full rounded-md px-3 py-2 font-semibold disabled:opacity-40 ${
-            talk.callingOut ? 'bg-amber-600 text-white' : 'bg-white/10 hover:bg-white/20'
-          }`}
-        >
-          {talk.callingOut
-            ? '📢 Calling out…'
-            : talk.callOutAvailable === false
-              ? 'No call-out clip installed'
-              : '📢 Call out'}
-        </button>
+        <VoiceMessagePanel talk={talk} controllerKey={controllerKey} disabled={!linkUp || !canControl} />
 
-        <RobotMicMeter videoRef={videoRef} linkUp={linkUp} callingOut={talk.callingOut} onReply={onReply} />
+        <RobotMicMeter videoRef={videoRef} linkUp={linkUp} speakerPlaying={talk.voice?.playing === true} />
 
         <div className="flex flex-col gap-1">
           <span className="text-xs text-white/50">Show on robot display</span>
