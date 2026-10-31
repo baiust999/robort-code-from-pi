@@ -430,7 +430,14 @@ before you hand the device back. Clearing the browser's site data deletes
 the copy in the browser.
 
 To remove one mark, click **delete** next to it in **Victims found** and
-confirm; this cannot be undone. To start a fresh list for a new mission
+confirm; this cannot be undone. If you saved a mark by mistake, you can
+also click **delete mark** in the message under the button right after
+saving, next to *download photo* / *download details*. Either way the
+mark goes from the robot, the list and the map on every dashboard, and
+its photo is removed from this browser; files already in Downloads stay
+there, so delete those by hand if needed. If the mark is deleted from the
+list (or by another dashboard), the message under the button changes to
+*Mark deleted.* and its links disappear. To start a fresh list for a new mission
 without losing the record of the old one, click **new mission** at the
 top of **Victims found** and confirm: every mark currently listed is
 archived on the robot under a dated filename and the list starts empty

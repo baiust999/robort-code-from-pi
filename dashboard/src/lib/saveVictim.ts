@@ -71,6 +71,25 @@ export function useLocalSnapshots(): number {
   );
 }
 
+/** Drops a deleted mark's snapshot from this browser. Files already in Downloads stay. */
+export async function forgetSnapshot(id: string): Promise<void> {
+  const local = localSnapshots.get(id);
+  if (local) {
+    URL.revokeObjectURL(local.url);
+    localSnapshots.delete(id);
+    version += 1;
+    listeners.forEach((l) => l());
+  }
+  const db = await openDb();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readwrite');
+    tx.objectStore(STORE).delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+  db.close();
+}
+
 export const localSnapshotUrl = (id: string) => localSnapshots.get(id)?.url ?? null;
 
 const value = (v: number | null, unit = '') => (v === null ? 'unknown' : `${v}${unit}`);

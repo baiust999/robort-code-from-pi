@@ -886,6 +886,8 @@ talkLink.audioSender.track ───── (polled 250 ms) ──┴─► Audio
 | Corrupt line in `victims.jsonl` | JSON parse error on read | Line skipped and logged (`VICTIM_LOG_BAD_LINE`); other marks load |
 | Browser blocks automatic downloads | — | Snapshot is still in IndexedDB; "download photo / details" links shown |
 | Browser site data cleared | — | The browser copy of the snapshots is lost; downloaded files remain |
+| Mark saved by mistake | Operator sees it in the saved message | **delete mark** in that message (or **delete** in the list), after a confirm; P1 removes it and broadcasts `victim_mark_deleted`; the snapshot is removed from IndexedDB (since 2026-10-31); downloaded files remain |
+| Mark deleted from the list or another dashboard while its saved message is shown | Mark no longer in the dashboard's list | Message changes to *Mark deleted.* and its links are hidden, so no link points at a removed mark (2026-10-31) |
 | Video drops while recording | `connected` false | Recording continues; stopped and saved after 15 s down, or at once when the connection is replaced |
 | Browser crash or reload while recording | Unfinished entry in IndexedDB on next load | Listed as *(unfinished)*, complete up to its last chunk or two; **Save to device** downloads it |
 | Browser refuses IndexedDB (private window, quota) | Write fails | Recording continues in memory with a warning; still downloaded on stop |

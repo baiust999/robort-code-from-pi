@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { deleteVictim, startNewMission } from '../lib/api';
 import type { VictimMark } from '../lib/protocol';
-import { downloadVictimPhoto, downloadVictimRecord, localSnapshotUrl, useLocalSnapshots } from '../lib/saveVictim';
+import { downloadVictimPhoto, downloadVictimRecord, forgetSnapshot, localSnapshotUrl, useLocalSnapshots } from '../lib/saveVictim';
 
 /** Every victim marked this mission, newest first. The robot keeps the marks; snapshots live only on the device that took them. */
 export function VictimList(props: {
@@ -24,6 +24,7 @@ export function VictimList(props: {
     try {
       await deleteVictim(controllerKey, mark.id);
       onDeleted(mark.id);
+      forgetSnapshot(mark.id).catch(() => {});
     } catch (err) {
       setError(err instanceof Error ? err.message : 'could not delete');
     } finally {

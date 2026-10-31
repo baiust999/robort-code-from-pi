@@ -142,6 +142,8 @@ function App() {
             controllerKey={controllerKey}
             disabled={controlsDisabled}
             onSaved={addVictimMark}
+            onDeleted={removeVictimMark}
+            marks={victimMarks}
           />
         </main>
 

@@ -1161,6 +1161,10 @@ Mark victim here (controller only):
 │  browser (IndexedDB) and downloaded as victim-<id>.jpg + .txt
 ├─ delete button: DELETE /api/victims/{id} removes one mark; broadcasts
 │  victim_mark_deleted so every dashboard drops it
+├─ "delete mark" in the saved message (2026-10-31): same call, as an
+│  undo right after saving; either delete also removes the snapshot
+│  from the browser's IndexedDB (downloaded files stay); a saved
+│  message whose mark is gone reads "Mark deleted." without links
 └─ "new mission" button (2026-10-30): POST /api/victims/new-mission
    renames victims.jsonl to a dated archive in the same folder and
    broadcasts victims_reset, so marks left from an earlier session

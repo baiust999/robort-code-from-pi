@@ -231,6 +231,27 @@ the feature has not been checked on the physical display (I29). On
 inputs were listed in `/proc/bus/input/devices`), so I29 needs the
 display's touch cable connected first.
 
+**Addendum, 2026-10-31 (deleting a mark from the dashboard).** The saved
+message under **Mark victim here** gained a **delete mark** link, and
+both delete actions now also remove the mark's snapshot from the
+browser's IndexedDB. Only dashboard code changed (`MarkVictimButton.tsx`,
+`VictimList.tsx`, `lib/saveVictim.ts`, `App.tsx`); P1 and its unit tests
+are unchanged, so the suite count stays as above. The dashboard
+type-checked cleanly (`tsc --noEmit`). Functional checks were scripted
+in headless Chromium on the Pi, driven over the DevTools protocol,
+against a separate mock P1 (`MOCK_HARDWARE=1`, port 18080, own data
+folder and controller key, so the live robot's marks were not touched),
+with each step checked against `GET /api/victims`: **17 of 17 checks
+passed**, covering the link appearing after a save, a cancelled confirm
+keeping the mark, deletion from the message and from the list (P1 logged
+4 `VICTIM_MARK` and 4 `VICTIM_DELETE` events), the links and text of the
+message after a list delete, and removal of the snapshot from IndexedDB
+by both actions. With no WebGL in the headless browser the detector did
+not run, and the snapshot for the IndexedDB checks was written into the
+store by the script. The page also received the live camera through P2
+(view only). These checks found Issue 11. Not yet checked on the
+operator laptop or a phone (I30).
+
 **Limitation:** these tests use simulated hardware. They prove the software
 logic, not the real motors, sensors or radio link, which are covered in the
 sections below.
@@ -300,6 +321,7 @@ ending: Newline), or test through the dashboard where noted.
 | I27 | Mark victim | Click **📍 Mark victim here**, type a note, Save; then reload the page; then open a second (observer) dashboard. | Mark in *Victims found* and on the map (faded + without GPS); `victim-<id>.jpg` and `.txt` in Downloads; after reload the mark and its snapshot link are still there; the observer sees the mark but no snapshot and cannot mark; `victims/victims.jsonl` on the Pi has the mark and no image. | | | |
 | I29 | Tap-to-answer question | With the display's touch cable connected and **Robot Display** on: in *Ask a question* type "Are you hurt?" with Yes / No, **Send question**; tap **Yes** on the robot's touchscreen. Repeat with 3 and 4 answers; then send one and click **Clear**; then send one and leave it for 5 minutes. | Question and large buttons fill the robot display; after a tap "Answer sent ✓" for about 2 s, then the question goes and the dashboard shows **Answer: Yes**; 3 answers in one row, 4 in two; Clear removes it at once; unanswered, it goes after 5 minutes and the dashboard shows "No answer (5 min)". Note whether the buttons are easy to read and tap at arm's length. | | | |
 | I28 | Session recording | On the operator laptop with the key: **⏺ Record**; speak with push-to-talk; **📢 Call out**; let someone speak near the robot; walk the robot out of Wi-Fi range for about 5 s and back; **⏹ Stop recording**. Then record again and reload the page midway. | `robot-session-<time>.mp4` in Downloads plays in the laptop's own player and in VLC, shows its full length and can be seeked to near the end, with the video, the robot mic, your voice and the call-out, without gaps and in step; one file despite the short drop; listed under *Recordings on this computer*; after the reload the second is listed as *(unfinished)* and **Save to device** gives a playable file. | | | |
+| I30 | Delete a mark | As controller, mark a victim, then click **delete mark** in the saved message: first **Cancel** the confirm, then confirm. Mark another and delete it with **delete** in *Victims found*, with a second dashboard open. | Cancel keeps the mark; after confirming, the mark leaves the list and map on both dashboards and `victims/victims.jsonl`, the message reads *Mark deleted.* without links, and the browser no longer lists its snapshot; the files in Downloads stay. | | | |
 
 ---
 
@@ -393,6 +415,8 @@ List every failure or unexpected behaviour found during testing.
 | 7 | I29 | The question layer covered the "Rescuer is speaking" badge and the "Tap to turn on sound" button, so a victim answering a question could not see that the operator was talking (headless test, 2026-10-30). | Low | Yes, 2026-10-30 | Both now sit above the question layer; rechecked in the same test. |
 | 8 | I29 | Questions sent from the dashboard never appeared on the physical robot display, although P2 logged them and the kiosk was connected: the kiosk's Chromium was showing a cached copy of the screen page from before the update, which ignores question messages. P2 served `/screen` without `Cache-Control`. | High | Yes, 2026-10-30 | The kiosk cache was cleared, and P2 now sends `/screen` with `Cache-Control: no-cache` (as P1 does for the dashboard HTML), so an update reaches the kiosk on its next load. Recheck with I29. |
 | 9 | I28 | With MP4 recording, a recording cut off by a reload was recovered empty. Chrome's MP4 writer emits data only at key frames: with steady, camera-like video and no key-frame request it wrote nothing until Stop (headless test, 8 s), so a crash would lose the whole recording; WebM wrote every second. | High | Yes, 2026-10-30 | The recorder now asks for a key frame every second (`videoKeyFrameIntervalDuration`); MP4 then wrote every 1-2 s and the recovered recording played. |
+| 10 | I30 | Deleting a mark left its snapshot in the browser's IndexedDB, with no way to remove it short of clearing the site data, so photos of victims built up on the operator's computer. Found by reading the code on 2026-10-31. | Low | Yes, 2026-10-31 | Both delete actions now call `forgetSnapshot()`; the headless check confirmed the store no longer holds the deleted mark's snapshot. Files already in Downloads are not touched. |
+| 11 | I30 | After a mark was deleted from *Victims found*, the message under **Mark victim here** still read "Saved ✓ … Photo kept on this device" (headless test, 2026-10-31); before that change its links stayed too, and a second delete gave an error. | Low | Yes, 2026-10-31 | The message now reads *Mark deleted.* and hides its links once the mark is not in the list; rechecked in the same test. |
 
 ---
 
@@ -402,7 +426,7 @@ List every failure or unexpected behaviour found during testing.
 |---|---|---|---|---|
 | Unit tests | 156 | 156 | 0 | 0 |
 | Hardware | 15 | | | |
-| Integration | 34 | | | |
+| Integration | 35 | | | |
 | Network | 8 | | | |
 | Failure / recovery | 10 | | | |
 | Field test | 1 | | | |

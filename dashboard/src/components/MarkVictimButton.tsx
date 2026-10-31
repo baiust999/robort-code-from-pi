@@ -1,9 +1,9 @@
 import { useState, type FormEvent } from 'react';
-import { postVictim } from '../lib/api';
+import { deleteVictim, postVictim } from '../lib/api';
 import type { VictimMark } from '../lib/protocol';
 import type { PersonBox } from '../hooks/usePersonDetection';
 import { drawPersonBoxes } from '../lib/drawPersonBoxes';
-import { downloadVictimPhoto, downloadVictimRecord, saveVictimToDevice } from '../lib/saveVictim';
+import { downloadVictimPhoto, downloadVictimRecord, forgetSnapshot, saveVictimToDevice } from '../lib/saveVictim';
 
 const NOTE_MAX = 280;
 const JPEG_QUALITY = 0.8;
@@ -41,11 +41,15 @@ export function MarkVictimButton(props: {
   controllerKey: string | null;
   disabled: boolean;
   onSaved: (mark: VictimMark) => void;
+  onDeleted: (id: string) => void;
+  /** The marks the robot still has, so a mark deleted elsewhere loses its links here. */
+  marks: VictimMark[];
 }) {
-  const { videoRef, boxes, bestScore, controllerKey, disabled, onSaved } = props;
+  const { videoRef, boxes, bestScore, controllerKey, disabled, onSaved, onDeleted, marks } = props;
   const [open, setOpen] = useState(false);
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [status, setStatus] = useState<{ ok: boolean; text: string; mark?: VictimMark; photo?: boolean } | null>(null);
   // Taken when the form opens, so the snapshot is what made the operator click.
   const [pending, setPending] = useState<{ snapshot: Blob | null; score: number | null } | null>(null);
@@ -80,6 +84,28 @@ export function MarkVictimButton(props: {
       setSaving(false);
     }
   }
+
+  // Undo for a mark saved by mistake, right where the operator just saved it.
+  async function remove(mark: VictimMark) {
+    const ok = window.confirm(
+      'Delete this mark? It is removed from the robot and this device. Files already in Downloads stay there.',
+    );
+    if (!ok) return;
+    setDeleting(true);
+    try {
+      await deleteVictim(controllerKey, mark.id);
+      onDeleted(mark.id);
+      forgetSnapshot(mark.id).catch(() => {});
+      setStatus({ ok: true, text: 'Mark deleted.' });
+    } catch (err) {
+      setStatus({ ...status!, ok: false, text: err instanceof Error ? err.message : 'could not delete' });
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  // Deleted from the victim list (or another dashboard): its message and links no longer apply.
+  const markGone = status?.mark !== undefined && !marks.some((m) => m.id === status.mark!.id);
 
   return (
     <div className="flex flex-col gap-1 text-sm">
@@ -122,8 +148,8 @@ export function MarkVictimButton(props: {
           {!pending?.snapshot && <span className="w-full text-xs text-amber-300">No video frame: saving without a snapshot.</span>}
         </form>
       )}
-      {status && <span className={`text-xs ${status.ok ? 'text-green-400' : 'text-red-400'}`}>{status.text}</span>}
-      {status?.mark && (
+      {status && <span className={`text-xs ${status.ok ? 'text-green-400' : 'text-red-400'}`}>{markGone ? 'Mark deleted.' : status.text}</span>}
+      {status?.mark && !markGone && (
         <span className="text-xs text-white/60">
           No files in Downloads? Click:{' '}
           {status.photo && (
@@ -133,6 +159,16 @@ export function MarkVictimButton(props: {
           )}{' '}
           <button type="button" onClick={() => downloadVictimRecord(status.mark!)} className="text-sky-400 hover:underline">
             download details
+          </button>
+          {' · '}
+          <button
+            type="button"
+            disabled={!controllerKey || deleting}
+            onClick={() => void remove(status.mark!)}
+            title={controllerKey ? 'Saved by mistake? Remove this mark' : 'Controller key required to delete'}
+            className="text-red-400 hover:underline disabled:opacity-40"
+          >
+            {deleting ? 'deleting…' : 'delete mark'}
           </button>
         </span>
       )}
