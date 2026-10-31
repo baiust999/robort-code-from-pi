@@ -110,9 +110,10 @@ function App() {
         />
       </ConnectionStatusBar>
       <SignalWarningBanner level={signalLevel} signalDbm={telemetry?.signal_dbm ?? null} />
-      {/* Top row: video and the readings beside it. Bottom row: one map spanning
-          both, filling the rest of the height. The controls span both rows. */}
-      <div className="grid flex-1 grid-cols-[22%_52%_26%] grid-rows-[auto_minmax(0,1fr)] gap-3 overflow-hidden p-3">
+      {/* Three columns: controls + telemetry | video above map | robot communication.
+          The side columns span both rows; the map stays inside the middle column.
+          fr units (not %) so the gaps don't push the last column off screen. */}
+      <div className="grid flex-1 grid-cols-[22fr_52fr_26fr] grid-rows-[auto_minmax(0,1fr)] gap-3 overflow-hidden p-3">
         <aside className="row-span-2 flex flex-col gap-4 overflow-y-auto rounded-lg border border-white/10 bg-white/5 p-3">
           <MissionStateIndicator state={missionState} />
           <DriveControl onDrive={sendMotor} onStop={sendStopAll} disabled={controlsDisabled} />
@@ -124,13 +125,20 @@ function App() {
             disabled={controlsDisabled}
           />
           <EmergencyStop onStop={sendStopAll} disabled={controlsDisabled} />
-          <TalkPanel
-            talk={talk}
-            linkUp={video.connected}
-            isController={!controlsDisabled}
-            videoRef={video.videoRef}
+          <SensorCardGrid telemetry={telemetry} />
+          <GpsStatusCard telemetry={telemetry} />
+          <VictimList
+            marks={victimMarks}
             controllerKey={controllerKey}
+            onDeleted={removeVictimMark}
+            onNewMission={clearVictimMarks}
           />
+          <div>
+            <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-white/50">
+              Alerts
+            </h3>
+            <AlertLog alerts={alerts} />
+          </div>
         </aside>
 
         <main className="flex flex-col gap-2">
@@ -147,24 +155,17 @@ function App() {
           />
         </main>
 
-        <aside className="flex flex-col gap-3 overflow-y-auto rounded-lg border border-white/10 bg-white/5 p-3">
-          <SensorCardGrid telemetry={telemetry} />
-          <GpsStatusCard telemetry={telemetry} />
-          <VictimList
-            marks={victimMarks}
+        <aside className="row-span-2 flex flex-col gap-3 overflow-y-auto rounded-lg border border-white/10 bg-white/5 p-3">
+          <TalkPanel
+            talk={talk}
+            linkUp={video.connected}
+            isController={!controlsDisabled}
+            videoRef={video.videoRef}
             controllerKey={controllerKey}
-            onDeleted={removeVictimMark}
-            onNewMission={clearVictimMarks}
           />
-          <div className="flex-1">
-            <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-white/50">
-              Alerts
-            </h3>
-            <AlertLog alerts={alerts} />
-          </div>
         </aside>
 
-        <div className="col-span-2 min-h-0 overflow-hidden rounded-lg border border-white/10">
+        <div className="col-start-2 min-h-0 overflow-hidden rounded-lg border border-white/10">
           <MapPanel telemetry={telemetry} victims={victimMarks} />
         </div>
       </div>

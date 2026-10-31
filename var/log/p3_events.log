@@ -105,3 +105,8 @@
 [2026-10-31T14:07:13.610+00:00][P3][INFO][PROC_SPAWN][process started]{name=P2 pid=928 cmd="/home/pi/robot/venv/bin/python -m p2_media.main"}
 [2026-10-31T14:07:14.615+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P1 misses=1}
 [2026-10-31T14:07:14.616+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P2 misses=1}
+[2026-10-31T19:01:15.256+00:00][P3][INFO][P3_START][watchdog starting]{enable_overlay=False}
+[2026-10-31T19:01:15.273+00:00][P3][INFO][PROC_SPAWN][process started]{name=P1 pid=999 cmd="/home/pi/robot/venv/bin/python -m p1_control.main"}
+[2026-10-31T19:01:15.275+00:00][P3][INFO][PROC_SPAWN][process started]{name=P2 pid=1000 cmd="/home/pi/robot/venv/bin/python -m p2_media.main"}
+[2026-10-31T19:01:16.280+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P1 misses=1}
+[2026-10-31T19:01:16.280+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P2 misses=1}
