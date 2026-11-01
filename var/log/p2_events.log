@@ -1,2 +1,13 @@
 [2026-11-01T13:37:43.001+00:00][P2][INFO][DISPLAY_MODE][robot display switched to vnc]{source=local:127.0.0.1:kiosk}
 [2026-11-01T13:38:13.916+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=closed}
+[2026-11-01T14:24:48.475+00:00][P2][INFO][P2_START][media server starting]{mock=False port=8443}
+[2026-11-01T14:25:00.874+00:00][P2][INFO][SCREEN_OFFER][robot screen connected]
+[2026-11-01T14:25:00.877+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=connecting}
+[2026-11-01T14:25:01.007+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=connected}
+[2026-11-01T14:29:43.990+00:00][P2][INFO][DISPLAY_MODE][robot display switched to vnc]{source=local:127.0.0.1:kiosk}
+[2026-11-01T14:29:56.808+00:00][P2][INFO][P2_START][media server starting]{mock=False port=8443}
+[2026-11-01T14:30:08.350+00:00][P2][INFO][SCREEN_OFFER][robot screen connected]
+[2026-11-01T14:30:08.355+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=connecting}
+[2026-11-01T14:30:08.496+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=connected}
+[2026-11-01T16:00:15.604+00:00][P2][INFO][DISPLAY_MODE][robot display switched to vnc]{source=local:127.0.0.1:kiosk}
+[2026-11-01T16:00:47.404+00:00][P2][INFO][SCREEN_STATE][robot screen connection changed]{state=closed}
