@@ -1,0 +1,40 @@
+# Python virtual environments
+venv/
+.venv/
+pi/.venv/
+
+# Python bytecode / caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# Node / dashboard build output (also covered by dashboard/.gitignore)
+node_modules/
+dist/
+
+# Runtime state (lock/pid files, FIFOs)
+var/run/
+pi/var/run/
+*.pid
+.lgd-nfy*
+
+# Local Claude Code settings
+.claude/settings.local.json
+
+# Editors / OS
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# Secrets
+.env
+*.pem
+*.key
