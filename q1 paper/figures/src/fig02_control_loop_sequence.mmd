@@ -1,0 +1,24 @@
+sequenceDiagram
+  participant O as Operator
+  participant D as Dashboard
+  participant P as P1
+  participant A as Arduino
+  participant M as Motors
+  O->>D: hold drive key
+  D->>P: motion command, direction, speed, sequence no.
+  Note over P: controller role, clamp 0-180, sequence check
+  P->>A: F120
+  Note over A: 4-stage check, dead-man re-armed
+  A->>M: ramp to 120
+  A-->>P: ACK F
+  loop every 500 ms while held
+    D->>P: heartbeat
+    P->>A: H
+  end
+  A-->>P: telemetry frame, every 500 ms
+  P-->>D: snapshot, every 200 ms
+  Note over D: mission state DRIVING
+  O->>D: release key
+  D->>P: stop
+  P->>A: S
+  A->>M: ramp to 0

@@ -1,0 +1,8 @@
+flowchart LR
+  RX["Bytes"] --> S1["1 Framing: newline, max 31 chars"]
+  S1 --> S2["2 Syntax: known opcode, digits only"]
+  S2 --> S3["3 Range: speed 0-255, angle 0-180"]
+  S3 --> DM["Re-arm dead-man"]
+  DM --> S4["4 State: motion only in READY or ACTIVE"]
+  S4 --> EX["Execute and ACK"]
+  S1 & S2 & S3 & S4 -. fail .-> NK["NACK with reason"]

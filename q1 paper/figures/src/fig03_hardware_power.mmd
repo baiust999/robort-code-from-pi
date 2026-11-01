@@ -1,0 +1,34 @@
+flowchart LR
+  subgraph PWR["Power distribution"]
+    BAT["4S battery<br/>+ 40 A BMS"]
+    B8["Buck 8 V"]
+    B5["Buck 5 V"]
+    PB["USB power bank"]
+    BAT ==> B8
+    BAT ==> B5
+  end
+
+  PI["Raspberry Pi 4"]
+  UNO["Arduino UNO"]
+  GPS["NEO-6M GPS"]
+  CAM["USB webcam + mic"]
+  SCR["Display + speaker"]
+  DRV["2 x BTS7960"]
+  SV["Pan and tilt servos"]
+  SEN["HC-SR04, DHT11, MQ-136"]
+  MOT["4 x DC motors"]
+
+  PB == "5 V, USB-C" ==> PI
+  B8 == "8 V, barrel jack" ==> UNO
+  BAT == "motor supply" ==> DRV
+  B5 == "5 V" ==> SV
+  UNO == "5 V, GND" ==> SEN
+  DRV ==> MOT
+
+  PI <-- "USB serial 115200 baud" --> UNO
+  PI -- "UART 9600 baud, position in" --> GPS
+  PI -- "USB, video and audio in" --> CAM
+  PI -- "HDMI, 3.5 mm out" --> SCR
+  UNO -- "PWM, enable out" --> DRV
+  UNO -- "servo pulses out" --> SV
+  UNO <-- "trigger out, readings in" --> SEN

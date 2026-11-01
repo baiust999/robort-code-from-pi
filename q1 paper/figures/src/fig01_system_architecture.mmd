@@ -1,0 +1,19 @@
+flowchart TB
+  D["Operator dashboard"]
+  W["Wi-Fi router"]
+  G["GPS receiver"]
+  P3["P3 Watchdog"]
+  C["USB webcam + mic"]
+  P1["P1 Control"]
+  P2["P2 Media"]
+  A["Arduino UNO"]
+  K["Robot Screen"]
+  D <--> W
+  W <-- "WebSocket: control, telemetry" --> P1
+  W <-- "WebRTC: video, audio, talk" --> P2
+  P3 -.-> P1
+  P3 -.-> P2
+  G -- "UART 9600 baud" --> P1
+  C --> P2
+  P1 <-- "USB serial 115200 baud" --> A
+  P2 -- "WebRTC, localhost" --> K

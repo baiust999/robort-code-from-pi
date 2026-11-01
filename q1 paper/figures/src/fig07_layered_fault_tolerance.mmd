@@ -1,0 +1,8 @@
+flowchart TB
+  L5["Dashboard: reconnect 1-30 s, 60 s replay, mission state"]
+  L4["systemd: restarts P3 after 5 s"]
+  L3["P3: respawns P1 and P2, health checks"]
+  L2["P1: lock, command check, stop on disconnect"]
+  L1["Firmware: validation, dead-man 2000 ms"]
+  M["Motors stopped"]
+  L5 --> L4 --> L3 --> L2 --> L1 --> M

@@ -1,0 +1,9 @@
+stateDiagram-v2
+  [*] --> BOOT
+  BOOT --> READY: outputs safe, drivers enabled
+  READY --> ACTIVE: valid F, R, L or G
+  ACTIVE --> READY: S
+  READY --> PANIC: dead-man expiry
+  ACTIVE --> PANIC: dead-man expiry
+  PANIC --> READY: commands resume
+  ESTOP --> READY: S

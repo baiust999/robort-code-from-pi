@@ -1,0 +1,12 @@
+sequenceDiagram
+  participant P as P1
+  participant A as Arduino
+  participant M as Motors
+  P->>A: last command at t0
+  Note over A: no valid command for 2000 ms
+  A->>M: PWM 0, drivers disabled
+  A-->>P: PANIC (dead-man)
+  P->>A: H (heartbeat)
+  Note over A: timer re-armed
+  A->>M: drivers enabled, mode READY
+  A-->>P: event: dead-man cleared

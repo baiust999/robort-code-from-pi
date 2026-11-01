@@ -1,0 +1,19 @@
+sequenceDiagram
+  participant D as Dashboard
+  participant P as P1
+  participant A as Arduino
+  Note over D,P: Wi-Fi link lost
+  Note over A: no command for 2000 ms
+  A->>A: PWM 0, drivers disabled, PANIC
+  Note over D: no telemetry for 3000 ms or socket closed: STOP
+  Note over P: socket closes: send S, free controller slot
+  P->>A: S
+  Note over D,P: link restored, reconnect after 1, 2, 4 ... 30 s
+  D->>P: hello with key
+  P-->>D: controller
+  D->>P: resume from last timestamp
+  P-->>D: buffered snapshots (up to 60 s) and gap
+  D->>P: heartbeat
+  P->>A: H
+  Note over A: fault cleared, drivers enabled, READY
+  P-->>D: snapshot: mission state READY

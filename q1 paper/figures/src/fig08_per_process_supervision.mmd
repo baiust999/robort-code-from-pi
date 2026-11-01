@@ -1,0 +1,7 @@
+stateDiagram-v2
+  [*] --> MONITORING: spawn
+  MONITORING --> COOLDOWN: exit seen, polled every 1 s
+  MONITORING --> COOLDOWN: 3 missed health checks, then kill
+  COOLDOWN --> MONITORING: respawn after 10 s
+  MONITORING --> STOPPED: shutdown
+  COOLDOWN --> STOPPED: shutdown

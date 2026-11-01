@@ -1,0 +1,8 @@
+flowchart LR
+  CAM["Webcam 640x480, 10 fps"] --> SH["Shared capture, one device open"]
+  MIC["Mic 48 kHz"] --> SH
+  SH --> SES["Per-session tracks"]
+  SES --> D["Dashboard"]
+  D -- "mic, camera, image or screen, text, voice message" --> HUB["Screen hub, floor control"]
+  HUB --> ST["Screen tracks"]
+  ST -- "localhost" --> K["Robot Screen"]
