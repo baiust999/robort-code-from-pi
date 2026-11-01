@@ -81,6 +81,7 @@ After drafting, run the relevant checks:
 - Conclusions do not claim more than the evidence supports.
 - Limitations and pending tests remain visible.
 - Cross-references, numbering, units, and terminology are consistent.
+- The anti-AI scan (see **Anti-AI style rules**) finds no unjustified banned words or patterns.
 
 ## Research integrity rules
 
@@ -170,6 +171,49 @@ Answer the research objectives using verified findings only. Separate demonstrat
 - Preserve author meaning while improving clarity and logic.
 - Use ASCII-only text in the project manuscript folder when the project explicitly requires it. Keep symbols in LaTeX form if needed.
 
+## Anti-AI style rules
+
+Text must read as if an experienced engineer wrote it by hand. These rules are mandatory for every draft and revision.
+
+### Banned words (replace with a plain, specific word or delete)
+
+delve, crucial, pivotal, paramount, vital, robust (unless a robustness test is reported), seamless/seamlessly, leverage (as a verb), utilize (use "use"; "CPU utilization" is fine), harness (as a verb; a test or wiring harness is fine), foster, bolster, underscore, showcase, elevate (as a verb), empower, unlock, streamline, revolutionize, cutting-edge, state-of-the-art (unless benchmarked), groundbreaking, game-changer, innovative, comprehensive, holistic, multifaceted, intricate, nuanced, meticulous/meticulously, tapestry, landscape, realm, paradigm (unless technical), synergy, testament, beacon, journey, navigate (unless robot navigation), ever-evolving, rapidly evolving, plethora, myriad, notably, importantly, essentially, ultimately, arguably, remarkably, Furthermore/Moreover/Additionally at sentence start (max one per section; prefer no connector or a specific one such as "Because" or "In contrast").
+
+### Banned phrases and patterns
+
+- Openers: "In today's ...", "In the era of ...", "In recent years, there has been growing interest ...", "With the advent of ...".
+- Filler: "It is worth noting/mentioning that", "It is important to note that", "plays a crucial/vital role in", "a wide range of", "in order to" (use "to"), "due to the fact that" (use "because"), "serves as a" (use "is").
+- Summary tails: paragraph-ending sentences such as "This highlights/underscores/demonstrates the importance of ...", "Overall, ...", "In summary, ..." (except in the Conclusion).
+- Hollow framing: "not only X but also Y", "X is not just Y, it is Z", "whether X or Y", rhetorical questions.
+- Reflexive triplets: three adjectives or three parallel clauses in a row ("fast, reliable, and scalable"). Use only the items the evidence supports.
+- Vague attribution: "studies show", "researchers have found", "experts agree" without a citation.
+- Em-dashes for asides: use commas, parentheses, or a new sentence. At most one dash pair per page.
+- Bold or bullet lists inside body prose that should be paragraphs.
+- Hedge stacks: "may potentially", "could possibly", "might perhaps". Use one hedge sized to the evidence.
+
+### Positive habits
+
+- Name the actual thing: "the ESP32 watchdog stops the motors after 500 ms" instead of "the safety mechanism ensures robust operation".
+- Lead with the number or observation, then the interpretation.
+- Vary sentence length naturally; mix short factual sentences with longer explanatory ones. Do not give every paragraph the same length or shape.
+- Use the active voice for what the authors did ("We measured ...") where the journal allows it; the passive voice is acceptable in Methods when the actor is obvious.
+- Keep paragraph transitions logical, not decorative. If the link is obvious, omit the connector.
+- Prefer the author's existing wording when revising; change only what is unclear, wrong, or on the banned lists.
+
+### Anti-AI scan (run before returning any draft)
+
+After drafting, scan the text for the banned words and patterns, for example:
+
+```bash
+grep -niE "delve|crucial|pivotal|paramount|robust|seamless|leverag|utiliz(e|es|ed|ing)\b|harness(es|ed|ing)? (the|its|their)|foster|bolster|underscor|showcas|elevate[sd]? (the|its|our)|empower|unlock|streamlin|revolutioni|cutting-edge|groundbreaking|innovative|comprehensive|holistic|multifaceted|intricate|nuanced|meticulous|tapestry|landscape|realm|synergy|testament|plethora|myriad|notably|it is worth|it is important to note|plays a (crucial|vital|key) role|in today's|ever-evolving|rapidly evolving|not only .* but also|in order to|due to the fact|^(furthermore|moreover|additionally)" FILE
+```
+
+Rewrite every hit unless it is a justified technical use (for example "robust" when a robustness test is reported, or a quoted reference title). Also check by reading for summary tails, triplets, dash asides, and uniform paragraph shape, which grep cannot catch. Report the scan result in the **Quality check** output.
+
+### Limits
+
+These rules improve clarity; they do not guarantee that any AI-detection tool will classify the text as human-written, and they do not replace author editing. Remind the author that the target journal may require disclosure of AI-assisted writing (IEEE requires it in the Acknowledgments), and never suggest hiding AI use.
+
 ## Output format
 
 When asked to write a section, return:
@@ -177,7 +221,7 @@ When asked to write a section, return:
 1. **Draft** — publication-style prose with citation placeholders only where necessary.
 2. **Evidence notes** — claims that are supported, provisional, or pending.
 3. **Author actions** — exact missing measurements, source files, or decisions required.
-4. **Quality check** — concise list of any unresolved technical or integrity issues.
+4. **Quality check** — concise list of any unresolved technical or integrity issues, plus the anti-AI scan result (hits found and how each was fixed or justified).
 
 When asked to review a section, return:
 
@@ -185,7 +229,7 @@ When asked to review a section, return:
 2. Technical accuracy and reproducibility issues
 3. Evidence and citation issues
 4. Structure and argument issues
-5. Language and style issues
+5. Language and style issues, including every anti-AI rule violation found
 6. Prioritized corrections
 7. A revised version only when requested or clearly useful
 
