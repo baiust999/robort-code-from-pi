@@ -6,7 +6,7 @@ Chinmoy Sarkar, Sadman Adib, Sadia Sultana
 
 ## Abstract
 
-Rescue robots are usually teleoperated over radio links that fail, and low-cost platforms rarely report how their stop behaviour or victim communication performs on their own hardware. We present a teleoperated rescue robot built from commodity parts and evaluate three of its properties. An Arduino UNO runs the motor firmware, and a Raspberry Pi 4 runs three isolated processes for control, two-way WebRTC audio and video, and supervision, on a local Wi-Fi network with no Internet uplink. A dead-man timer in the firmware removes motor drive when valid commands stop arriving, independently of the Pi and the link. Timed on the control process's event log, drive was removed within 2042 ms of the last command in 30 of 30 trials (mean 2022.5 ms), below an analytical bound of about 2060 ms. The watchdog restored service with a new process identifier in 30 of 30 SIGKILL trials (95% Wilson lower bound 88.6%), with mean recovery times of 12.8 to 16.0 s. One operator media session used 62.9% of one core on the media process while the control process stayed below 4%, provided the Pi had an adequate supply; the original power bank under-volted under the same load. The itemized parts cost about USD 310 (37,158 BDT). The stop figure is the time at which drive is removed, not a wheel-stop time or a stopping distance. Control latency over Wi-Fi, media delay and quality, an end-to-end field trial and an operator usability study have not yet been measured.
+Rescue robots are usually teleoperated over radio links that fail, and low-cost platforms rarely report how their stop behaviour or victim communication performs on their own hardware. We present a teleoperated rescue robot built from commodity parts and evaluate three of its properties. An Arduino UNO runs the motor firmware, and a Raspberry Pi 4 runs three isolated processes for control, two-way WebRTC audio and video, and supervision, on a local Wi-Fi network with no Internet uplink. A dead-man timer in the firmware removes motor drive when valid commands stop arriving, independently of the Pi and the link. Timed on the control process's event log, drive was removed within 2042 ms of the last command in 30 of 30 trials (mean 2022.5 ms), below an analytical bound of about 2060 ms. The watchdog restored service with a new process identifier in 30 of 30 SIGKILL trials (95% Wilson lower bound 88.6%), with mean recovery times of 12.8 to 16.0 s. One operator media session used 62.9% of one core on the media process while the control process stayed below 4%, provided the Pi had an adequate supply; the original power bank under-volted under the same load. The itemized parts cost about USD 310 (37,158 BDT). The stop figure is the time at which drive is removed, not a wheel-stop time or a stopping distance. Control latency over Wi-Fi, media delay and quality, a field trial and control-media isolation are not yet measured; usability is future work.
 
 ## Index Terms
 
@@ -48,7 +48,7 @@ The contributions are:
 
 Every figure in Section V carries an evidence class (measured, calculated, simulated, software test or pending), and hand-entered data were cross-checked against the robot's own machine logs before use; three of the four hand-entered data sets (stopping distance, ultrasonic range and the temperature-error figures) failed that check and support no claim.
 
-The claims are limited. All results come from one robot, one operator and one access point, indoors or in an open outdoor area. The stop time in contribution 1 is the time at which drive is removed, not the time the wheels stop and not a stopping distance. Control latency over Wi-Fi, media delay and quality, the end-to-end rescue run and the usability study were not measured, and the ablations that would isolate what each mechanism contributes were not run. The firmware stop behaves like a category-0 stop in IEC 60204-1 [14] but is not a safety-rated implementation, and no compliance is claimed.
+The claims are limited. All results come from one robot, one operator and one access point, indoors or in an open outdoor area. The stop time in contribution 1 is the time at which drive is removed, not the time the wheels stop and not a stopping distance. Control latency over Wi-Fi, media delay and quality, the end-to-end rescue run and the test of whether a media-process stall can delay control were not measured; each has a pass criterion fixed in advance (Table XVII). No usability study was run. The firmware stop behaves like a category-0 stop in IEC 60204-1 [14] but is not a safety-rated implementation, and no compliance is claimed.
 
 Section II reviews related work. Section III describes the system from the firmware upward, Section IV the experimental setup, and Section V the results. Section VI discusses them with their limitations and threats to validity, Section VII sets out future work, and Section VIII concludes.
 
@@ -331,26 +331,27 @@ All experiments ran on the robot as built (Table III) with hardware emulation di
 
 ### B. Experiments and Achieved Design
 
-Table VIII lists the fifteen planned experiments (E1-E15) with the design actually achieved. Several experiments could not be run as planned; Section V reports only what was achieved, and Table XVII lists what is pending.
+Table VIII lists the fifteen planned experiments (E1-E15) with the design actually achieved. Several experiments could not be run as planned; Section V reports only what was achieved, and Table XVII lists what is pending, with the claim each pending experiment tests and its pass criterion. The criteria were fixed before any of those data were collected and are not changed after the data are seen.
 
 **TABLE VIII.** Experiment matrix: planned and achieved design. Tools are in `tools/eval/` of the code repository.
 
 | # | Experiment | Planned | Achieved | Metric |
 |---|---|---|---|---|
 | E1 | Control-plane latency (on the Pi, loopback) | 30 trials per probe | 2 jittered sessions x 30 per probe, plus 1 phase-locked session | Command to telemetry confirmation (ms); dead-man interval from P1's event log |
-| E2 | True control latency, 240 fps video | 30 | Not run | Key press to wheel motion (ms) |
-| E3 | Emergency-stop distance | 20 per speed x 3 | 23 hand-entered rows; contradicted by logs | Distance (cm) |
-| E4 | Dead-man wheel-stop time, 240 fps video | 20 | Not run | Last command to wheels at rest (s) |
-| E5 | Media delay and quality | 20 per condition | Not run | Glass-to-glass and audio delay (ms), frame rate, loss |
+| E2 | True control latency, 240 fps video | 30, same camera set-up as E4 | Not run | Key press to wheel motion (ms) |
+| E3 | Emergency-stop distance | 20 per speed x 3; repeat filmed at 240 fps, each stop logged by P1 | 23 hand-entered rows; contradicted by logs; repeat not run | Distance (cm), stop time (s) |
+| E4 | Dead-man wheel-stop time, 240 fps video | 20 at PWM 180, on the floor | Not run | Last command to wheels at rest (s) |
+| E5 | Media delay and quality | 20 per condition, 3 conditions | Not run | Glass-to-glass and audio delay (ms), frame rate, loss |
 | E6 | Wi-Fi range | Outward to link failure, with and without obstacles | 16 line-of-sight stations, 5-250 m, one burst each; no failure reached; no obstacles | ICMP loss, RTT, signal level; operator judgement |
 | E7 | Fault injection and recovery | 10 per target | 30 automated SIGKILL trials (3 targets); manual faults F6, F7 | Detection and recovery time, PID change |
 | E8 | Resource use | 4 conditions x 30 min | 6 conditions of 3-30 min at 1 Hz | CPU, memory, system-on-chip (SoC) temperature, throttle flags |
 | E9 | GPS static precision | 30 min static | 129.1 min archived static window | Radial scatter about the centroid (m) |
-| E10 | Ultrasonic accuracy | 5 distances x 10 | 50 hand-entered rows; contradicted by logs | Reading error (cm) |
+| E10 | Ultrasonic accuracy | 5 distances x 10, readings from the telemetry log | 50 hand-entered rows; contradicted by logs; repeat not run | Reading error (cm) |
 | E11 | DHT11 accuracy | 5 set-points | 1 set-point, 5 readings | Sensor minus reference |
 | E12 | Gas sensor response | Qualitative | 5 puffs, one session | Peak counts, trip time (s) |
-| E13 | Field trial with role-played victim | 5-10 runs | Not run | Time to victim, collisions, two-way success |
-| E14 | Operator usability (System Usability Scale, SUS) | 8-12 operators | Not run | SUS score, task time |
+| E13 | Field trial with role-played victim | 10 runs, fixed course and success rule | Not run | Run success, time to victim, collisions, two-way exchange |
+| E14 | Operator usability (System Usability Scale, SUS) | Deferred to future work | Not part of this evaluation | SUS score, task time |
+| A3 | Media isolation (control latency with media off, on, and P2 frozen) | 3 conditions x 30 | Not run | Confirmed commands; motor-stop upper bound (ms) |
 | E15 | Cost | Bill of materials | Authors' itemized receipts (BDT) | Total cost |
 
 ### C. Evidence Classes, Validity and Data Provenance
@@ -367,11 +368,11 @@ E1 needs one further note. The latency probe waits for telemetry to confirm each
 
 ### E. Baselines
 
-Three ablations were planned: firmware dead-man disabled, watchdog disabled, and control and media merged into one process. None was run, so the paper claims no measured benefit for the dead-man, the watchdog or the process split beyond the with-feature measurements. A fourth ablation, Opus at 16 kbit/s instead of 32 kbit/s, was run for processor load only and is confounded (Section V-D). The design constants of Section III (the 2000 ms window, the 3000 ms telemetry timeout and the recovery model) serve as specification targets. The literature platforms of Table I are compared by their published descriptions only.
+Two planned ablations, firmware dead-man disabled and watchdog disabled, were withdrawn before being run: without the timer nothing removes drive when commands stop, and without the supervisor nothing restarts a killed process, so their outcome follows from the design. The paper therefore reports the with-feature behaviour of both mechanisms and claims no measured benefit over a system without them. The third, a merged control-and-media process, is replaced by a direct test on the robot as built (A3): the E1 motor probe is run 30 times with no media session, with one operator media session, and with P2 suspended by SIGSTOP in 15 s windows, short of the 35 s health-check restart. A3 is pending (Table XVII); it can show whether the split isolates control from media on this robot, not how a merged design would behave. A fourth ablation, Opus at 16 kbit/s instead of 32 kbit/s, was run for processor load only and is confounded (Section V-D). The design constants of Section III (the 2000 ms window, the 3000 ms telemetry timeout and the recovery model) serve as specification targets. The literature platforms of Table I are compared by their published descriptions only.
 
 ### F. Human Subjects
 
-No human-subject data have been collected. The field trial (E13) and the usability study (E14) involve a role-played victim and volunteer operators and will be run under informed consent with anonymous participant numbers. [AUTHOR INPUT REQUIRED: ethics-committee decision or institutional waiver, with reference number and date, before E13 or E14 is run and before submission.]
+No human-subject data have been collected. The field trial (E13) involves an author as operator and a second person who role-plays the victim, and will be run under informed consent with anonymous participant numbers. The usability study (E14) was removed from this evaluation before any participant was recruited, because a SUS interval from the 8 to 12 operators planned would be too wide to support a usability claim; it is left to future work. [AUTHOR INPUT REQUIRED: ethics-committee decision or institutional waiver, with reference number and date, before E13 is run and before submission.]
 
 ## V. RESULTS
 
@@ -508,21 +509,23 @@ The itemized parts sum to 37,158 BDT, about USD 310 at an indicative 1 USD = 120
 
 ### H. Experiments Without Data
 
-**TABLE XVII.** Planned measurements with no data. Each has a protocol in the repository.
+**TABLE XVII.** Planned measurements with no data, the claim each tests and its pass criterion, fixed before data collection. Limits marked "adopted" were chosen by the authors and are not properties of the robot or requirements of a standard. Each has a protocol in the repository. [AUTHOR DECISION: confirm the adopted limits before the first trial.]
 
-| Item | What is missing | Status |
-|---|---|---|
-| E2 | True control latency over Wi-Fi, key press to wheel motion at 240 fps | [PENDING MEASUREMENT] |
-| E4 | Wheel-stop time after a dead-man trip, at 240 fps | [PENDING MEASUREMENT] |
-| E3 | Stopping distance, repeated with each stop logged by P1 and filmed | [PENDING MEASUREMENT]; current data [VERIFICATION REQUIRED] |
-| E5 | Glass-to-glass video delay, audio delay each way, frame rate and packet loss, for 1 and 2 viewers and at 20 m | [PENDING MEASUREMENT] |
-| E6 | Usable-range upper bound, obstructed links, repeated bursts at a fixed station | [PENDING MEASUREMENT] |
-| E9 | Static precision at six-decimal resolution against a surveyed point; controlled track test | [PENDING MEASUREMENT] |
-| E10, E11 | Ultrasonic accuracy; DHT11 at further set-points against a reference of stated accuracy | [PENDING MEASUREMENT] |
-| E13 | Field trial with a role-played victim, 5-10 runs | [PENDING MEASUREMENT] |
-| E14 | Usability study with 8-12 operators (System Usability Scale [67]) | [PENDING MEASUREMENT] |
-| Ablations | Dead-man disabled, watchdog disabled, single process | [PENDING MEASUREMENT] |
-| F9 | GPS loss and recovery with a single reader on the port | [PENDING MEASUREMENT] |
+| Item | What is missing | Claim tested | Pass criterion |
+|---|---|---|---|
+| E3 | Stopping distance, repeated with each stop logged by P1 and filmed at 240 fps | Operator stop within the calculated ramp bound (RQ1) | At PWM 180, <= 10 cm in at least 19 of 20 trials (simulated 2.4-8.7 cm plus reading resolution; adopted). Current data [VERIFICATION REQUIRED] |
+| E10 | Ultrasonic accuracy, readings taken from the telemetry log | Range reading usable to judge clearance | Median absolute error <= 5 cm at 20, 50, 100, 150 and 200 cm (adopted) |
+| E5 | Glass-to-glass video delay, audio delay each way, frame rate and packet loss, for 1 and 2 viewers and at 20 m | Two-way audio and video with the victim (C3, RQ4) | One viewer: median video delay <= 500 ms and median audio delay <= 400 ms each way (adopted) |
+| E4 | Wheel-stop time after a dead-man trip, at 240 fps, on the floor at PWM 180 | Firmware stops the moving robot (C1, RQ1) | At rest within 2.5 s of the last command, PANIC logged, 20 of 20 (2060 ms bound plus 440 ms coast allowance; adopted) |
+| E2 | True control latency over Wi-Fi, key press to wheel motion at 240 fps | None (descriptive) | - |
+| A3 | Control latency with media off, media on, and P2 frozen by SIGSTOP | A media stall does not delay or drop control (C2) | With media on and with P2 frozen: 30 of 30 commands confirmed and motor-stop median within 50 ms of media off (adopted; detects blocking, not small shifts) |
+| E13 | Field trial, 10 runs, corridor course of about 30 m, victim at one of three hidden positions drawn at random | End-to-end find-and-talk with a hidden person (C3, RQ4) | Run passes if the victim is found within 300 s, three scripted answers and one instruction pass correctly both ways, and nobody touches the robot; claim supported if at least 9 of 10 pass (adopted) |
+| E6 | Usable-range upper bound, obstructed links, repeated bursts at a fixed station | Usable range | Usable-range criterion of Section V-E, fixed before the next session |
+| E9 | Static precision at six-decimal resolution against a surveyed point; controlled track test | GPS precision | Descriptive |
+| E11 | DHT11 at further set-points against a reference of stated accuracy | Sensor accuracy | Descriptive |
+| F9 | GPS loss and recovery with a single reader on the port | GPS recovery | Descriptive |
+
+The order of the remaining work follows from the evidence: the repeats of E3 and E10 come first, because tables the robot's own logs contradict must be resolved before new data is added; E5 next, as the only test of the media half of C3; E4 and E2 together on one camera set-up; A3 in any session; and E13 last, after ethics approval.
 
 ## VI. DISCUSSION
 
@@ -556,8 +559,8 @@ Four lessons came from the build and the audit of the data. First, a test count 
 ### C. Limitations
 
 1. The wheel-stop time (E4) and stopping distance (E3) are not established; the paper claims a bounded time at which drive is removed, not a bounded stopping distance.
-2. Control latency over Wi-Fi (E2), media delay and quality (E5), the field trial (E13) and the usability study (E14) have no data. No claim is made about operator performance, victim experience or rescue effectiveness, and no human-subject data exist.
-3. The ablations were not run, so no measured benefit over a baseline is claimed for the dead-man, the watchdog or the process split.
+2. Control latency over Wi-Fi (E2), media delay and quality (E5) and the field trial (E13) have no data, and no usability study was run (E14, left to future work). No claim is made about operator performance, victim experience or rescue effectiveness, and no human-subject data exist.
+3. No measured benefit over a baseline is claimed for the dead-man or the watchdog: the ablations that would remove them were withdrawn because their outcome follows from the design (Section IV-E). The media-isolation test of the process split (A3) has not been run.
 4. Fault coverage is SIGKILL crashes plus single manual injections; hangs and camera and microphone loss were not injected. The range sweep is line-of-sight, partial and without a failure point, on one access point.
 5. Sensor evidence is weak: ultrasonic accuracy and the DHT11 error columns support no claim, the DHT11 was checked at one set-point, and the gas sensor reports uncalibrated counts.
 6. The control key travels over plain HTTP and WebSocket, there is no TLS on either port, and microphone capture in the operator's browser relies on a manual insecure-origin exception. Security is out of scope beyond a trusted local network.
@@ -578,9 +581,9 @@ Four lessons came from the build and the audit of the data. First, a test count 
 
 Each direction below starts from a limitation in Section VI-C. Any direction that adds automated behaviour keeps the firmware dead-man independent of the new function and re-tests its stop interval after each change.
 
-*Physical and end-to-end measurement.* The first step is to close the pending measurements: wheel-stop time and stopping distance filmed at 240 fps with every stop logged by P1 (E3, E4), key-press-to-wheel latency over Wi-Fi (E2), glass-to-glass video and audio delay with one and two viewers (E5), and the field trial and usability study once ethics approval is in place (E13, E14). The dashboard heartbeat should be moved off throttleable browser timers and its delivered interval logged, since Section V-A showed that the margin of the window depends on it.
+*Physical and end-to-end measurement.* The first step is to close the pending measurements: wheel-stop time and stopping distance filmed at 240 fps with every stop logged by P1 (E3, E4), key-press-to-wheel latency over Wi-Fi (E2), glass-to-glass video and audio delay with one and two viewers (E5), the media-isolation test (A3) and the field trial once ethics approval is in place (E13), each judged against the criterion fixed in Table XVII. A usability study needs more operators than the 8 to 12 first planned, with the target interval width on the mean SUS score [67] fixed before recruitment. The dashboard heartbeat should be moved off throttleable browser timers and its delivered interval logged, since Section V-A showed that the margin of the window depends on it.
 
-*Ablations and fault coverage.* The three planned ablations, together with injected hangs, camera and microphone loss and network faults, would show what each mechanism contributes. P1 should reopen a re-enumerated serial device without a restart, and the fast PANIC notice should be forwarded to the dashboard instead of waiting for the next telemetry frame.
+*Fault coverage.* Injected hangs beyond the A3 freeze, camera and microphone loss and network faults would extend the SIGKILL-only campaign of Section V-C. P1 should reopen a re-enumerated serial device without a restart, and the fast PANIC notice should be forwarded to the dashboard instead of waiting for the next telemetry frame.
 
 *Communication range.* The range sweep should continue to the failure point and add obstructed links, with repeated bursts at fixed stations, a pre-registered usable-range criterion, recorded router position and channel, and a scan of neighbouring networks. Wireless relays between operator and robot have been proposed for SAR [7]; a relay or mesh is outside the present single-cell design.
 

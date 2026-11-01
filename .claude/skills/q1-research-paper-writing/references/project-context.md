@@ -52,8 +52,13 @@ update this file when a fact changes.
   telemetry.
 - [VERIFICATION REQUIRED]: E3 e-stop distances (contradicted by P1 logs),
   E10 ultrasonic (values never appear in telemetry), E11 error columns.
-- [PENDING MEASUREMENT]: E2, E4, E5, E13, E14, E6 completion, ablations,
-  5.2 streaming, 5.3 Wi-Fi range, 5.7 field trial, 5.8 usability/SUS.
+- [PENDING MEASUREMENT]: E2, E4, E5, E13, ablation 3 (media isolation,
+  Table 5.9e), E3 and E10 repeats, E6 completion. Each has a claim and a pass
+  criterion fixed in advance in Section 4 Table 4.2 (q1 Table XVII); never
+  change a criterion after its data is seen.
+- Withdrawn/deferred 2026-11-01: ablations 1 (dead-man off) and 2 (watchdog
+  off) withdrawn (outcome follows from design); E14 usability removed from the
+  evaluation, now future work Section 7.6.4; Section 5.8 is a short deferral.
 - The 5.7 "100-run" aggregate has no per-run data. Do not restore it without
   real field rows.
 - `bench_motor.csv` (60 rows) was collected with the robot on the floor under

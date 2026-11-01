@@ -133,18 +133,20 @@ The itemized parts sum to 37,158 BDT, about USD 310 at an indicative 1 USD = 120
 
 ### H. Experiments Without Data
 
-**TABLE XVII.** Planned measurements with no data. Each has a protocol in the repository.
+**TABLE XVII.** Planned measurements with no data, the claim each tests and its pass criterion, fixed before data collection. Limits marked "adopted" were chosen by the authors and are not properties of the robot or requirements of a standard. Each has a protocol in the repository. [AUTHOR DECISION: confirm the adopted limits before the first trial.]
 
-| Item | What is missing | Status |
-|---|---|---|
-| E2 | True control latency over Wi-Fi, key press to wheel motion at 240 fps | [PENDING MEASUREMENT] |
-| E4 | Wheel-stop time after a dead-man trip, at 240 fps | [PENDING MEASUREMENT] |
-| E3 | Stopping distance, repeated with each stop logged by P1 and filmed | [PENDING MEASUREMENT]; current data [VERIFICATION REQUIRED] |
-| E5 | Glass-to-glass video delay, audio delay each way, frame rate and packet loss, for 1 and 2 viewers and at 20 m | [PENDING MEASUREMENT] |
-| E6 | Usable-range upper bound, obstructed links, repeated bursts at a fixed station | [PENDING MEASUREMENT] |
-| E9 | Static precision at six-decimal resolution against a surveyed point; controlled track test | [PENDING MEASUREMENT] |
-| E10, E11 | Ultrasonic accuracy; DHT11 at further set-points against a reference of stated accuracy | [PENDING MEASUREMENT] |
-| E13 | Field trial with a role-played victim, 5-10 runs | [PENDING MEASUREMENT] |
-| E14 | Usability study with 8-12 operators (System Usability Scale [@brooke1996]) | [PENDING MEASUREMENT] |
-| Ablations | Dead-man disabled, watchdog disabled, single process | [PENDING MEASUREMENT] |
-| F9 | GPS loss and recovery with a single reader on the port | [PENDING MEASUREMENT] |
+| Item | What is missing | Claim tested | Pass criterion |
+|---|---|---|---|
+| E3 | Stopping distance, repeated with each stop logged by P1 and filmed at 240 fps | Operator stop within the calculated ramp bound (RQ1) | At PWM 180, <= 10 cm in at least 19 of 20 trials (simulated 2.4-8.7 cm plus reading resolution; adopted). Current data [VERIFICATION REQUIRED] |
+| E10 | Ultrasonic accuracy, readings taken from the telemetry log | Range reading usable to judge clearance | Median absolute error <= 5 cm at 20, 50, 100, 150 and 200 cm (adopted) |
+| E5 | Glass-to-glass video delay, audio delay each way, frame rate and packet loss, for 1 and 2 viewers and at 20 m | Two-way audio and video with the victim (C3, RQ4) | One viewer: median video delay <= 500 ms and median audio delay <= 400 ms each way (adopted) |
+| E4 | Wheel-stop time after a dead-man trip, at 240 fps, on the floor at PWM 180 | Firmware stops the moving robot (C1, RQ1) | At rest within 2.5 s of the last command, PANIC logged, 20 of 20 (2060 ms bound plus 440 ms coast allowance; adopted) |
+| E2 | True control latency over Wi-Fi, key press to wheel motion at 240 fps | None (descriptive) | - |
+| A3 | Control latency with media off, media on, and P2 frozen by SIGSTOP | A media stall does not delay or drop control (C2) | With media on and with P2 frozen: 30 of 30 commands confirmed and motor-stop median within 50 ms of media off (adopted; detects blocking, not small shifts) |
+| E13 | Field trial, 10 runs, corridor course of about 30 m, victim at one of three hidden positions drawn at random | End-to-end find-and-talk with a hidden person (C3, RQ4) | Run passes if the victim is found within 300 s, three scripted answers and one instruction pass correctly both ways, and nobody touches the robot; claim supported if at least 9 of 10 pass (adopted) |
+| E6 | Usable-range upper bound, obstructed links, repeated bursts at a fixed station | Usable range | Usable-range criterion of Section V-E, fixed before the next session |
+| E9 | Static precision at six-decimal resolution against a surveyed point; controlled track test | GPS precision | Descriptive |
+| E11 | DHT11 at further set-points against a reference of stated accuracy | Sensor accuracy | Descriptive |
+| F9 | GPS loss and recovery with a single reader on the port | GPS recovery | Descriptive |
+
+The order of the remaining work follows from the evidence: the repeats of E3 and E10 come first, because tables the robot's own logs contradict must be resolved before new data is added; E5 next, as the only test of the media half of C3; E4 and E2 together on one camera set-up; A3 in any session; and E13 last, after ethics approval.

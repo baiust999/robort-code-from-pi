@@ -1,12 +1,12 @@
 # 7. Future Work
 
-The eighteen directions below extend the system evaluated in Sections 3-5. Each starts from a limitation stated in Section 3 or measured in Section 5, names a baseline, and fixes its metrics in advance. None is an existing capability of the robot, and none is claimed as novel: whether a direction closes a gap in the literature can only be settled by a dedicated literature review, which Section 2.6 has not performed for these topics. Every direction that adds automated behaviour is bound by one rule: the firmware dead-man stop of Section 3.5.2 stays independent of the new function, keeps its bounded stop time, and is re-tested after each change (Section 7.2.2).
+The nineteen directions below extend the system evaluated in Sections 3-5. Each starts from a limitation stated in Section 3 or measured in Section 5, names a baseline, and fixes its metrics in advance. None is an existing capability of the robot, and none is claimed as novel: whether a direction closes a gap in the literature can only be settled by a dedicated literature review, which Section 2.6 has not performed for these topics. Every direction that adds automated behaviour is bound by one rule: the firmware dead-man stop of Section 3.5.2 stays independent of the new function, keeps its bounded stop time, and is re-tested after each change (Section 7.2.2).
 
 The directions are grouped under six themes (Sections 7.1 to 7.6) and are not equally close to the evidence of this paper. Table 7.1 gives each a priority level.
 
 - **Priority 1** directions extend a limitation that Section 5 demonstrated or left unmeasured, need no new sensing hardware, and have a defined baseline: Sections 7.2.1, 7.2.2, 7.6.1 and 7.6.3.
 - **Priority 2** directions address a demonstrated limitation but need new hardware or algorithms before they can be evaluated: Sections 7.1.1, 7.3.1, 7.3.2, 7.3.3, 7.3.4, 7.4.4 and 7.5.1.
-- **Priority 3** directions are either platform engineering whose value depends on field requirements, or depend on Priority 1 and 2 results: Sections 7.1.2, 7.2.3, 7.4.1, 7.4.2, 7.4.3, 7.5.2 and 7.6.2.
+- **Priority 3** directions are either platform engineering whose value depends on field requirements, or depend on Priority 1 and 2 results: Sections 7.1.2, 7.2.3, 7.4.1, 7.4.2, 7.4.3, 7.5.2, 7.6.2 and 7.6.4.
 
 **Table 7.1.** Future-work directions, the limitation each addresses, and dependencies.
 
@@ -15,7 +15,7 @@ The directions are grouped under six themes (Sections 7.1 to 7.6) and are not eq
 | 7.1.1 | Multi-hop mesh networking | One 802.11n cell; range sweep partial (16 line-of-sight stations, 5 to 250 m, no failure point reached, no obstacle condition) | 3.2, 5.3 | 2 | 7.6.3 |
 | 7.1.2 | Communication-aware mission planning | No route planning; the robot's signal level is logged at 1 Hz with GPS but not mapped, and the warning thresholds are not calibrated | 3.6.2, 3.7.3, 3.10, 5.3 | 3 | 7.1.1, 7.3.1 |
 | 7.2.1 | Cross-layer fault detection and recovery | Supervisor sees process liveness and an HTTP health check only; Arduino removal needs a P1 restart | 3.7, 5.4 | 1 | 7.2.2 |
-| 7.2.2 | Quantitative safety and fault-injection evaluation | SIGKILL only (10 trials per process); hangs, sensor loss and network faults not injected; ablations not run | 4.3, 5.4 | 1 | - |
+| 7.2.2 | Quantitative safety and fault-injection evaluation | SIGKILL only (10 trials per process); hangs, sensor loss and network faults not injected; media-isolation test not run | 4.3, 5.4 | 1 | - |
 | 7.2.3 | Simulation-based validation | Heartbeat-loss model assumes independent loss; the hardware mock differed from the firmware until patched | 5.1a, 5.1b | 3 | 7.2.2 |
 | 7.3.1 | Indoor localization and mapping | GPS is the only position source; encoder-equipped motors are fitted but their outputs are not read; no IMU or mapping | 3.3, 3.10, 5.6.1 | 2 | new sensors |
 | 7.3.2 | Trajectory tracking and visualization | Dashboard draws a GPS polyline only | 3.10 | 2 | 7.3.1 |
@@ -30,6 +30,7 @@ The directions are grouped under six themes (Sections 7.1 to 7.6) and are not eq
 | 7.6.1 | Secure remote control | Plain HTTP and WebSocket; one shared controller key; sequence check optional | 3.2, 3.8 | 1 | 7.2.2 |
 | 7.6.2 | Multi-robot cooperative exploration | Single robot; one controller slot | 3.8 | 3 | 7.1.1, 7.3.1, 7.6.1 |
 | 7.6.3 | Reproducible experimental benchmarking | Small N per experiment; rotating logs; no standard test apparatus | 4.2 (Table 4.1), 5.0 | 1 | - |
+| 7.6.4 | Operator usability study | No usability data; the planned 8 to 12 operator SUS study was deferred | 4.4, 5.8 | 3 | 7.6.3 |
 
 ## 7.1 Communication Resilience
 
@@ -57,9 +58,9 @@ The proposed work adds a supervisor that watches serial health, process health, 
 
 ### 7.2.2 Quantitative Safety and Fault-Injection Evaluation
 
-Section 5.4 injected SIGKILL crashes, 10 trials per process, and single injections of the other faults. Thirty of thirty recoveries give a Wilson lower bound of 88.6% [@wilson1927]; that bound is a statement about bench SIGKILL faults and not a reliability figure. The ablations planned in Section 4.3 (dead-man removed, P3 disabled, control and media merged) have not been run.
+Section 5.4 injected SIGKILL crashes, 10 trials per process, and single injections of the other faults. Thirty of thirty recoveries give a Wilson lower bound of 88.6% [@wilson1927]; that bound is a statement about bench SIGKILL faults and not a reliability figure. The media-isolation test of Section 4.3 (ablation 3) has not been run, and the ablations that would remove the dead-man or P3 were withdrawn because their outcome follows from the design.
 
-The proposed work replaces the single-fault campaign with a fault-injection campaign across the process, serial, network and sensor layers, and runs the ablations, so that each fail-safe claim has a measured effect size against a defined baseline. Process faults extend the SIGKILL crashes to hangs (process alive but unresponsive, injected with SIGSTOP). Serial faults extend the single Arduino unplug to repeated reconnects and to corrupted or truncated frames through a serial fault proxy. Network faults extend the single drop to delay, loss and bandwidth caps (`tc netem`, access-point power-off). Sensor faults cover camera, microphone and GPS loss by device unbind. The ablations remove the dead-man, disable P3, or merge control and media into one process, using build and configuration flags. Metrics for every fault are detection latency, motor-stop response, unintended-motion duration, recovery success with Wilson interval and false-alarm rate. The motor-stop response must be taken at the wheels (E4, 240 fps video), not only from firmware logs, because the log measurements of Section 5.1 establish when the firmware removed drive and not when the wheels stopped. This direction also defines the regression suite that every other direction in this section must pass before any change reaches the robot.
+The proposed work replaces the single-fault campaign with a fault-injection campaign across the process, serial, network and sensor layers, and runs the media-isolation test, so that each fail-safe claim is tested against a defined criterion. Process faults extend the SIGKILL crashes to hangs (process alive but unresponsive, injected with SIGSTOP). Serial faults extend the single Arduino unplug to repeated reconnects and to corrupted or truncated frames through a serial fault proxy. Network faults extend the single drop to delay, loss and bandwidth caps (`tc netem`, access-point power-off). Sensor faults cover camera, microphone and GPS loss by device unbind. A merged control-and-media build, if one is made, would show what the media-isolation test cannot: how a single process behaves under the same media stall. Metrics for every fault are detection latency, motor-stop response, unintended-motion duration, recovery success with Wilson interval and false-alarm rate. The motor-stop response must be taken at the wheels (E4, 240 fps video), not only from firmware logs, because the log measurements of Section 5.1 establish when the firmware removed drive and not when the wheels stopped. This direction also defines the regression suite that every other direction in this section must pass before any change reaches the robot.
 
 ### 7.2.3 Simulation-Based Validation
 
@@ -121,7 +122,7 @@ The robot carries no victim detector. The dashboard runs a general-purpose perso
 
 ## 7.6 Security, Multi-Robot Scale and Reproducibility
 
-Section 7.6.3 underpins every other direction, since no improvement can be claimed without a repeatable baseline. Sections 7.6.1 and 7.6.2 remove the trusted-network and single-robot assumptions.
+Section 7.6.3 underpins every other direction, since no improvement can be claimed without a repeatable baseline. Sections 7.6.1 and 7.6.2 remove the trusted-network and single-robot assumptions, and Section 7.6.4 adds the operator study that this paper did not run.
 
 ### 7.6.1 Secure Remote Control
 
@@ -134,3 +135,7 @@ The system has one robot and one controller slot (Section 3.8). Multi-robot sear
 ### 7.6.3 Reproducible Experimental Benchmarking
 
 Section 5 has small N per experiment, rotating logs and no standard test apparatus, and its data audit found several tables unsupported by the logs. The proposed work publishes the hardware configuration, test procedures, network conditions and raw logs of every experiment, repeats each trial at a stated N, pre-registers pass and fail criteria, and runs the standard test methods [@jacoff2012] where applicable. Results are reported against the baselines named in the other directions of this section, with confidence intervals. This direction underpins all the others, since no other direction can claim an improvement without a repeatable baseline.
+
+### 7.6.4 Operator Usability Study
+
+No usability data exist for the dashboard. A study with 8 to 12 volunteer operators was planned (E14) and removed from this paper before any participant was recruited, because an interval on a mean System Usability Scale (SUS) score [@brooke1996] from so few participants is too wide to support a usability claim (Section 5.8). The proposed study fixes, before recruitment, a target width for the 95% interval on the mean SUS score, chosen with reference to the empirical distribution of SUS scores reported by Bangor et al. [@bangor2008], and recruits the number of operators that width requires. Each operator drives the field-trial course of Section 5.7 after a scripted briefing and one practice run. Metrics are the SUS score, task time, task completion with a Wilson interval [@wilson1927] and error counts, reported against participants' prior experience with remote-controlled vehicles. It requires ethics approval and the repeatable course of Section 7.6.3.

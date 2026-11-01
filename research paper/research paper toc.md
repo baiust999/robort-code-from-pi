@@ -44,7 +44,8 @@
     about USD 320 ESTIMATE); no table, so Table 8.2 is not duplicated
   - Limits paragraph: one robot, operator and access point; drive removal, not
     wheel stop or distance (E3, E4); Wi-Fi latency, media quality, field trial
-    and usability [PENDING MEASUREMENT]; ablations not run; category 0 stop,
+    and media isolation [PENDING MEASUREMENT] with pass criteria fixed in
+    Table 4.2; usability deferred to future work; category 0 stop,
     no compliance claim \cite{iec60204}; points to Section 6.3
   - (unnumbered closing paragraph: organization of the paper)
   - Full text: section1_introduction.md
@@ -211,9 +212,13 @@
     dead-man window, 3000 ms telemetry timeout, 500 ms telemetry cadence
     (Sections 3.5.2, 3.6.2)
   - Validity rule for a trial and discard criteria, stated once
+  - Table 4.2: claim tested, pass criterion and consequence of failure for
+    each remaining experiment (E3 and E10 repeats, E5, E4, E2, ablation 3,
+    E13), fixed before data collection
 - 4.3 Baselines
-  - Internal ablations: dead-man timer removed, P3 watchdog disabled, control
-    and media in one process, alternative audio bitrate
+  - Internal ablations: dead-man removed and P3 disabled withdrawn (outcome
+    follows from the design); media isolation (control latency with media off,
+    on, and P2 frozen); alternative audio bitrate
   - Specification targets from Section 3 as pass/fail thresholds
   - Literature baselines: figures reported by the platforms in the Section 2.6
     comparison \cite{casper2003,liu2013,daun2023,megalingam2022}, taken from
@@ -232,7 +237,7 @@
 - 5.5 Resource Utilization on the Edge Device
 - 5.6 Sensor Accuracy and GPS Track Quality
 - 5.7 Field Trial: End-to-End Rescue Scenario
-- 5.8 Operator Usability Evaluation
+- 5.8 Operator Usability Evaluation (deferred to 7.6.4; no data)
 - 5.9 Cost Analysis and Comparison with Existing Systems
 
 **6. Discussion**
@@ -305,6 +310,7 @@
   - 7.6.1 Secure Remote Control
   - 7.6.2 Multi-Robot Cooperative Exploration
   - 7.6.3 Reproducible Experimental Benchmarking
+  - 7.6.4 Operator Usability Study
 
 **8. Conclusion**
 

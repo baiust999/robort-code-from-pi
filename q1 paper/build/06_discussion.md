@@ -30,8 +30,8 @@ Four lessons came from the build and the audit of the data. First, a test count 
 ### C. Limitations
 
 1. The wheel-stop time (E4) and stopping distance (E3) are not established; the paper claims a bounded time at which drive is removed, not a bounded stopping distance.
-2. Control latency over Wi-Fi (E2), media delay and quality (E5), the field trial (E13) and the usability study (E14) have no data. No claim is made about operator performance, victim experience or rescue effectiveness, and no human-subject data exist.
-3. The ablations were not run, so no measured benefit over a baseline is claimed for the dead-man, the watchdog or the process split.
+2. Control latency over Wi-Fi (E2), media delay and quality (E5) and the field trial (E13) have no data, and no usability study was run (E14, left to future work). No claim is made about operator performance, victim experience or rescue effectiveness, and no human-subject data exist.
+3. No measured benefit over a baseline is claimed for the dead-man or the watchdog: the ablations that would remove them were withdrawn because their outcome follows from the design (Section IV-E). The media-isolation test of the process split (A3) has not been run.
 4. Fault coverage is SIGKILL crashes plus single manual injections; hangs and camera and microphone loss were not injected. The range sweep is line-of-sight, partial and without a failure point, on one access point.
 5. Sensor evidence is weak: ultrasonic accuracy and the DHT11 error columns support no claim, the DHT11 was checked at one set-point, and the gas sensor reports uncalibrated counts.
 6. The control key travels over plain HTTP and WebSocket, there is no TLS on either port, and microphone capture in the operator's browser relies on a manual insecure-origin exception. Security is out of scope beyond a trusted local network.

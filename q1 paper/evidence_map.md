@@ -140,6 +140,6 @@ Conventions
 | Crash or uptime counts from P3 logs | Not reported. Any future count must exclude the deliberate deploy restarts (2026-10-29 to 10-31) and the 2026-10-30 16:04-16:14 UTC test-load kills listed in project memory |
 | `bench_motor.csv` (60 rows) | Run on the floor under a false "wheels elevated" premise; not cited anywhere |
 | Victim-finding aid performance | Implemented, not evaluated (Section III-K) |
-| Stopping distance, wheel-stop time, Wi-Fi latency, media quality, usability | Pending (Table XVII) |
+| Stopping distance, wheel-stop time, Wi-Fi latency, media quality, media isolation (A3), field trial | Pending, each with a pass criterion fixed in advance (Table XVII); usability left to future work |
 | `avi2026review` and its corpus statistics | Not cited (project rule) |
 | OpenAlex hit counts from source Section 2 | Removed; the query results were not saved in the repository, so the counts cannot be traced |

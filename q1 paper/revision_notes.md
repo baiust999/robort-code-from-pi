@@ -97,9 +97,9 @@ Known figure issues, to fix before submission:
 6. E9: static precision at six-decimal resolution against a surveyed point, and a controlled track test.
 7. E10: ultrasonic accuracy (current data [VERIFICATION REQUIRED]).
 8. E11: DHT11 at further set-points against a reference of stated accuracy (current error figures [VERIFICATION REQUIRED]).
-9. E13: field trial with a role-played victim, 5-10 runs.
-10. E14: usability study, 8-12 operators.
-11. Ablations: dead-man disabled, watchdog disabled, single process.
+9. E13: field trial, 10 runs, fixed course and per-run success rule (pass if at least 9 of 10).
+10. E14: removed from this evaluation and left to future work (2026-11-01; see Section 8).
+11. A3: media isolation (control latency with media off, on, and P2 frozen), replacing the merged-process ablation. The dead-man-disabled and watchdog-disabled ablations were withdrawn (2026-11-01).
 12. F9: GPS loss and recovery with a single reader on the port.
 13. Opus 16 kbit/s ablation: a clean rerun with a committed configuration and no P2 restart, plus the audio-quality side.
 
@@ -140,9 +140,25 @@ Residual risks a reviewer may raise:
 
 - n = 10 per fault target and one robot.
 - No end-to-end or human-subject data.
-- No ablation evidence for the process split.
+- No measured isolation of control from media yet (A3 pending).
 - The plain-HTTP control key.
 - The two range sessions that disagree by 17 dB.
 - The C3 contribution is a processor cost only.
 
 These are stated in the paper, not hidden.
+
+## 8. Experiment plan revision, 2026-11-01
+
+Applied to both `research paper/` (Sections 1, 4, 5, 6, 7, the TOC and the master's abstract) and this folder (`build/00`, `01`, `04`-`07`, then `build.py`). No measurement was added or changed.
+
+| Change | Reason |
+|---|---|
+| Table XVII (source Table 4.2) now gives the claim each pending experiment tests and a pass criterion fixed before data collection | An experiment without a stated claim and threshold cannot be judged; fixing it in advance prevents reinterpretation |
+| Ablations 1 (dead-man disabled) and 2 (watchdog disabled) withdrawn | Their outcome follows from the design; ablation 1 also means driving an unstopped robot. With-feature evidence (Table 5.2b, E4, E7) is reported instead, and no without-feature benefit is claimed |
+| Ablation 3 replaced by A3, a media-isolation test on the robot as built (E1 motor probe with media off, on, and P2 SIGSTOP-frozen in 15 s windows) | Tests the question the merged variant was meant to answer without building it; does not show how a merged design behaves |
+| E14 removed and left to future work (source Section 7.6.4 added; Section 5.8 now a short deferral) | 8-12 operators give a SUS interval too wide to support a claim, and the paper makes no usability claim |
+| E13 given a fixed course, random hidden victim positions, a three-part per-run rule and a 9 of 10 claim rule | The old "5-10 runs" protocol had no success rule fixed in advance |
+| Run order stated: E3 and E10 repeats, then E5, then E4 with E2, A3 any time, E13 last | Tables that the logs contradict must be resolved before new data is added |
+| Abstract shortened to stay at or under 250 words | IEEE Access limit |
+
+[AUTHOR DECISION] The limits marked "adopted" in Table XVII (10 cm, 5 cm, 500 ms, 400 ms, 2.5 s, 50 ms, 300 s, 9 of 10) are the authors' choices. Confirm or change them before the first trial, never after. If ITU-T G.114 is cited for the 400 ms audio limit, add and verify the reference first.
