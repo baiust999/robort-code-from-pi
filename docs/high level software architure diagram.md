@@ -68,7 +68,7 @@ flowchart TB
         D_RTC["WebRTC client (two-way)\npush-to-talk · camera/image/screen\nmessages to robot screen\nRobot Display / VNC switch"]
         D_ALERT["Alert engine\ntemp/gas/range thresholds"]
         D_MSTATE["Mission state\nSTOP / LIMITED / READY / DRIVING"]
-        D_UI["3-region UI\nDriveControl+EStop | Video+Map | Sensors+Alerts"]
+        D_UI["3-column UI\nControls+EStop+Sensors+Alerts | Video+Map | Talk panel"]
         D_FIND["Victim finding (on the laptop)\nAI person detection · mic meter\nMark victim → snapshot kept on laptop\nSession recording → kept on laptop"]
         D_WS --> D_MSTATE --> D_UI
         D_WS --> D_ALERT --> D_UI

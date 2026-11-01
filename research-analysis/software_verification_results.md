@@ -37,7 +37,7 @@ running the test and fixed by advancing one additional millisecond past
 the boundary before the final `tick()`. The corrected test is the one
 reported above.
 
-## `test_command_validator_boundaries.py` (8 tests)
+## `test_command_validator_boundaries.py` (9 tests)
 
 Source under test: `pi/p1_control/safety.py` (`CommandValidator`,
 `_clamp_int`).

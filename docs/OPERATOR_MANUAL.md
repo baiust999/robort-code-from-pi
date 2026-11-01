@@ -81,19 +81,18 @@ removes it.
 │ Status bar: connection · Wi-Fi bars % · role · mission · serial · GPS│
 │ (Wi-Fi warning banner, only when the signal is weak or lost)       │
 ├──────────────┬──────────────────────────────────┬──────────────────┤
-│ Mission state│  Live video from robot           │ Sensor cards     │
-│ Drive pad    │  (AI person boxes, Record button)│ GPS card         │
-│ Speed slider │  [Mark victim here] button       │ Victims found    │
-│              │                                  │ Alerts log       │
-│ Camera pan/  ├──────────────────────────────────┴──────────────────┤
-│   tilt       │                                                     │
-│ EMERGENCY    │  Map (across the middle and right columns)          │
-│   STOP       │                                                     │
-│ Talk to      │  (red + markers = victims found)                    │
-│   victim,    │                                                     │
-│   voice msg, │                                                     │
-│   mic meter  │                                                     │
-└──────────────┴─────────────────────────────────────────────────────┘
+│ Mission state│  Live video from robot           │ Talk to victim   │
+│ Drive pad    │  (AI person boxes, Record button)│  hold-to-talk,   │
+│ Speed slider │  [Mark victim here] button       │  video source,   │
+│ Camera pan/  │                                  │  messages,       │
+│   tilt       ├──────────────────────────────────┤  voice message,  │
+│ EMERGENCY    │                                  │  questions,      │
+│   STOP       │  Map (middle column only)        │  Robot Display / │
+│ Sensor cards │                                  │  VNC switch      │
+│ GPS card     │  (red + markers = victims found) │                  │
+│ Victims found│                                  │                  │
+│ Alerts log   │                                  │                  │
+└──────────────┴──────────────────────────────────┴──────────────────┘
 ```
 
 ---
@@ -234,7 +233,7 @@ The newest entry is at the bottom.
 
 ## 9. Talking to the victim
 
-The **Talk to victim** panel (under the video) uses the robot's speaker and
+The **Talk to victim** panel (the right-hand column) uses the robot's speaker and
 display. The victim sees and hears you; you see and hear the victim through
 the robot's camera and microphone.
 
@@ -439,7 +438,7 @@ details. If no files appear in Downloads, click **download photo** and
 several downloads, or warns about the download, click **Allow** or
 **Keep**. Every connected dashboard then shows the mark:
 
-- in **Victims found** on the right. **snapshot** and **save photo**
+- in **Victims found** in the left column. **snapshot** and **save photo**
   appear only in the browser that took the photo, also after a reload;
   **save details** downloads the text file;
 - on the map as a red **+**. A faded **+** means there was no GPS fix and

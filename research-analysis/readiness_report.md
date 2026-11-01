@@ -1,5 +1,7 @@
 # Final readiness report
 
+> **Status note, 2026-11-01.** This file is a dated record of the 2026-10-22 audit and is kept unchanged below. Since then: the Pi suite has grown to 187 tests (all pass; see `test_inventory.md` Section 6); E6 (Wi-Fi range, 16 stations) and E8 (resources) have been measured; E15 cost is receipt-backed; `avi2026review` was removed from the bibliography. The current per-experiment status is Table 4.1 and Table 5.0 of the paper.
+
 ## 1. Safety compliance (final check)
 
 ```

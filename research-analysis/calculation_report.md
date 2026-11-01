@@ -1,5 +1,7 @@
 # Calculation report
 
+> **Status note, 2026-11-01.** This file is a dated record of the 2026-10-22 audit and is kept unchanged below. Section 5 tables were re-checked cell by cell against the result CSVs on 2026-11-01 with `scripts/audit_section5_2026-10-23.py`: 399 cells, 0 mismatches (`output/section5_audit_rerun_2026-11-01.txt`).
+
 New and reproduced calculations from existing evidence in `tools/eval/results/`.
 This is a software-verification artifact under `research-analysis/`; it does
 not modify any file under `tools/eval/`, `research paper/`, or any protected

@@ -1522,8 +1522,8 @@ Dashboard:
 
 ```
 Map:
-├─ Position: bottom of the screen, one map across the middle and right
-│  columns, under the video and the sensor/alerts column
+├─ Position: middle column, under the video; the left (controls,
+│  sensors, alerts) and right (talk) columns run the full height
 ├─ Offline background: area.pmtiles (Protomaps vector tiles, zoom 0-15)
 │  from MAP_DIR on the Pi (default /var/lib/robot/maps), served by P1 at
 │  /maps and drawn in the browser; needs no internet

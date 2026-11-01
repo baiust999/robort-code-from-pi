@@ -1,5 +1,7 @@
 # Paper improvement plan
 
+> **Status note, 2026-11-01.** This file is a dated record of the 2026-10-22 audit and is kept unchanged below. Item 1 (the `test_ice_config.py` addendum in TEST_REPORT) has been applied; item 6 (boundary-test addendum) has not. Check the current manuscript before acting on any other item. Item 8's "do not fill 5.3" predates the measured E6 sweep.
+
 Proposed additions only. No manuscript file was edited in this task, per
 Phase 7's explicit instruction to produce the verified evidence package
 first and let it be reviewed before any manuscript change. Each item names

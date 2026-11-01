@@ -94,7 +94,7 @@ text = MD.read_text(encoding="utf8")
 T = parse_tables(text)
 
 # ---- Table 5.0 row counts ---------------------------------------------------
-counts = {"latency.csv": 420, "estop.csv": 23, "network.csv": 6, "faults.csv": 30,
+counts = {"latency.csv": 420, "estop.csv": 23, "network.csv": 16, "faults.csv": 30,
           "fault_watch.csv": 94, "resources.csv": 3608, "ultrasonic.csv": 50,
           "gas.csv": 5, "dht11_environmental.csv": 5, "gps_static.csv": 1}
 for f, n in counts.items():
@@ -142,9 +142,12 @@ for r in T["5.7"][1:]:
     cmp(f"T5.7 {r[0]} distance", r[1], float(n["distance_m"]))
     cmp(f"T5.7 {r[0]} loss", r[5], float(n["loss_pct"]))
     cmp(f"T5.7 {r[0]} rtt_avg", r[6], float(n["rtt_avg_ms"]))
-    cmp(f"T5.7 {r[0]} sig_start", r[7], float(n["signal_dbm_start"]))
-    cmp(f"T5.7 {r[0]} sig_end", r[8], float(n["signal_dbm_end"]))
-    cmp(f"T5.7 {r[0]} bitrate", r[9], float(n["tx_bitrate_mbps"]))
+    # rtt_max_ms column added to Table 5.7 after this script was written
+    # (2026-10-23 sweep extension); later columns shift right by one.
+    cmp(f"T5.7 {r[0]} rtt_max", r[7], float(n["rtt_max_ms"]))
+    cmp(f"T5.7 {r[0]} sig_start", r[8], float(n["signal_dbm_start"]))
+    cmp(f"T5.7 {r[0]} sig_end", r[9], float(n["signal_dbm_end"]))
+    cmp(f"T5.7 {r[0]} bitrate", r[10], float(n["tx_bitrate_mbps"]))
 checked += 1
 if len(T["5.7"]) - 1 != len(net):
     bad.append(f"T5.7 has {len(T['5.7'])-1} rows, network.csv has {len(net)}")

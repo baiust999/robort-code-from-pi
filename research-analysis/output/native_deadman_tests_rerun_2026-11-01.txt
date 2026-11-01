@@ -1,0 +1,17 @@
+=== build command === (same as native_deadman_tests_2026-10-22.txt, binary built in a scratch dir)
+arduino/ last changed 2026-10-21 (7e6e7f3); taskSafety() body in arduino/arduino.ino re-diffed against native/tests/mirrored_safety_task.h: identical apart from wrapper and comments
+
+Native firmware dead-man test harness
+Compiled from unmodified arduino/*.cpp against a host Arduino stub.
+
+  INFO test_at_exactly_boundary: real firmware is TRIPPED at elapsed == DEADMAN_TIMEOUT_MS (2000 ms)
+  INFO test_pan_command_rearm_behaviour_on_real_firmware: real firmware WAS re-armed by repeated P90 commands (fault=NONE, mode=ACTIVE)
+  INFO test_tilt_and_status_rearm_behaviour_on_real_firmware: real firmware WAS re-armed by T45/'?' sent at t=1950 (fault=NONE)
+  INFO test_recovery_first_command_after_trip: first post-trip F120 -> NACK F REJECTED
+
+  INFO test_recovery_first_command_after_trip: after next safety pass, fault=NONE mode=READY event="EVT DEADMAN_CLEARED
+"
+
+27 passed, 0 failed
+
+exit code: 0

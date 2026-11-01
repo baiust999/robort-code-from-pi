@@ -1,5 +1,7 @@
 # Simulation report
 
+> **Status note, 2026-11-01.** This file is a dated record of the 2026-10-22 audit and is kept unchanged below. Its statements that Section 5.3 (Wi-Fi) is PENDING are superseded: E6 was measured on 2026-10-22/23 (Table 5.7). The simulation itself is unchanged and still SIMULATED; the dead-man heartbeat-loss tolerance has still not been measured on a real link.
+
 All results in this file are SIMULATED / SYNTHETIC. None of them is a
 measurement of the real robot, the real Wi-Fi link, or any physical
 quantity. Every number here traces either to a software model built in

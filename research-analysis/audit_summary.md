@@ -1,5 +1,7 @@
 # Audit summary
 
+> **Status note, 2026-11-01.** This file is a dated record of the 2026-10-22 audit and is kept unchanged below. Later changes (test count 187, E6/E8 measured, `avi2026review` removed) are recorded in `test_inventory.md` and the paper's Table 5.0.
+
 Phase 1 deliverable: codebase/evidence map and protected-path confirmation.
 Covers what was inspected, what it is, and what was found before any test
 was run or any file was written.

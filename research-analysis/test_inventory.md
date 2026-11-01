@@ -129,7 +129,17 @@ count.
 | Fresh rerun, full suite, full venv | 121 passed, 0 failed | this task | 2026-10-22 |
 | Rerun with `test_wifi_signal.py` (9 added) | 130 passed, 0 failed | `research-analysis/output/rerun_full_venv_2026-10-28.txt` | 2026-10-28 |
 | Rerun, incomplete `pi/.venv`, forced through | 86 passed, 7 errors (env-caused) | this task | 2026-10-22 |
+| Rerun after victim-finding tests | 146 passed, 0 failed | `research-analysis/output/rerun_full_venv_2026-10-30.txt` | 2026-10-30 |
+| Rerun after tap-to-answer question tests | 156 passed, 0 failed | `..._2026-10-30_questions.txt` | 2026-10-30 |
+| Rerun after victim-delete tests | 164 passed, 0 failed | `..._2026-10-30_victim-delete.txt` | 2026-10-30 |
+| Rerun after new-mission tests | 172 passed, 0 failed | `..._2026-10-30_victim-new-mission.txt` | 2026-10-30 |
+| Rerun after question-clear fix | 173 passed, 0 failed | `..._2026-10-31_question-clear.txt` | 2026-10-31 |
+| Rerun after voice-message tests (one run: 1 timing flake) | 186 passed; earlier run 185 passed, 1 failed | `..._2026-10-31_voice-loop.txt`, `..._voice-loop_run1-timing-flake.txt` | 2026-10-31 |
+| Rerun after Issue 13 fix (current suite) | 187 passed, 0 failed | `..._2026-10-31_voice-loop-fix.txt` | 2026-10-31 |
+| Same 187-test suite, re-checked | 187 passed, 0 failed | not saved (console run during doc audit) | 2026-11-01 |
 | New boundary unit tests, this task | 17 passed, 0 failed | `research-analysis/tests/` | 2026-10-22 |
+| All `research-analysis/tests/` (17 boundary + 8 patch-isolated) | 25 passed, 0 failed | `research-analysis/output/research_analysis_tests_rerun_2026-11-01.txt` | 2026-11-01 |
+| Native firmware tests, rerun against current `arduino/` | 27 checks passed, 0 failed | `research-analysis/output/native_deadman_tests_rerun_2026-11-01.txt` | 2026-11-01 |
 | Native firmware tests (real, compiled `arduino/*.cpp`), this task | 10 test functions / 27 checks, 10 passed, 0 failed | `research-analysis/native/` | 2026-10-22 |
 | Hardware checklist (H1-H15) | 0 run | `docs/TEST_REPORT.md` Section 4 | not run -- needs physical hardware access, out of scope (software-only task) |
 | Integration checklist (I1-I22) | 0 run | `docs/TEST_REPORT.md` Section 5 | not run -- needs the live dashboard/operator in the loop |
