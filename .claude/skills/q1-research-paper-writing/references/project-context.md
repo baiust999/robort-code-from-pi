@@ -46,26 +46,50 @@ update this file when a fact changes.
 
 ## Measurement status (check Section 5 Table 5.0 for the current state)
 
+- Twelve experiments: E1, E4-E9, E13, E15-E18. Every reported result is
+  machine-logged; no [VERIFICATION REQUIRED] mark is left in the paper.
 - Machine-logged / usable: E1, E7, E8 (all conditions complete after the
   2026-10-21 supply upgrade; driving+media is two spliced logger runs; the
-  16 kbps run is confounded by a P2 restart), E11 DHT11 and E12 gas agree with
-  telemetry.
-- [VERIFICATION REQUIRED]: E3 e-stop distances (contradicted by P1 logs),
-  E10 ultrasonic (values never appear in telemetry), E11 error columns.
-- [PENDING MEASUREMENT] (the only experiments still planned): E3 and E10
-  repeats, E5, E4, E16 (media isolation, Table 5.8e), E13. Each has a claim
-  and pass criterion fixed in advance in Section 4 Table 4.2 (q1 Table XVII);
-  never change a criterion after its data is seen.
+  16 kbps run is confounded by a P2 restart), E6 (partial), E9
+  (resolution-limited), E15 (receipts).
+- [PENDING MEASUREMENT] (the experiments still planned, in run order):
+  E18 (person detector on 400 labelled frames, Section 5.9 - no ethics, no
+  purchase, cheapest), E16 (media isolation, Table 5.7e), E5, E4 (240 fps; the
+  tape in frame also gives the distance covered after drive is removed, with no
+  criterion on it), then E13 and E17 (victim communication, Section 5.8). Each
+  has a claim and pass criterion fixed in advance in Section 4 Table 4.2 (q1
+  Table XVII); never change a criterion after its data is seen.
+- Added 2026-11-03 at the author's request: E17 victim communication under
+  degraded conditions (15 participants x 3 modes x 2 victim states; the paper's
+  only hypothesis test, fixed in advance in Section 4.2: Cochran's Q, then
+  exact McNemar with Holm) and E18 person-detector evaluation on a labelled
+  frame set (`tools/eval/detector_eval.py`, `record.py victim_comms`). Both
+  cover the Section 3.11 aids and both are pending. Critical path: one ethics
+  application covers E13 and E17, and E17 also needs a touch input on the robot
+  display, since no tap-to-answer answer has ever been given on the robot.
+  The abstract, contributions and conclusion were deliberately NOT changed -
+  an unmeasured experiment earns a protocol and a criterion, not a claim.
 - Deleted 2026-11-01 at the author's request: E2, E14 (usability), ablations
-  1-2, and the optional E6/E9/E11/F9 extensions. E numbers are NOT
-  renumbered (gaps E2, E14 are intentional). Source Sections 5.8 = Cost,
-  5.9 = Summary; source Tables 5.3-5.18 were renumbered after deleting old 5.3.
+  1-2, and the optional E6/E9/E11/F9 extensions.
+- Deleted 2026-11-03 at the author's request: E3 (e-stop distance), E10
+  (ultrasonic), E11 (DHT11) and E12 (gas) - the four hand-entered sheets -
+  from `research paper/`, `q1 paper/` and `tools/eval/` (record.py sheets,
+  section5_stats.py and summarize.py blocks; estop_assist.py and estop_auto.py
+  deleted). Raw CSVs and the dated `research-analysis/` records were kept
+  deliberately and are no longer cited by the paper. E numbers are NOT
+  renumbered (gaps E2, E3, E10-E12, E14 are intentional). Source Section
+  5.6 is GPS only; Section 5 tables were renumbered to close the gaps (old
+  5.4-5.12 -> 5.3-5.11, old 5.16 -> 5.12, old 5.17/5.18 -> 5.13/5.14, then
+  the cost tables again to 5.15/5.16 when 5.8 and 5.9 were inserted).
+  Section 5 subsections now: 5.1 latency, 5.2 media, 5.3 range, 5.4 faults,
+  5.5 resources, 5.6 GPS, 5.7 field trial, 5.8 victim communication (E17),
+  5.9 person detection (E18), 5.10 cost, 5.11 summary.
 - The 5.7 "100-run" aggregate has no per-run data. Do not restore it without
   real field rows.
 - `bench_motor.csv` (60 rows) was collected with the robot on the floor under
   a false "wheels elevated" premise. Never cite it as stationary bench data or
-  as E3 data. Operator confirmations are not independent verification.
-- E11 is DHT11 ambient temperature/humidity. The robot has no thermal camera.
+  as a stopping-distance result. Operator confirmations are not independent
+  verification.
 - E15 cost: receipt-backed 37,158 BDT ~= USD 310 at indicative 1 USD = 120 BDT
   (Oct 2026), parts + build materials only. Webcam, speaker and Pi power bank
   are not itemised. Confirm FX rate/date before submission.

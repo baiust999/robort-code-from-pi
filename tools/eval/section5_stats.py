@@ -15,17 +15,14 @@ without modifying any input file:
   - the F9 gps_fix transitions matched against P1 GPS_FAIL port events
   - the manual faults (F6, F7) and the unplanned heartbeat stalls timed from
     P1's event log
-  - the cross-checks of the hand-entered sheets (E3, E10, E11, E12) against
-    P1's command log and the telemetry log
   - the GPS track P1 held in memory (gps_track_live_2026-10-22.geojson)
 
     ./section5_stats.py                       # print markdown
     ./section5_stats.py --out results/section5_stats.md
 
 Log windows are read from results/log_excerpts/, which keeps verbatim copies of
-the rotating var/log files (see the README there). Only the E3 "any retained
-day" scan still reads var/log directly; a missing input is reported and its
-block skipped.
+the rotating var/log files (see the README there). A missing input is reported
+and its block skipped.
 """
 
 from __future__ import annotations
@@ -192,22 +189,6 @@ def deadman_log() -> None:
         m, lo, hi = mean_ci(v)
         emit(f"| {name} | {len(v)} | {m:.1f} | {st.stdev(v):.1f} | {lo:.1f} to {hi:.1f} | "
              f"{min(v):.1f} | {st.median(v):.1f} | {max(v):.1f} |")
-    emit()
-
-
-def estop() -> None:
-    emit("## E3 stopping distance (estop.csv)")
-    emit()
-    emit("| speed_pwm | n | mean | 95% CI mean | SD | median | 95% CI median (bootstrap) |")
-    emit("|---|---|---|---|---|---|---|")
-    groups: dict[int, list[float]] = defaultdict(list)
-    for r in rows("estop.csv"):
-        groups[int(r["speed_pwm"])].append(float(r["distance_cm"]))
-    for speed, v in sorted(groups.items()):
-        m, lo, hi = mean_ci(v)
-        mlo, mhi = median_ci(v)
-        emit(f"| {speed} | {len(v)} | {m:.1f} | {lo:.1f} to {hi:.1f} | {st.stdev(v):.1f} | "
-             f"{st.median(v):.1f} | {mlo:.1f} to {mhi:.1f} |")
     emit()
 
 
@@ -453,81 +434,6 @@ def heartbeat_stalls() -> None:
     emit()
 
 
-DRIVE = re.compile(r"wire=F(\d+)$")
-
-
-def drive_commands() -> None:
-    """E3: forward drive commands P1 sent to the Arduino, per day and PWM."""
-    emit("## E3 forward drive commands in P1's event logs (wire=F<pwm>)")
-    emit()
-    sources = sorted(LOG_DIR.glob("p1_events.log*")) if LOG_DIR.exists() else []
-    if not sources:
-        sources = sorted(EXCERPTS.glob("p1_events_*.log.gz"))
-    counts: Counter = Counter()
-    span = []
-    for path in sources:
-        for t, tag, body in p1_events(path):
-            span.append(t)
-            if tag == "DEBUG_TX" and (m := DRIVE.search(body)) and m.group(1) in ("60", "120", "180"):
-                counts[(t.date().isoformat(), int(m.group(1)))] += 1
-    emit(f"Sources: {', '.join(p.name for p in sources)}; entries from {min(span).date()} to {max(span).date()}.")
-    emit()
-    emit("| date | PWM | commands |")
-    emit("|---|---|---|")
-    for (day, pwm), n in sorted(counts.items()):
-        emit(f"| {day} | {pwm} | {n} |")
-    if not any(pwm == 60 for _, pwm in counts):
-        emit("| any | 60 | 0 |")
-    emit()
-
-
-def telemetry_rows(path: Path, lo: str, hi: str) -> list[dict]:
-    found = []
-    for line in list(text_lines(path))[1:]:
-        parts = line.rstrip("\n").split(",")
-        if len(parts) == len(TELEMETRY_COLUMNS) and lo <= parts[0][:19] < hi:
-            found.append(dict(zip(TELEMETRY_COLUMNS, parts)))
-    return found
-
-
-def sensor_xcheck() -> None:
-    """E10, E11, E12 entries against the telemetry the robot logged at the time."""
-    emit("## E10-E12 cross-check against telemetry.log (2026-10-21)")
-    emit()
-    path = EXCERPTS / "telemetry_2026-10-21_E10-E12_1830-1937.csv"
-    if not path.exists():
-        emit(f"(skipped: {path.name} missing)")
-        emit()
-        return
-    us = telemetry_rows(path, "2026-10-21T18:30:00", "2026-10-21T19:05:30")
-    values = Counter(int(float(r["range_cm"])) for r in us if r["range_cm"])
-    claimed = sorted({int(r["reading_cm"]) for r in rows("ultrasonic.csv")})
-    emit(f"E10: range_cm values logged 18:30-19:05 (value: samples): {dict(sorted(values.items()))}")
-    emit(f"E10: entered readings {claimed}; present in that window: "
-         f"{[c for c in claimed if c in values]}; absent: {[c for c in claimed if c not in values]}")
-    emit()
-    th = telemetry_rows(path, "2026-10-21T19:10:00", "2026-10-21T19:22:00")
-    emit(f"E11: (temperature_c, humidity_pct) logged 19:10-19:22: "
-         f"{dict(Counter((r['temperature_c'], r['humidity_pct']) for r in th))}")
-    emit()
-    clean = [int(float(r["gas_ppm"])) for r in telemetry_rows(path, "2026-10-21T19:25:00", "2026-10-21T19:30:00")
-             if r["gas_ppm"]]
-    gas = [int(float(r["gas_ppm"])) for r in telemetry_rows(path, "2026-10-21T19:25:00", "2026-10-21T19:36:00")
-           if r["gas_ppm"]]
-    emit(f"E12: clean-air gas_ppm 19:25-19:30: min {min(clean)}, max {max(clean)}")
-    seq = [v for i, v in enumerate(gas) if i == 0 or v != gas[i - 1]]
-    pos, found = 0, []
-    for r in rows("gas.csv"):
-        for v in (int(r["baseline_adc"]), int(r["peak_adc"])):
-            pos = seq.index(v, pos) if v in seq[pos:] else -1
-            found.append((v, pos >= 0))
-            if pos < 0:
-                break
-    emit(f"E12: tabulated baseline/peak values found in logged order: {found}")
-    emit(f"E12: local peaks >= 250 in the session: {[v for a, v, b in zip(seq, seq[1:], seq[2:]) if v >= 250 and v > a and v > b]}")
-    emit()
-
-
 def gps_track() -> None:
     """Track points P1 added with its 10 m filter while the robot was not driven."""
     emit("## GPS track held by P1 (gps_track_live_2026-10-22.geojson)")
@@ -562,8 +468,8 @@ def main() -> int:
     emit("Generated by tools/eval/section5_stats.py from tools/eval/results/*.csv and var/log. "
          "Derived figures only; no input file is modified.")
     emit()
-    for block in (latency, deadman_log, estop, faults, resources, gps, f9,
-                  manual_faults, heartbeat_stalls, drive_commands, sensor_xcheck, gps_track):
+    for block in (latency, deadman_log, faults, resources, gps, f9,
+                  manual_faults, heartbeat_stalls, gps_track):
         block()
     text = "\n".join(out_lines) + "\n"
     if args.out:

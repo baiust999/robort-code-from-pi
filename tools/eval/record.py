@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 """Typed entry of hand-measured results, for the figures no script can read.
 
-Everything that needs a tape measure, a reference thermometer, a 240 fps
-phone camera or a human participant is entered here instead of being typed
+Everything that needs a tape measure, a 240 fps phone camera or a human
+participant is entered here instead of being typed
 straight into a markdown table, so the raw trials survive as CSV and
 summarize.py can aggregate them.
 
     ./record.py --list                      # all sheets
-    ./record.py estop --fields              # one sheet's fields
-    ./record.py estop speed_pwm=180 distance_cm=42 surface=concrete
+    ./record.py deadman_physical --fields   # one sheet's fields
+    ./record.py deadman_physical speed_pwm=180 stop_s=2.1 panic_seen=1
     ./record.py latency_video fps=240 frames=19 label=wifi-5m
     ./record.py sus participant=P3 q1=4 q2=2 q3=5 q4=1 q5=4 q6=2 q7=5 q8=1 q9=4 q10=2 \
                 task_time_s=96 completed=1 errors=0
 
-Derived fields (latency_ms, error_cm, sus_score, ...) are computed, not typed.
+Derived fields (latency_ms, delay_ms, sus_score, ...) are computed, not typed.
 `trial` / `run` / `participant` auto-increment when omitted.
 """
 
@@ -62,24 +62,15 @@ SHEETS: dict[str, dict] = {
         "required": ("fps", "frames"),
         "derived": {"latency_ms": lambda r: round(to_float(r["frames"]) / to_float(r["fps"]) * 1000, 1)},
     },
-    "estop": {
-        "file": "estop.csv",
-        "about": "5.1 emergency-stop stopping distance (test I6), tape measured",
-        "index": "trial",
-        "group": ("speed_pwm", "surface"),
-        "fields": {"speed_pwm": "60 / 120 / 180", "surface": "concrete / tile / grass",
-                   "distance_cm": "travel after the stop click",
-                   "stop_time_s": "optional, from video", "tester": "", "notes": ""},
-        "required": ("speed_pwm", "distance_cm"),
-        "derived": {},
-    },
     "deadman_physical": {
         "file": "deadman_physical.csv",
         "about": "5.1 dead-man wheel-stop time (test H7), filmed",
         "index": "trial",
         "group": ("speed_pwm",),
         "fields": {"speed_pwm": "", "stop_s": "silence to wheels stationary (expect ~2.0)",
-                   "panic_seen": "1 if PANIC DEADMAN appeared", "tester": "", "notes": ""},
+                   "panic_seen": "1 if PANIC DEADMAN appeared",
+                   "distance_cm": "optional: travel after the last command, tape measured",
+                   "tester": "", "notes": ""},
         "required": ("stop_s",),
         "derived": {},
     },
@@ -94,38 +85,28 @@ SHEETS: dict[str, dict] = {
         "required": ("real_ms", "robot_ms"),
         "derived": {"delay_ms": difference("real_ms", "robot_ms")},
     },
-    "ultrasonic": {
-        "file": "ultrasonic.csv",
-        "about": "5.6 ultrasonic accuracy (test H11): 10 readings at each known distance",
+    "victim_comms": {
+        "file": "victim_comms.csv",
+        "about": "5.8 victim communication under degraded conditions (E17): one row per "
+                 "trial, 3 modes x 2 victim states per participant",
         "index": "trial",
-        "group": ("true_cm",),
-        "fields": {"true_cm": "tape-measured distance", "reading_cm": "telemetry value",
-                   "tester": "", "notes": ""},
-        "required": ("true_cm", "reading_cm"),
-        "derived": {"error_cm": difference("reading_cm", "true_cm")},
-    },
-    "dht11": {
-        "file": "dht11_environmental.csv",
-        "about": "5.6 DHT11 ambient temperature/humidity vs reference thermometer/hygrometer (test H12)",
-        "index": "trial",
-        "group": (),
-        "fields": {"ref_c": "", "sensor_c": "", "ref_rh": "", "sensor_rh": "",
-                   "tester": "", "notes": ""},
-        "required": ("ref_c", "sensor_c"),
-        "derived": {"error_c": difference("sensor_c", "ref_c"),
-                    "error_rh": difference("sensor_rh", "ref_rh")},
-    },
-    "gas": {
-        "file": "gas.csv",
-        "about": "5.6 gas sensor response (test H13). Raw ADC counts, not ppm: "
-                 "the MQ-136 has no calibration curve in this build",
-        "index": "trial",
-        "group": ("source",),
-        "fields": {"source": "e.g. unlit-lighter-20cm", "baseline_adc": "",
-                   "peak_adc": "", "trip_s": "seconds to cross the warn threshold",
-                   "card_colour": "amber / red / none", "tester": "", "notes": ""},
-        "required": ("baseline_adc", "peak_adc"),
-        "derived": {"rise_adc": difference("peak_adc", "baseline_adc")},
+        "group": ("participant",),
+        "fields": {"participant": "P1, P2, ... (number only, no name)",
+                   "order": "position of this mode in the participant's counterbalanced order, 1-3",
+                   "mode": "speech / voice-message / tap-to-answer",
+                   "victim_state": "cannot-speak / hard-to-hear",
+                   "items_correct": "of the three scripted items, scored against the card (0-3)",
+                   "instruction_followed": "1/0, voice-message mode only; blank otherwise",
+                   "time_to_contact_s": "trial start to the first answer the operator confirms",
+                   "time_exchange_s": "trial start to the third item recorded",
+                   "confidence": "operator confidence in the answers, 1-5, before the card is checked",
+                   "failure_mode": "none / no-answer / wrong-answer / not-understood / expired / equipment",
+                   "noise_dba": "measured background level for this trial",
+                   "lux": "measured room illumination for this trial",
+                   "question_ids": "P2 QUESTION_ASK ids for this trial, semicolon separated (tap mode)",
+                   "operator": "", "notes": ""},
+        "required": ("mode", "victim_state", "items_correct", "confidence", "failure_mode"),
+        "derived": {"all_three_correct": lambda r: "1" if to_float(r["items_correct"]) == 3 else "0"},
     },
     "field": {
         "file": "field.csv",
@@ -143,7 +124,7 @@ SHEETS: dict[str, dict] = {
     },
     "sus": {
         "file": "sus.csv",
-        "about": "5.8 usability: one row per participant, 10 SUS items on 1-5 plus task metrics",
+        "about": "not in the paper (E14 withdrawn): one row per participant, 10 SUS items on 1-5 plus task metrics",
         "index": "participant",
         "group": (),
         "fields": {**{f"q{i}": f"SUS item {i}, 1-5" for i in range(1, 11)},

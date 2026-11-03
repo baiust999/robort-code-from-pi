@@ -43,12 +43,6 @@ REPORTS: tuple[dict, ...] = (
         "where": ("ok", "1"),
     },
     {
-        "section": "5.1", "file": "estop.csv",
-        "title": "Emergency-stop stopping distance",
-        "kind": "agg", "group": ["speed_pwm", "surface"],
-        "metrics": [("distance_cm", "distance (cm)"), ("stop_time_s", "stop time (s)")],
-    },
-    {
         "section": "5.1", "file": "deadman_physical.csv",
         "title": "Dead-man wheel-stop time (bound about 2.06 s: 2000 ms window "
                  "+ 10 ms supervisor period + one loop pass)",
@@ -92,22 +86,22 @@ REPORTS: tuple[dict, ...] = (
                   ("throttled_now", "throttled samples")],
     },
     {
-        "section": "5.6", "file": "ultrasonic.csv",
-        "title": "Ultrasonic range error by true distance",
-        "kind": "agg", "group": ["true_cm"],
-        "metrics": [("error_cm", "error (cm)"), ("reading_cm", "reading (cm)")],
+        "section": "5.8", "file": "victim_comms.csv",
+        "title": "Victim communication by mode and victim state (E17): items transferred of three",
+        "kind": "agg", "group": ["mode", "victim_state"],
+        "metrics": [("items_correct", "items correct (of 3)"),
+                    ("time_to_contact_s", "time to first answer (s)"),
+                    ("time_exchange_s", "time to complete the exchange (s)"),
+                    ("confidence", "operator confidence (1-5)")],
+        "rate": ("all_three_correct", "all three items correct"),
     },
     {
-        "section": "5.6", "file": "dht11_environmental.csv",
-        "title": "Temperature and humidity error vs reference instrument (DHT11)",
-        "kind": "agg", "group": [],
-        "metrics": [("error_c", "temp error (C)"), ("error_rh", "humidity error (%RH)")],
-    },
-    {
-        "section": "5.6", "file": "gas.csv",
-        "title": "Gas sensor response (raw ADC counts, uncalibrated)",
-        "kind": "agg", "group": ["source"],
-        "metrics": [("rise_adc", "rise (ADC)"), ("trip_s", "time to warn (s)")],
+        "section": "5.9", "file": "detector_frames.csv",
+        "title": "Person detector on the labelled frame set (E18); per-stratum metrics "
+                 "come from detector_eval.py",
+        "kind": "agg", "group": ["posture", "occlusion", "light", "distance_band"],
+        "metrics": [("best_score", "best person score"), ("infer_ms", "inference (ms)")],
+        "rate": ("detected", "frames with a person box"),
     },
     {
         "section": "5.6", "file": "gps_static.csv",
@@ -125,7 +119,7 @@ REPORTS: tuple[dict, ...] = (
         "rate": ("result", "runs passed"),
     },
     {
-        "section": "5.8", "file": "sus.csv",
+        "section": "-", "file": "sus.csv",
         "title": "Operator usability (System Usability Scale)",
         "kind": "agg", "group": [],
         "metrics": [("sus_score", "SUS score (0-100)"), ("task_time_s", "task time (s)"),

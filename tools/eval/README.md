@@ -27,17 +27,17 @@ The controller key the drive probes need lives in a root-only drop-in:
 |---|---|---|---|
 | `wslatency.py` | 5.1 | H7, N6 | Command -> telemetry confirmation, and the firmware dead-man trip, over the real WebSocket path. Automated, high n. Records the dead-man trip twice: `deadman_trip` (fw_state in telemetry, quantised) and `deadman_panic` (the firmware's immediate PANIC notice, read from P1's event log, so it needs to run on the Pi). |
 | `record.py latency_video` | 5.1 | N6 | True key-press-to-wheel latency from 240 fps video. |
-| `record.py estop` | 5.1 | I6 | Emergency-stop stopping distance. |
 | `record.py deadman_physical` | 5.1 | H7 | Time until the wheels actually stop. |
 | `record.py glass2glass` | 5.2 | N7 | End-to-end video delay. |
 | `netsweep.py` | 5.3 | N1-N5 | Latency, jitter, loss, RSSI and negotiated rate per position. |
 | `faultinject.py run` | 5.4 | F3-F5 | Kills a supervised process and times the automatic recovery. |
 | `faultinject.py watch` | 5.4 | F1-F2, F6-F10 | Times hand-injected faults by logging health transitions at 10 Hz. |
 | `reslog.py` | 5.5 | - | CPU, memory, temperature, throttling, throughput per load condition. |
-| `record.py ultrasonic/dht11/gas` | 5.6 | H11-H13 | Sensor error against reference instruments. |
 | `gpsdrift.py` | 5.6 | H14, I17c | Static GPS scatter: mean, SD, RMS, CEP50, CEP95. |
 | `record.py field` | 5.7 | section 8 | One row per complete rescue run. |
-| `record.py sus` | 5.8 | - | Per-participant SUS items and task metrics; scores them. |
+| `record.py victim_comms` | 5.8 | - | E17: one row per victim-communication trial (3 modes x 2 victim states per participant); cross-check the tap-mode timings against P2's QUESTION_ASK / QUESTION_ANSWER lines. |
+| `detector_eval.py` | 5.9 | - | E18: scores the dashboard's person detector against a labelled frame set; per-stratum precision, recall, F1, banner false alarms and inference time. |
+| `record.py sus` | - | - | Per-participant SUS items and task metrics; scores them. |
 | `record.py checklist` | - | H1-H15, I1-I19 | Pass/fail rows for the plain checklist tests. |
 
 ## Running the campaign
@@ -71,15 +71,35 @@ count frames to first wheel movement, and do it 30 times:
 
     ./record.py latency_video fps=240 frames=19 label=wifi-5m
 
-Emergency stop, 20 trials at each of three speeds, tape measure on the floor:
+Dead-man physical stop, 20 trials. Film the wheels at 240 fps; with a tape
+laid along the path, the same film also gives the distance covered after the
+last command:
 
-    ./record.py estop speed_pwm=180 distance_cm=42 surface=concrete
+    ./record.py deadman_physical speed_pwm=180 stop_s=2.1 panic_seen=1 distance_cm=6
 
-Dead-man physical stop, 20 trials:
+### Victim communication and the detector test set
 
-    ./record.py deadman_physical speed_pwm=150 stop_s=2.1 panic_seen=1
+E17 needs ethics approval and a touch input on the robot display (no answer has
+ever been given on the robot itself). One row per trial, entered during the
+session, three modes x two victim states per participant:
 
-### Day 2: streaming, resources, sensors
+    ./record.py victim_comms participant=P3 order=2 mode=tap-to-answer \
+        victim_state=cannot-speak items_correct=3 time_to_contact_s=41 \
+        time_exchange_s=96 confidence=4 failure_mode=none question_ids="7;8;9"
+
+E18 needs no ethics and no purchase. Capture the frames through the robot's own
+video path, label them, then:
+
+    ./detector_eval.py --out results/detector_eval.md
+
+It reads `results/detector_frames.csv` (one row per frame: strata,
+`person_present`, `detected`, `best_score`, `infer_ms`) and
+`results/detector_banner.csv` (person-free segments and banner raises), and
+reports per-stratum recall with Wilson intervals, pooled precision and F1, the
+banner false-alarm rate and the inference-time distribution. It never runs the
+detector itself, so the numbers are reproducible from the two CSV files.
+
+### Day 2: streaming and resources
 
 Video delay, 20 trials per viewer count. Point the camera at a running
 stopwatch and photograph the real stopwatch and the video panel together:
@@ -96,12 +116,6 @@ genuinely in that state:
 
 Check `under_voltage_ever` in the output: if the supply sags, the CPU figures
 describe a throttled Pi and the condition has to be re-run.
-
-Sensors, against reference instruments:
-
-    ./record.py ultrasonic true_cm=20 reading_cm=21      # 10 readings at each of 5 distances
-    ./record.py dht11 ref_c=28.4 sensor_c=29.1 ref_rh=62 sensor_rh=58
-    ./record.py gas source=unlit-lighter-20cm baseline_adc=310 peak_adc=790 trip_s=4.2
 
 ### Day 2: fault injection
 
@@ -231,10 +245,10 @@ on the floor for all 60 trials. No collision or damage resulted (operator
 confirmed after the fact), but the trials were real, undocumented floor
 travel with no clear-path check, run under the belief that none was needed.
 
-This does not make the data usable as E3 (Table 5.4, stopping distance):
-no tape measurement was taken, trial duration was a fixed 1 s rather than
+No tape measurement was taken, trial duration was a fixed 1 s rather than
 "drive until operator marks the line", and no surface/traction condition was
-recorded. The rows remain only firmware-timing data (`cmd_to_driving_s_*`,
+recorded, so the rows support no stopping-distance figure. They remain only
+firmware-timing data (`cmd_to_driving_s_*`,
 `stop_to_ready_s_*`), as `bench_motor.py`'s docstring already says, and nothing
 here changes that -- it just removes the "never left the ground" framing the
 rows were originally logged under. Re-confirm wheel contact visually (not by

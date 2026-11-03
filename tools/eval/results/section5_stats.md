@@ -32,14 +32,6 @@ Matched 30 of 30 probe trials to a PANIC DEADMAN line.
 | P1 TX of last command -> P1 RX of its ACK | 30 | 20.5 | 4.6 | 18.8 to 22.2 | 6.0 | 21.0 | 29.0 |
 | probe deadman_panic minus first row (WebSocket + P1 leg) | 30 | 56.6 | 26.2 | 46.8 to 66.4 | 6.3 | 52.9 | 101.3 |
 
-## E3 stopping distance (estop.csv)
-
-| speed_pwm | n | mean | 95% CI mean | SD | median | 95% CI median (bootstrap) |
-|---|---|---|---|---|---|---|
-| 60 | 7 | 42.7 | 36.4 to 49.0 | 6.8 | 41.0 | 38.0 to 48.0 |
-| 120 | 9 | 75.9 | 61.5 to 90.3 | 18.7 | 78.0 | 60.0 to 90.0 |
-| 180 | 7 | 91.3 | 85.1 to 97.4 | 6.7 | 92.0 | 90.0 to 97.0 |
-
 ## E7 fault injection (faults.csv)
 
 | test | n | recovered | Wilson 95% CI | recovery mean (s) | 95% CI mean (s) | detection mean (ms) | 95% CI (ms) |
@@ -136,40 +128,6 @@ First gps_fix 0 -> 1 in F9-gps-loss at t = 1306.57 s after the watch started (20
 | 12:03:04.453 | 12:03:06.355 | 1.902 | none |
 | 14:01:06.488 | 14:01:08.476 | 1.988 | none |
 | 14:01:15.516 | 14:01:17.596 | 2.080 | 14:01:17.616 |
-
-## E3 forward drive commands in P1's event logs (wire=F<pwm>)
-
-Sources: p1_events.log, p1_events.log.1, p1_events.log.2.gz, p1_events.log.3.gz; entries from 2026-09-25 to 2026-10-23.
-
-| date | PWM | commands |
-|---|---|---|
-| 2026-09-25 | 120 | 127 |
-| 2026-09-26 | 120 | 30 |
-| 2026-09-26 | 180 | 9 |
-| 2026-09-27 | 120 | 21 |
-| 2026-09-28 | 120 | 9 |
-| 2026-09-29 | 120 | 7 |
-| 2026-09-30 | 120 | 3 |
-| 2026-09-30 | 180 | 22 |
-| 2026-10-02 | 120 | 25 |
-| 2026-10-21 | 120 | 27 |
-| 2026-10-21 | 180 | 12 |
-| 2026-10-22 | 60 | 44 |
-| 2026-10-22 | 120 | 93 |
-| 2026-10-22 | 180 | 40 |
-| 2026-10-23 | 120 | 1 |
-| 2026-10-23 | 180 | 3 |
-
-## E10-E12 cross-check against telemetry.log (2026-10-21)
-
-E10: range_cm values logged 18:30-19:05 (value: samples): {10: 827, 11: 15, 13: 1, 18: 96, 19: 301, 20: 4, 30: 238, 31: 534, 32: 1, 33: 1, 42: 1}
-E10: entered readings [20, 75, 150, 284, 389]; present in that window: [20]; absent: [75, 150, 284, 389]
-
-E11: (temperature_c, humidity_pct) logged 19:10-19:22: {('31', '78'): 462, ('31', '77'): 221}
-
-E12: clean-air gas_ppm 19:25-19:30: min 50, max 55
-E12: tabulated baseline/peak values found in logged order: [(216, True), (935, True), (272, True), (930, True), (180, True), (864, True), (117, True), (733, True), (101, True), (910, True)]
-E12: local peaks >= 250 in the session: [403, 280, 463, 930, 935, 930, 864, 733, 910, 920, 875, 927]
 
 ## GPS track held by P1 (gps_track_live_2026-10-22.geojson)
 

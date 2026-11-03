@@ -2,8 +2,7 @@
 """Elevated-wheel motor bench test: software-timed command/response logging
 over the real control WebSocket, with NO floor-distance measurement.
 
-This is NOT the E3 stopping-distance protocol (see estop_assist.py /
-Table 5.4). It exists for a bench condition where the robot is securely
+This is NOT a stopping-distance protocol. It exists for a bench condition where the robot is securely
 elevated and all wheels are clear of any surface, so the robot cannot
 travel. It drives each wheel pair for a software-timed window, sends the
 real stop_all (same message the dashboard EMERGENCY STOP button sends),
@@ -20,8 +19,8 @@ state, taken by this process at message-receipt time. They are NOT an
 independently instrumented measurement of when the wheels physically
 started or stopped turning -- this build has no tachometer or encoder.
 Do not report cmd_to_driving_s / stop_to_stopped_s as a measured physical
-response time, and do not merge any row from bench_motor.csv into Table 5.4
-or otherwise present it as a floor stopping-distance result.
+response time, and do not present any row from bench_motor.csv as a floor
+stopping-distance result.
 
 Safety:
   - Every run (dry or live) sends the real hello handshake and claims the
@@ -36,7 +35,7 @@ Safety:
     SIGTERM, and on the per-trial timeout. The dead-man timer and firmware
     PANIC/ESTOP latch are untouched -- this script only ever sends the same
     motor/heartbeat/stop_all messages the dashboard sends.
-  - This never touches estop.csv. Results go to results/bench_motor.csv,
+  - Results go to results/bench_motor.csv,
     plus one newline-delimited JSON event log per session under
     results/bench_motor_events/ with every sent and received message.
 

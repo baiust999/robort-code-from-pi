@@ -41,17 +41,15 @@ committed to git.
 | motor_stop, 2026-10-07 mean | 314.3 ms (source Table 5.1) | 314.4 ms | Raw mean from `latency.csv` is 314.35 ms; `section5_stats.md` gives 314.4 |
 | OpenAlex hit counts (446, 272, 56, 1, 1,204, 34, 61, 11, 14, 65, 970) | In Section 2 | Removed; queries described without counts | The query results are not saved in the repository, so the counts cannot be traced (integrity rule). [AUTHOR ACTION: save the query exports if you want the counts back] |
 | "No study of a dead-man or command-timeout stop for a teleoperated rescue robot was found among the results screened" | Section 2 intro | Removed | Without saved screening records it reads as an unsupported absence claim |
-| Intro sentence on hand-entered data | "Sections 5 and 6.2" cross-check | "three of the four hand-entered data sets (stopping distance, ultrasonic range and the temperature-error figures) failed that check" | Consistency with Discussion VI-B |
+| Intro sentence on hand-entered data | "Sections 5 and 6.2" cross-check | "hand-entered data sets that failed that check were withdrawn rather than reported, so every result in Section V is machine-logged" | Consistency with Discussion VI-B |
 | Speed cap justification | "keeping the 14.8 V battery under the motor's ~12 V rating" | Adds "180/255 x 14.8 V = 10.4 V (CALCULATED)" | Makes the claim checkable |
 | SoC temperature of the throttled capture | Not given | 48.2 deg C max (Table XIV) | Computed from `resources.csv` so the table has no blank cell |
-| E10 values absent from the session log | Source text lists 75, 150, 284, 389 cm | Same (first draft of the manuscript omitted 150; fixed) | Matches `section5_stats.md:166` |
 | Network detail | Pi IP address, router address, SSID | Removed | Not needed; identifying detail |
 | CRED economic loss (USD 169.68 billion) | In Section 1.1 | Removed | Length; not used by any argument |
 | Dead-man re-arming by camera commands | Described in Section 3.5.2 | Also stated as a consequence in VI-A (a dashboard sending only pan or status commands keeps the robot armed) | Follows directly from the firmware rule confirmed by the native test; a reviewer will ask |
 
 The required statements are all present:
 
-- E3, E10 and the E11 error columns are reported as [VERIFICATION REQUIRED] and support no claim.
 - E8 states that `driving+media` is two spliced logger runs and that the 16 kbit/s run is confounded by a P2 restart (20:23 UTC, exit -15 in `log_excerpts/p3_events_2026-10-21_2020-2029.log`) and by an uncommitted configuration change.
 - GPS results are stated as limited by the 4-dp logging resolution.
 - The 5.7 "100-run" table is absent.
@@ -89,12 +87,13 @@ Known figure issues, to fix before submission:
 
 ## 6. Open [PENDING MEASUREMENT] items (Table XVII)
 
-1. E3: stopping distance, repeated with each stop logged by P1 and filmed (current data [VERIFICATION REQUIRED]).
-2. E10: ultrasonic accuracy, readings from the telemetry log (current data [VERIFICATION REQUIRED]).
+1. E18: person detector on 400 labelled frames through the robot's own video path, plus 10 min of person-free video for the banner false-alarm rate. No ethics, no purchase, no participants: run this first.
+2. E16: media isolation (control latency with media off, on, and P2 frozen).
 3. E5: glass-to-glass video delay, audio delay each way, frame rate and packet loss, for 1 and 2 viewers and at 20 m.
-4. E4: wheel-stop time after a dead-man trip, at 240 fps.
-5. E16: media isolation (control latency with media off, on, and P2 frozen).
-6. E13: field trial, 10 runs, fixed course and per-run success rule (pass if at least 9 of 10).
+4. E4: wheel-stop time after a dead-man trip, at 240 fps, with a tape in frame for the distance covered after drive is removed.
+5. E13: field trial, 10 runs, fixed course and per-run success rule (pass if at least 9 of 10). Needs ethics approval.
+6. E17: victim communication, 15 participants x 3 modes x 2 victim states. Needs the same ethics approval and a touch input on the robot display.
+7. One further E8 condition, `driving+media+aids`, for the processor cost of the voice loop and the questions. A supporting measurement with no criterion, not an experiment.
 
 ## 7. [AUTHOR INPUT REQUIRED] items in the manuscript
 
@@ -114,7 +113,7 @@ IEEE Access also requires author biographies and photographs at submission. They
 
 | Check | Result |
 |---|---|
-| Every number traces to a source | Yes. See `evidence_map.md`, 91 rows. Table X heartbeat intervals and the 121/25 test counts trace to the source text, not to a re-run; recompute Table X from `p1_events.log` excerpts before submission |
+| Every number traces to a source | Yes. See `evidence_map.md`, 85 rows. Table X heartbeat intervals and the 121/25 test counts trace to the source text, not to a re-run; recompute Table X from `p1_events.log` excerpts before submission |
 | Every citation supports its sentence | Descriptions carried over unchanged in meaning from ledger-checked source text |
 | Every reference exists | All 67 are in the verified source .bib |
 | Acronyms expanded at first use | Fixed in review: HRI, RTOS, PWM, BMS, ICE, SDP, CEP, SoC, SUS. Common terms (Wi-Fi, USB, CPU, GPS, UDP, TCP, HTTP) are left unexpanded per IEEE practice. [AUTHOR CHECK] |
@@ -151,7 +150,7 @@ Applied to both `research paper/` (Sections 1, 4, 5, 6, 7, the TOC and the maste
 | Ablation 3 replaced by A3, a media-isolation test on the robot as built (E1 motor probe with media off, on, and P2 SIGSTOP-frozen in 15 s windows) | Tests the question the merged variant was meant to answer without building it; does not show how a merged design behaves |
 | E14 removed and left to future work (source Section 7.6.4 added; Section 5.8 now a short deferral) | 8-12 operators give a SUS interval too wide to support a claim, and the paper makes no usability claim |
 | E13 given a fixed course, random hidden victim positions, a three-part per-run rule and a 9 of 10 claim rule | The old "5-10 runs" protocol had no success rule fixed in advance |
-| Run order stated: E3 and E10 repeats, then E5, then E4 with E2, A3 any time, E13 last | Tables that the logs contradict must be resolved before new data is added |
+| Run order stated: E18 (no approval or purchase), E16, E5, E4, then E13 and E17 | E13 depends on the media path that E5 characterises; E13 and E17 share one ethics application and E17 also needs a touch input |
 | Abstract shortened to stay at or under 250 words | IEEE Access limit |
 
 [AUTHOR DECISION] The limits marked "adopted" in Table XVII (10 cm, 5 cm, 500 ms, 400 ms, 2.5 s, 50 ms, 300 s, 9 of 10) are the authors' choices. Confirm or change them before the first trial, never after. If ITU-T G.114 is cited for the 400 ms audio limit, add and verify the reference first.
@@ -169,3 +168,75 @@ At the author's request, only the experiments a Q1 reviewer needs are kept: the 
 | Label A3 | Everywhere | Renamed E16 (A3 is also an Arduino pin name in Section 3) |
 
 Identifiers are not renumbered, because the E numbers match the result files and tools; Section 4.2 and Table VIII say so. In `research paper/`, source Section 5.8 (usability) was removed, so Cost is now 5.8 and Summary is 5.9, and source Table 5.3 (E2) was removed, so source Tables 5.4-5.17a became 5.3-5.16a and 5.19-5.20 became 5.17-5.18. Earlier notes in this file that cite source table numbers use the old numbering.
+
+## 10. Hand-entered experiments deleted, 2026-11-03
+
+At the author's request, E3 (emergency-stop distance), E10 (ultrasonic
+accuracy), E11 (DHT11 accuracy) and E12 (gas response) were removed from the
+manuscript and from `research paper/` entirely, together with their tables,
+protocols, pass criteria and pending repeats. They were the four hand-entered
+sheets; none of them supported a contribution or a research-question answer,
+and three carried [VERIFICATION REQUIRED] flags. With them gone, no
+[VERIFICATION REQUIRED] mark remains anywhere in the paper and every reported
+result is machine-logged.
+
+| Deleted | Where it was | Now |
+|---|---|---|
+| E3 (emergency-stop distance) | Tables 4.1, 4.2, 5.0, source Table 5.3, V-A, Table VIII, Table XVII, VI-B, VI-C | Gone. The distance covered after drive is removed is now an observation of E4 (tape in frame), with no criterion fixed on it |
+| E10 (ultrasonic accuracy) | Tables 4.1, 4.2, 5.0, source Section 5.6.2, V-F, Table VIII, Table XVII | Gone. The range card is stated as an advisory driving aid, not evaluated; source Section 7.3.4 no longer rests on it |
+| E11 (DHT11 accuracy) | Tables 4.1, 5.0, source Section 5.6.3, V-F, Table VIII | Gone, with the `adafruit_dht11` reference, which nothing else cited |
+| E12 (gas response) | Tables 4.1, 5.0, source Section 5.6.4, V-F, Table VIII | Gone. Source Section 7.5.1 keeps calibration as future work without citing a result |
+
+Ten experiments remain (E1, E4-E9, E13, E15, E16); the identifiers are still
+not renumbered. In `research paper/`, source Section 5.6 is now GPS only
+("GPS Precision and Track Quality") and its Section 5 tables were renumbered
+to close the gaps left by the removed tables: old 5.4-5.12 became 5.3-5.11,
+old 5.16 became 5.12, and the cost tables 5.17 and 5.18 became 5.13 and 5.14.
+In `tools/eval/`, the `estop`, `ultrasonic`, `dht11` and `gas` sheets were
+removed from `record.py`, their blocks from `section5_stats.py` and
+`summarize.py`, and `estop_assist.py` and `estop_auto.py` were deleted;
+`results/summary.md` and `results/section5_stats.md` were regenerated. The
+raw CSVs and the dated audit records under `research-analysis/` were kept
+deliberately, as the integrity trail; nothing in the paper cites them now.
+
+## 11. Two experiments added, 2026-11-03
+
+At the author's request, two experiments were added to cover the operator aids
+of Section III-K, which the paper described and no measurement touched. Both
+are [PENDING MEASUREMENT] with pass criteria fixed in advance (Table XVII;
+source Table 4.2). They are numbered after the highest existing identifier, so
+nothing already written moves: E3 and E10 to E12 stay deleted and their numbers
+stay unused.
+
+| Added | What it measures | Where it went | Cost to run |
+|---|---|---|---|
+| E17 Victim communication under degraded conditions | Whether the victim channel transfers information from a person who cannot use normal speech: 15 participants x 3 communication modes x 2 victim states, 90 trials, within-subjects and counterbalanced; primary metric is the per-trial transfer of three scripted items | Source Tables 4.1, 4.2, 5.0, new Section 5.8 with Tables 5.13, 5.13a, 5.13b; Table VIII, Table XVII, V-G; `record.py victim_comms` | Ethics approval (shared with E13) and a touch input for the robot display; 2 sessions |
+| E18 Person detector on a labelled frame set | Precision, recall and F1 per stratum for the dashboard's detector, measured through the robot's own video path, plus the banner false-alarm rate and the inference-time distribution | Source Tables 4.1, 4.2, 5.0, new Section 5.9 with Tables 5.14, 5.14a; Table VIII, Table XVII, V-G; `detector_eval.py` | None beyond capture and labelling: no ethics, no purchase, no participants |
+
+Consequences accepted with them:
+
+- **A hypothesis test enters the paper, for E17 only.** The Section 5 policy
+  ("differences between conditions are described, not tested") was written for
+  small, unequal bench samples. E17 is a designed within-subjects experiment
+  with equal cells, so the analysis is fixed in advance in source Section 4.2
+  and in IV-D: Cochran's Q within each victim state, exact McNemar on the mode
+  pairs with Holm correction only if Q is significant at 0.05, and the
+  difference in proportions with a 95% interval as the effect measure in every
+  case. This plan must not change once the data are seen.
+- **Ethics is now the critical path for two experiments.** One application
+  covers E13 and E17. Source Section 4.1 and IV-F both say so, and both still
+  carry the [PENDING]/[AUTHOR INPUT REQUIRED] marker for the reference number.
+- **A purchase is on the critical path for E17.** Tap-to-answer has never been
+  answered on the robot, because no touch input is connected to the Pi display
+  (Section III-K). Mode (c) cannot run until one is fitted.
+- **The abstract, contributions and conclusion were NOT changed.** The project
+  rule of Section 2 of these notes keeps the aids of Section III-K out of them,
+  and that rule stands while E17 and E18 have no data: an unmeasured experiment
+  earns a protocol and a criterion, not a claim. [AUTHOR DECISION: if E17
+  passes, C3 should be restated as low-cost two-way audio and video with
+  measured information transfer from a victim who cannot speak, and the result
+  belongs in the abstract and in the contribution list. Still a combination
+  claim, never a first. Nothing may be written there before the data exist.]
+- **Section 5 renumbering.** Cost moved from source Section 5.8 to 5.10 and
+  Summary from 5.9 to 5.11, and the cost tables from 5.13/5.14 to 5.15/5.16,
+  to make room for the two new subsections. All cross-references were updated.

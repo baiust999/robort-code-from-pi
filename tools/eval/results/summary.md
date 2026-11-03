@@ -25,30 +25,30 @@ Source: `latency.csv`, 420 raw rows.
 | pan_echo | on-pi-2026-10-21 | latency (ms) | 30 | 389.61 | 79.72 | 265.6 | 637.1 | 378.2 | 481.69 |
 | pan_echo | on-pi-phaselocked | latency (ms) | 30 | 492.08 | 82.9 | 150.3 | 609.8 | 500.25 | 607.02 |
 
-### Emergency-stop stopping distance
-
-Source: `estop.csv`, 23 raw rows.
-
-| speed_pwm | surface | measure | n | mean | sd | min | max | median | p95 |
-|---|---|---|---|---|---|---|---|---|---|
-| 120 | concrete | distance (cm) | 9 | 75.89 | 18.68 | 34.0 | 92.0 | 78.0 | 91.2 |
-| 180 | concrete | distance (cm) | 7 | 91.29 | 6.65 | 78.0 | 98.0 | 92.0 | 97.7 |
-| 60 | concrete | distance (cm) | 7 | 42.71 | 6.78 | 34.0 | 54.0 | 41.0 | 52.2 |
-
 ## Section 5.3
 
 ### Wi-Fi range and link degradation
 
-Source: `network.csv`, 6 raw rows.
+Source: `network.csv`, 16 raw rows.
 
-| label | distance_m | obstacles | loss_pct | rtt_avg_ms | rtt_max_ms | rtt_mdev_ms | signal_dbm_start | tx_bitrate_mbps |
-|---|---|---|---|---|---|---|---|---|
-| N1 | 5 | none | 0.0 | 3.373 | 17.981 | 3.608 | -41.0 | 72.2 |
-| N2 | 10 | none | 0.0 | 5.342 | 30.884 | 6.172 | -39.0 | 72.2 |
-| N3 | 15 | none | 0.0 | 5.738 | 41.687 | 8.206 | -41.0 | 65.0 |
-| N4 | 20 | none | 0.0 | 5.276 | 37.101 | 6.701 | -40.0 | 72.2 |
-| N5 | 25 | none | 0.0 | 4.77 | 31.714 | 6.531 | -42.0 | 72.2 |
-| N6 | 50 | none | 0.0 | 3.467 | 25.388 | 3.869 | -41.0 | 72.2 |
+| label | distance_m | obstacles | loss_pct | rtt_avg_ms | rtt_max_ms | rtt_mdev_ms | signal_dbm_start | tx_bitrate_mbps | video | control |
+|---|---|---|---|---|---|---|---|---|---|---|
+| N1 | 5 | none | 0.0 | 3.373 | 17.981 | 3.608 | -41.0 | 72.2 |  |  |
+| N2 | 10 | none | 0.0 | 5.342 | 30.884 | 6.172 | -39.0 | 72.2 |  |  |
+| N3 | 15 | none | 0.0 | 5.738 | 41.687 | 8.206 | -41.0 | 65.0 |  |  |
+| N4 | 20 | none | 0.0 | 5.276 | 37.101 | 6.701 | -40.0 | 72.2 |  |  |
+| N5 | 25 | none | 0.0 | 4.77 | 31.714 | 6.531 | -42.0 | 72.2 |  |  |
+| N6 | 50 | none | 0.0 | 3.467 | 25.388 | 3.869 | -41.0 | 72.2 |  |  |
+| N7 | 100 | none | 0.0 | 3.905 | 47.091 | 5.734 | -52.0 | 72.2 | good | yes |
+| N8 | 150 | none | 1.0 | 12.55 | 215.627 | 31.99 | -55.0 | 72.2 | good | yes |
+| N9 | 200 | none | 0.0 | 42.9 | 103.316 | 22.333 | -58.0 | 72.2 | good | yes |
+| N10 | 250 | none | 6.0 | 16.641 | 307.227 | 45.925 | -60.0 | 72.2 | good | yes |
+| R1 | 5 | none | 2.0 | 11.903 | 92.988 | 18.621 | -58.0 | 72.2 | good | yes |
+| R2 | 10 | none | 2.0 | 9.448 | 158.367 | 19.543 | -55.0 | 72.2 | good | yes |
+| R3 | 15 | none | 0.0 | 5.479 | 122.771 | 12.383 | -58.0 | 72.2 | good | yes |
+| R4 | 20 | none | 8.0 | 5.043 | 93.607 | 9.952 | -57.0 | 72.2 | good | yes |
+| R5 | 25 | none | 10.0 | 6.251 | 144.721 | 15.204 | -60.0 | 72.2 | good | yes |
+| R6 | 50 | none | 16.0 | 6.715 | 43.533 | 6.819 | -55.0 | 72.2 | good | yes |
 
 ## Section 5.4
 
@@ -237,41 +237,6 @@ Source: `resources.csv`, 3608 raw rows.
 
 ## Section 5.6
 
-### Ultrasonic range error by true distance
-
-Source: `ultrasonic.csv`, 50 raw rows.
-
-| true_cm | measure | n | mean | sd | min | max | median | p95 |
-|---|---|---|---|---|---|---|---|---|
-| 150 | error (cm) | 10 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 |
-| 150 | reading (cm) | 10 | 150.0 | 0.0 | 150.0 | 150.0 | 150.0 | 150.0 |
-| 20 | error (cm) | 10 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 |
-| 20 | reading (cm) | 10 | 20.0 | 0.0 | 20.0 | 20.0 | 20.0 | 20.0 |
-| 284 | error (cm) | 10 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 |
-| 284 | reading (cm) | 10 | 284.0 | 0.0 | 284.0 | 284.0 | 284.0 | 284.0 |
-| 389 | error (cm) | 10 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 |
-| 389 | reading (cm) | 10 | 389.0 | 0.0 | 389.0 | 389.0 | 389.0 | 389.0 |
-| 75 | error (cm) | 10 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 |
-| 75 | reading (cm) | 10 | 75.0 | 0.0 | 75.0 | 75.0 | 75.0 | 75.0 |
-
-### Temperature and humidity error vs reference instrument (DHT11)
-
-Source: `dht11_environmental.csv`, 5 raw rows.
-
-| measure | n | mean | sd | min | max | median | p95 |
-|---|---|---|---|---|---|---|---|
-| temp error (C) | 5 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 |
-| humidity error (%RH) | 5 | 0.4 | 0.55 | 0.0 | 1.0 | 0.0 | 1.0 |
-
-### Gas sensor response (raw ADC counts, uncalibrated)
-
-Source: `gas.csv`, 5 raw rows.
-
-| source | measure | n | mean | sd | min | max | median | p95 |
-|---|---|---|---|---|---|---|---|---|
-| butane-lighter-5cm | rise (ADC) | 5 | 697.2 | 72.94 | 616.0 | 809.0 | 684.0 | 791.0 |
-| butane-lighter-5cm | time to warn (s) | 5 | 2.2 | 1.1 | 1.0 | 4.0 | 2.0 | 3.6 |
-
 ### Static GPS accuracy
 
 Source: `gps_static.csv`, 1 raw row.
@@ -285,7 +250,9 @@ Source: `gps_static.csv`, 1 raw row.
 - [ ] 5.1 Control latency, 240 fps video (key press -> wheel motion) (`latency_video.csv`)
 - [ ] 5.1 Dead-man wheel-stop time (bound about 2.06 s: 2000 ms window + 10 ms supervisor period + one loop pass) (`deadman_physical.csv`)
 - [ ] 5.2 End-to-end video delay (`glass2glass.csv`)
+- [ ] 5.8 Victim communication by mode and victim state (E17): items transferred of three (`victim_comms.csv`)
+- [ ] 5.9 Person detector on the labelled frame set (E18); per-stratum metrics come from detector_eval.py (`detector_frames.csv`)
 - [ ] 5.7 End-to-end rescue runs (`field.csv`)
-- [ ] 5.8 Operator usability (System Usability Scale) (`sus.csv`)
+- [ ] - Operator usability (System Usability Scale) (`sus.csv`)
 - [ ] 4-5 Hardware and integration checklist (TEST_REPORT sections 4 and 5) (`checklist.csv`)
 
