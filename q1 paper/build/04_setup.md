@@ -6,14 +6,13 @@ All experiments ran on the robot as built (Table III) with hardware emulation di
 
 ### B. Experiments and Achieved Design
 
-Table VIII lists the fifteen planned experiments (E1-E15) with the design actually achieved. Several experiments could not be run as planned; Section V reports only what was achieved, and Table XVII lists what is pending, with the claim each pending experiment tests and its pass criterion. The criteria were fixed before any of those data were collected and are not changed after the data are seen.
+Table VIII lists the fourteen experiments with the design actually achieved; their identifiers (E1, E3-E13, E15, E16) are those of the result files and tools in the repository. Several experiments could not be run as planned; Section V reports only what was achieved, and Table XVII lists what is pending, with the claim each pending experiment tests and its pass criterion. The criteria were fixed before any of those data were collected and are not changed after the data are seen.
 
 **TABLE VIII.** Experiment matrix: planned and achieved design. Tools are in `tools/eval/` of the code repository.
 
 | # | Experiment | Planned | Achieved | Metric |
 |---|---|---|---|---|
 | E1 | Control-plane latency (on the Pi, loopback) | 30 trials per probe | 2 jittered sessions x 30 per probe, plus 1 phase-locked session | Command to telemetry confirmation (ms); dead-man interval from P1's event log |
-| E2 | True control latency, 240 fps video | 30, same camera set-up as E4 | Not run | Key press to wheel motion (ms) |
 | E3 | Emergency-stop distance | 20 per speed x 3; repeat filmed at 240 fps, each stop logged by P1 | 23 hand-entered rows; contradicted by logs; repeat not run | Distance (cm), stop time (s) |
 | E4 | Dead-man wheel-stop time, 240 fps video | 20 at PWM 180, on the floor | Not run | Last command to wheels at rest (s) |
 | E5 | Media delay and quality | 20 per condition, 3 conditions | Not run | Glass-to-glass and audio delay (ms), frame rate, loss |
@@ -25,8 +24,7 @@ Table VIII lists the fifteen planned experiments (E1-E15) with the design actual
 | E11 | DHT11 accuracy | 5 set-points | 1 set-point, 5 readings | Sensor minus reference |
 | E12 | Gas sensor response | Qualitative | 5 puffs, one session | Peak counts, trip time (s) |
 | E13 | Field trial with role-played victim | 10 runs, fixed course and success rule | Not run | Run success, time to victim, collisions, two-way exchange |
-| E14 | Operator usability (System Usability Scale, SUS) | Deferred to future work | Not part of this evaluation | SUS score, task time |
-| A3 | Media isolation (control latency with media off, on, and P2 frozen) | 3 conditions x 30 | Not run | Confirmed commands; motor-stop upper bound (ms) |
+| E16 | Media isolation (control latency with media off, on, and P2 frozen) | 3 conditions x 30 | Not run | Confirmed commands; motor-stop upper bound (ms) |
 | E15 | Cost | Bill of materials | Authors' itemized receipts (BDT) | Total cost |
 
 ### C. Evidence Classes, Validity and Data Provenance
@@ -43,8 +41,8 @@ E1 needs one further note. The latency probe waits for telemetry to confirm each
 
 ### E. Baselines
 
-Two planned ablations, firmware dead-man disabled and watchdog disabled, were withdrawn before being run: without the timer nothing removes drive when commands stop, and without the supervisor nothing restarts a killed process, so their outcome follows from the design. The paper therefore reports the with-feature behaviour of both mechanisms and claims no measured benefit over a system without them. The third, a merged control-and-media process, is replaced by a direct test on the robot as built (A3): the E1 motor probe is run 30 times with no media session, with one operator media session, and with P2 suspended by SIGSTOP in 15 s windows, short of the 35 s health-check restart. A3 is pending (Table XVII); it can show whether the split isolates control from media on this robot, not how a merged design would behave. A fourth ablation, Opus at 16 kbit/s instead of 32 kbit/s, was run for processor load only and is confounded (Section V-D). The design constants of Section III (the 2000 ms window, the 3000 ms telemetry timeout and the recovery model) serve as specification targets. The literature platforms of Table I are compared by their published descriptions only.
+The dead-man and the watchdog are evaluated by their measured behaviour with the feature present; the paper claims no measured benefit over a system without them. The process split is tested directly on the robot as built (E16): the E1 motor probe is run 30 times with no media session, with one operator media session, and with P2 suspended by SIGSTOP in 15 s windows, short of the 35 s health-check restart. E16 is pending (Table XVII); it can show whether the split isolates control from media on this robot, not how a single merged process would behave. An Opus bitrate comparison, 16 kbit/s instead of 32 kbit/s, was run for processor load only and is confounded (Section V-D). The design constants of Section III (the 2000 ms window, the 3000 ms telemetry timeout and the recovery model) serve as specification targets. The literature platforms of Table I are compared by their published descriptions only.
 
 ### F. Human Subjects
 
-No human-subject data have been collected. The field trial (E13) involves an author as operator and a second person who role-plays the victim, and will be run under informed consent with anonymous participant numbers. The usability study (E14) was removed from this evaluation before any participant was recruited, because a SUS interval from the 8 to 12 operators planned would be too wide to support a usability claim; it is left to future work. [AUTHOR INPUT REQUIRED: ethics-committee decision or institutional waiver, with reference number and date, before E13 is run and before submission.]
+No human-subject data have been collected. The field trial (E13) involves an author as operator and a second person who role-plays the victim, and will be run under informed consent with anonymous participant numbers. [AUTHOR INPUT REQUIRED: ethics-committee decision or institutional waiver, with reference number and date, before E13 is run and before submission.]

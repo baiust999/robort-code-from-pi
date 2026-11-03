@@ -89,19 +89,12 @@ Known figure issues, to fix before submission:
 
 ## 6. Open [PENDING MEASUREMENT] items (Table XVII)
 
-1. E2: true control latency over Wi-Fi, key press to wheel motion at 240 fps.
-2. E4: wheel-stop time after a dead-man trip, at 240 fps.
-3. E3: stopping distance, repeated with each stop logged by P1 and filmed (current data [VERIFICATION REQUIRED]).
-4. E5: glass-to-glass video delay, audio delay each way, frame rate and packet loss, for 1 and 2 viewers and at 20 m.
-5. E6: usable-range upper bound, obstructed links, and repeated bursts at a fixed station.
-6. E9: static precision at six-decimal resolution against a surveyed point, and a controlled track test.
-7. E10: ultrasonic accuracy (current data [VERIFICATION REQUIRED]).
-8. E11: DHT11 at further set-points against a reference of stated accuracy (current error figures [VERIFICATION REQUIRED]).
-9. E13: field trial, 10 runs, fixed course and per-run success rule (pass if at least 9 of 10).
-10. E14: removed from this evaluation and left to future work (2026-11-01; see Section 8).
-11. A3: media isolation (control latency with media off, on, and P2 frozen), replacing the merged-process ablation. The dead-man-disabled and watchdog-disabled ablations were withdrawn (2026-11-01).
-12. F9: GPS loss and recovery with a single reader on the port.
-13. Opus 16 kbit/s ablation: a clean rerun with a committed configuration and no P2 restart, plus the audio-quality side.
+1. E3: stopping distance, repeated with each stop logged by P1 and filmed (current data [VERIFICATION REQUIRED]).
+2. E10: ultrasonic accuracy, readings from the telemetry log (current data [VERIFICATION REQUIRED]).
+3. E5: glass-to-glass video delay, audio delay each way, frame rate and packet loss, for 1 and 2 viewers and at 20 m.
+4. E4: wheel-stop time after a dead-man trip, at 240 fps.
+5. E16: media isolation (control latency with media off, on, and P2 frozen).
+6. E13: field trial, 10 runs, fixed course and per-run success rule (pass if at least 9 of 10).
 
 ## 7. [AUTHOR INPUT REQUIRED] items in the manuscript
 
@@ -140,7 +133,7 @@ Residual risks a reviewer may raise:
 
 - n = 10 per fault target and one robot.
 - No end-to-end or human-subject data.
-- No measured isolation of control from media yet (A3 pending).
+- No measured isolation of control from media yet (E16 pending).
 - The plain-HTTP control key.
 - The two range sessions that disagree by 17 dB.
 - The C3 contribution is a processor cost only.
@@ -162,3 +155,17 @@ Applied to both `research paper/` (Sections 1, 4, 5, 6, 7, the TOC and the maste
 | Abstract shortened to stay at or under 250 words | IEEE Access limit |
 
 [AUTHOR DECISION] The limits marked "adopted" in Table XVII (10 cm, 5 cm, 500 ms, 400 ms, 2.5 s, 50 ms, 300 s, 9 of 10) are the authors' choices. Confirm or change them before the first trial, never after. If ITU-T G.114 is cited for the 400 ms audio limit, add and verify the reference first.
+
+## 9. Unnecessary experiments deleted, 2026-11-01
+
+At the author's request, only the experiments a Q1 reviewer needs are kept: the E3 and E10 repeats, E5, E4, E16 and E13. Applied to both `research paper/` and this folder.
+
+| Deleted | Where it was | Now |
+|---|---|---|
+| E2 (true control latency, 240 fps) | Tables 4.1, 4.2, 5.0, source Table 5.3, Table VIII, Table XVII | Gone. Wi-Fi control latency is stated as not measured (limitation); E1 stays an upper bound |
+| E14 (usability, SUS) | Table 4.1, Table 5.0, source Section 5.8, Table VIII, IV-F | Gone. "Operator usability was not evaluated" (limitation); source Section 7.6.4 keeps a future usability study |
+| Ablations 1 and 2 (dead-man off, watchdog off) | Source Section 4.3, IV-E | Gone. With-feature evidence only; no without-feature benefit claimed |
+| Optional extras: E6 continuation, E9 at 6 dp, E11 more set-points, F9 repeat | Section 5 pending blocks, Table XVII | Replaced by one-sentence limits; the existing results stay with their limits |
+| Label A3 | Everywhere | Renamed E16 (A3 is also an Arduino pin name in Section 3) |
+
+Identifiers are not renumbered, because the E numbers match the result files and tools; Section 4.2 and Table VIII say so. In `research paper/`, source Section 5.8 (usability) was removed, so Cost is now 5.8 and Summary is 5.9, and source Table 5.3 (E2) was removed, so source Tables 5.4-5.17a became 5.3-5.16a and 5.19-5.20 became 5.17-5.18. Earlier notes in this file that cite source table numbers use the old numbering.

@@ -45,7 +45,7 @@
   - Limits paragraph: one robot, operator and access point; drive removal, not
     wheel stop or distance (E3, E4); Wi-Fi latency, media quality, field trial
     and media isolation [PENDING MEASUREMENT] with pass criteria fixed in
-    Table 4.2; usability deferred to future work; category 0 stop,
+    Table 4.2; usability not evaluated; category 0 stop,
     no compliance claim \cite{iec60204}; points to Section 6.3
   - (unnumbered closing paragraph: organization of the paper)
   - Full text: section1_introduction.md
@@ -88,7 +88,7 @@
     \cite{megalingam2022,verano2022,pramono2024,deshmukh2025,manuel2022,gehlot2025,cafolla2026,jia2025,yamauchi2022,kim2023,raghavan2026,khattab2025,cantizani2022}
   - Cost asserted without figures: five designs call themselves low-cost,
     none of the recent platforms states a build cost; only Survivor Buddy
-    does \cite{murphy2011}; Section 5.9 reports this robot's figure as an
+    does \cite{murphy2011}; Section 5.8 reports this robot's figure as an
     estimate (C4)
 - 2.3 Fail-Safe and Fault-Tolerant Architectures for Low-Cost Mobile Robots
   - Bounded stop (C1): behaves like IEC 60204-1 stop category 0, no
@@ -191,7 +191,7 @@
 
 **4. Experimental Setup**
 
-- Scope rule: only what is shared across all fifteen experiments appears here
+- Scope rule: only what is shared across all fourteen experiments appears here
   (test conditions, metric definitions, baselines). Procedure specific to one
   experiment opens the matching Section 5 subsection, so nothing is described
   twice. Hardware, network and software are specified in Sections 3.2-3.4 and
@@ -204,7 +204,7 @@
 - 4.2 Experiments, Metrics and Validity Rules
   - Table 4.1 (the only table in this section): experiment | site | trials (N) |
     tool under tools/eval/ | metric, start point to end point, unit | reported in
-  - Fifteen rows (E1-E15) in nine groups, one per Section 5 subsection
+  - Fourteen rows (E1, E3-E13, E15, E16) in eight groups, one per Section 5 subsection
     (5.1-5.9); tools are wslatency.py,
     faultinject.py, netsweep.py, reslog.py, gpsdrift.py, record.py and
     summarize.py, raw output under tools/eval/results/
@@ -213,12 +213,11 @@
     (Sections 3.5.2, 3.6.2)
   - Validity rule for a trial and discard criteria, stated once
   - Table 4.2: claim tested, pass criterion and consequence of failure for
-    each remaining experiment (E3 and E10 repeats, E5, E4, E2, ablation 3,
-    E13), fixed before data collection
+    each remaining experiment (E3 and E10 repeats, E5, E4, E16 media
+    isolation, E13), fixed before data collection
 - 4.3 Baselines
-  - Internal ablations: dead-man removed and P3 disabled withdrawn (outcome
-    follows from the design); media isolation (control latency with media off,
-    on, and P2 frozen); alternative audio bitrate
+  - Internal comparisons: media isolation E16 (control latency with media
+    off, on, and P2 frozen); alternative audio bitrate
   - Specification targets from Section 3 as pass/fail thresholds
   - Literature baselines: figures reported by the platforms in the Section 2.6
     comparison \cite{casper2003,liu2013,daun2023,megalingam2022}, taken from
@@ -237,8 +236,7 @@
 - 5.5 Resource Utilization on the Edge Device
 - 5.6 Sensor Accuracy and GPS Track Quality
 - 5.7 Field Trial: End-to-End Rescue Scenario
-- 5.8 Operator Usability Evaluation (deferred to 7.6.4; no data)
-- 5.9 Cost Analysis and Comparison with Existing Systems
+- 5.8 Cost Analysis and Comparison with Existing Systems
 
 **6. Discussion**
 

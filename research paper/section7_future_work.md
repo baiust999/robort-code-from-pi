@@ -30,7 +30,7 @@ The directions are grouped under six themes (Sections 7.1 to 7.6) and are not eq
 | 7.6.1 | Secure remote control | Plain HTTP and WebSocket; one shared controller key; sequence check optional | 3.2, 3.8 | 1 | 7.2.2 |
 | 7.6.2 | Multi-robot cooperative exploration | Single robot; one controller slot | 3.8 | 3 | 7.1.1, 7.3.1, 7.6.1 |
 | 7.6.3 | Reproducible experimental benchmarking | Small N per experiment; rotating logs; no standard test apparatus | 4.2 (Table 4.1), 5.0 | 1 | - |
-| 7.6.4 | Operator usability study | No usability data; the planned 8 to 12 operator SUS study was deferred | 4.4, 5.8 | 3 | 7.6.3 |
+| 7.6.4 | Operator usability study | No usability data | 6.3 | 3 | 7.6.3 |
 
 ## 7.1 Communication Resilience
 
@@ -58,7 +58,7 @@ The proposed work adds a supervisor that watches serial health, process health, 
 
 ### 7.2.2 Quantitative Safety and Fault-Injection Evaluation
 
-Section 5.4 injected SIGKILL crashes, 10 trials per process, and single injections of the other faults. Thirty of thirty recoveries give a Wilson lower bound of 88.6% [@wilson1927]; that bound is a statement about bench SIGKILL faults and not a reliability figure. The media-isolation test of Section 4.3 (ablation 3) has not been run, and the ablations that would remove the dead-man or P3 were withdrawn because their outcome follows from the design.
+Section 5.4 injected SIGKILL crashes, 10 trials per process, and single injections of the other faults. Thirty of thirty recoveries give a Wilson lower bound of 88.6% [@wilson1927]; that bound is a statement about bench SIGKILL faults and not a reliability figure. The media-isolation test (E16, Section 5.4) has not been run.
 
 The proposed work replaces the single-fault campaign with a fault-injection campaign across the process, serial, network and sensor layers, and runs the media-isolation test, so that each fail-safe claim is tested against a defined criterion. Process faults extend the SIGKILL crashes to hangs (process alive but unresponsive, injected with SIGSTOP). Serial faults extend the single Arduino unplug to repeated reconnects and to corrupted or truncated frames through a serial fault proxy. Network faults extend the single drop to delay, loss and bandwidth caps (`tc netem`, access-point power-off). Sensor faults cover camera, microphone and GPS loss by device unbind. A merged control-and-media build, if one is made, would show what the media-isolation test cannot: how a single process behaves under the same media stall. Metrics for every fault are detection latency, motor-stop response, unintended-motion duration, recovery success with Wilson interval and false-alarm rate. The motor-stop response must be taken at the wheels (E4, 240 fps video), not only from firmware logs, because the log measurements of Section 5.1 establish when the firmware removed drive and not when the wheels stopped. This direction also defines the regression suite that every other direction in this section must pass before any change reaches the robot.
 
@@ -122,7 +122,7 @@ The robot carries no victim detector. The dashboard runs a general-purpose perso
 
 ## 7.6 Security, Multi-Robot Scale and Reproducibility
 
-Section 7.6.3 underpins every other direction, since no improvement can be claimed without a repeatable baseline. Sections 7.6.1 and 7.6.2 remove the trusted-network and single-robot assumptions, and Section 7.6.4 adds the operator study that this paper did not run.
+Section 7.6.3 underpins every other direction, since no improvement can be claimed without a repeatable baseline. Sections 7.6.1 and 7.6.2 remove the trusted-network and single-robot assumptions, and Section 7.6.4 adds an operator usability study.
 
 ### 7.6.1 Secure Remote Control
 
@@ -138,4 +138,4 @@ Section 5 has small N per experiment, rotating logs and no standard test apparat
 
 ### 7.6.4 Operator Usability Study
 
-No usability data exist for the dashboard. A study with 8 to 12 volunteer operators was planned (E14) and removed from this paper before any participant was recruited, because an interval on a mean System Usability Scale (SUS) score [@brooke1996] from so few participants is too wide to support a usability claim (Section 5.8). The proposed study fixes, before recruitment, a target width for the 95% interval on the mean SUS score, chosen with reference to the empirical distribution of SUS scores reported by Bangor et al. [@bangor2008], and recruits the number of operators that width requires. Each operator drives the field-trial course of Section 5.7 after a scripted briefing and one practice run. Metrics are the SUS score, task time, task completion with a Wilson interval [@wilson1927] and error counts, reported against participants' prior experience with remote-controlled vehicles. It requires ethics approval and the repeatable course of Section 7.6.3.
+No usability data exist for the dashboard, and the paper makes no usability claim. A System Usability Scale (SUS) [@brooke1996] study supports a conclusion only if its sample is large enough for the interval on the mean score to be narrow. The proposed study fixes, before recruitment, a target width for the 95% interval on the mean SUS score, chosen with reference to the empirical distribution of SUS scores reported by Bangor et al. [@bangor2008], and recruits the number of operators that width requires. Each operator drives the field-trial course of Section 5.7 after a scripted briefing and one practice run. Metrics are the SUS score, task time, task completion with a Wilson interval [@wilson1927] and error counts, reported against participants' prior experience with remote-controlled vehicles. It requires ethics approval and the repeatable course of Section 7.6.3.
