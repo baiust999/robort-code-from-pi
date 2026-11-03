@@ -317,6 +317,66 @@ with the voice message at 13:26:23 UTC and with the Issue 13 fix at
 restarts, not crashes). Not yet heard on the robot speaker or tried with a
 real operator mic (I25, I26).
 
+**Addendum, 2026-11-03 (E18 detector evaluation harness).** The E18
+person-detector evaluation was moved from frame-level scoring ("did any
+person box appear in this frame?") to object-level scoring: predicted
+boxes are matched one-to-one to hand-drawn ground-truth boxes by
+intersection over union, primary threshold IoU 0.50, in descending
+confidence order (`tools/eval/detector_iou.py`, `detector_data.py`,
+`detector_import.py`, `detector_annotate.py`, `detector_eval.py`;
+procedure in `tools/eval/README.md`, protocol in paper Section 5.9).
+102 tests were added in `tools/eval/tests/`: **102 passed, 0 failed
+(16.3 s)**, command `/home/pi/robot/venv/bin/python -m pytest
+tools/eval/tests/ -q`. They cover the IoU formula, the 0.50 boundary from
+both sides, perfect and partial overlap, a wrong box in a frame that does
+hold a person, a missing prediction, several people in one frame,
+duplicate boxes on one person, one box over two people, an empty frame
+with a false detection, invalid coordinates (zero or negative extent,
+outside the image, NaN, infinity, confidence outside 0 to 1), confidence
+ordering and its tie-break, hand-checked precision/recall/F1/Wilson/AP,
+the loader's integrity rules (an unannotated frame is not a person-free
+frame; a frame the detector never ran on is not a missed detection; an
+unknown frame id, a mismatched image file, a missing annotator, duplicate
+ids and a prediction with no run record are all rejected), the importer's
+validation, and the annotation tool's refusals. They are tests of the
+measuring instrument on hand-built boxes and in `tmp_path` sheets: they
+read and write nothing under `tools/eval/results/`, and they say nothing
+about the detector's accuracy. They are also separate from the 172-test
+`pi/tests` suite above and do not change its count.
+
+These tests do not make E18 a measured experiment. E18 remains
+[PENDING MEASUREMENT] until real frames are captured, annotated and
+scored.
+
+On the dashboard side, still no JavaScript test runner is configured. The
+evaluation capture mode added for E18 (one button, hidden unless the
+dashboard is opened once with `?evalcapture=1`, which writes the frame the
+detector just ran on plus that frame's own boxes, confidences, model
+identity and inference time to the operator's Downloads folder) was
+checked on 2026-11-03 by `tsc -b` (clean) and `oxlint` (no errors in the
+touched files).
+
+It was built and deployed the same day: `npm run build` at 14:09 local
+replaced `dashboard/dist`, which is what the live service serves
+(`DASHBOARD_DIR=/home/pi/robot/dashboard/dist`). Verified over the live
+P1 on port 8080: the served `index.html` points at the new
+`assets/index-3BWD4giT.js`, those served bytes are byte-identical to the
+built file, the previous bundle now returns 404, and the bundled detector
+model (4.6 MB) and the MediaPipe WASM runtime are served. No process
+restart was needed or made (P1 uptime was continuous across the
+deployment), because P1 serves the directory from disk per request. The
+same build also carried commit `5407c30`, a committed three-column
+dashboard layout rework that post-dated the previous (2026-10-31 14:58)
+build, live.
+
+The capture mode has **not** been exercised in a browser against the live
+video path. An attempt on this Pi with headless Chromium did not complete:
+with the dashboard's live WebRTC session running, the renderer stalled and
+DevTools-protocol calls timed out, and the detector needs WebGL, which this
+Pi's headless browser provides only through a software renderer (Issue 4).
+That check belongs on the operator's laptop, where the detector actually
+runs. Until it is done, the button's behaviour on real video is unverified.
+
 **Limitation:** these tests use simulated hardware. They prove the software
 logic, not the real motors, sensors or radio link, which are covered in the
 sections below.

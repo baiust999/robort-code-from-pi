@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ObjectDetector } from '@mediapipe/tasks-vision';
+import type { DetectorInfo } from '../lib/detectorExport';
+import { captureCleanFrame, downloadEvalCapture } from '../lib/detectorExport';
 
 /** 5 Hz: half the camera's 10 FPS, so the laptop isn't busy on repeated frames. */
 const DETECT_INTERVAL_MS = 200;
@@ -19,6 +21,22 @@ const SLOW_FRAMES = 5;
 // Bundled under public/ (see scripts/copy-mediapipe.mjs): the field may have no internet.
 const WASM_PATH = `${import.meta.env.BASE_URL}mediapipe/wasm`;
 const MODEL_PATH = `${import.meta.env.BASE_URL}models/efficientdet_lite0.tflite`;
+const MAX_RESULTS = 5;
+
+/**
+ * Exactly how the detector below is configured, recorded with every E18
+ * evaluation capture so a result can never be read as belonging to a
+ * configuration it was not measured on (tools/eval/README.md). Change the
+ * detector and this has to change with it.
+ */
+export const DETECTOR_INFO: DetectorInfo = {
+  model_name: 'efficientdet_lite0',
+  model_version: 'mediapipe-tasks-vision 0.10.21',
+  delegate: 'CPU',
+  score_threshold: SCORE_THRESHOLD,
+  max_results: MAX_RESULTS,
+  category_allowlist: ['person'],
+};
 
 /** One person box in the video's own pixel coordinates. */
 export interface PersonBox {
@@ -40,6 +58,16 @@ export interface PersonDetectionState {
   personPresent: boolean;
   /** Best score in the latest frame, or null with no person. */
   bestScore: number | null;
+  /**
+   * E18 only: writes the next detected frame and that frame's own boxes to
+   * Downloads. Does nothing unless detection is running.
+   */
+  requestEvalCapture: () => void;
+  /**
+   * The frame id of the last E18 capture written, or a short failure note if
+   * the frame could not be encoded. Shown on the capture button.
+   */
+  lastEvalCapture: string | null;
 }
 
 function loadEnabled(): boolean {
@@ -75,7 +103,7 @@ async function createDetector(): Promise<ObjectDetector> {
     baseOptions: { modelAssetPath: MODEL_PATH, delegate: 'CPU' },
     runningMode: 'VIDEO',
     scoreThreshold: SCORE_THRESHOLD,
-    maxResults: 5,
+    maxResults: MAX_RESULTS,
     categoryAllowlist: ['person'],
   });
 }
@@ -96,6 +124,14 @@ export function usePersonDetection(
   const [personPresent, setPersonPresent] = useState(false);
   const [bestScore, setBestScore] = useState<number | null>(null);
   const detectorRef = useRef<ObjectDetector | null>(null);
+  // Set by requestEvalCapture, read and cleared by the next detection pass, so
+  // the saved frame is the frame those boxes were actually produced from.
+  const evalCaptureRef = useRef(false);
+  const [lastEvalCapture, setLastEvalCapture] = useState<string | null>(null);
+
+  const requestEvalCapture = useCallback(() => {
+    evalCaptureRef.current = true;
+  }, []);
 
   const setEnabled = useCallback((on: boolean) => {
     setEnabledState(on);
@@ -185,6 +221,23 @@ export function usePersonDetection(
         return;
       }
       const took = performance.now() - started;
+      if (evalCaptureRef.current) {
+        evalCaptureRef.current = false;
+        // drawImage runs before this promise yields, so the JPEG is this frame.
+        void captureCleanFrame(video).then((frame) =>
+          setLastEvalCapture(
+            downloadEvalCapture({
+              boxes: found,
+              inferMs: took,
+              videoWidth: video.videoWidth,
+              videoHeight: video.videoHeight,
+              currentTimeS: video.currentTime,
+              detector: DETECTOR_INFO,
+              frame,
+            }),
+          ),
+        ).catch(() => setLastEvalCapture('capture failed'));
+      }
       if (!firstFrame) timedFrames = [...timedFrames.slice(1 - SLOW_FRAMES), took];
       firstFrame = false;
       const average = timedFrames.reduce((a, b) => a + b, 0) / timedFrames.length;
@@ -218,5 +271,15 @@ export function usePersonDetection(
     };
   }, [enabled, active, ready, videoRef, setEnabled]);
 
-  return { enabled, setEnabled, ready, error, boxes, personPresent, bestScore };
+  return {
+    enabled,
+    setEnabled,
+    ready,
+    error,
+    boxes,
+    personPresent,
+    bestScore,
+    requestEvalCapture,
+    lastEvalCapture,
+  };
 }

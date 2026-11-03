@@ -1,52 +1,85 @@
 #!/usr/bin/env python3
-"""E18: score the dashboard's person detector against a labelled frame set.
+"""E18: score the dashboard's person detector box-against-box, by IoU.
 
-The dashboard runs MediaPipe EfficientDet-Lite0 on the operator's computer at
-a score threshold of 0.4 (Section 3.11 of the paper). This script does not run
-the detector: it scores what the detector produced against hand-entered
-labels, so the numbers in Section 5.9 are reproducible from two CSV files.
+The dashboard runs MediaPipe EfficientDet-Lite0 in the operator's browser at a
+score threshold of 0.4, restricted to the person class, at most five boxes per
+frame, CPU delegate (Section 3.11,
+dashboard/src/hooks/usePersonDetection.ts). This script does not run the
+detector: it scores the boxes the deployed detector actually returned, as
+exported from the dashboard and imported by detector_import.py, against boxes a
+human drew by hand. Both sides are real records; nothing here simulates a
+detection.
 
-Inputs, both under results/:
+What changed, and why
+---------------------
+The first version of this script read one sheet, detector_frames.csv, with a
+binary `detected` column, and called a frame a success when the detector
+returned at least one person box anywhere in it. Three things were wrong with
+that:
 
-  detector_frames.csv   one row per captured frame
-      frame            frame identifier (file name of the captured still)
-      posture          upright / lying-down / none      ("none" = person-free frame)
-      occlusion        unoccluded / partly-covered / -
-      light            room / low
-      distance_band    near / far
-      person_present   1/0, the ground truth label
-      detected         1/0, whether the detector returned at least one person box
-      best_score       the highest person score on that frame (blank if none)
-      infer_ms         the inference time the dashboard measured for that frame
-      notes
+  * It measured frame-level classification, not detection. A box drawn around
+    a chair, in a frame that also held a person, counted as a correct
+    detection, and so did a box offset far enough to be useless to an
+    operator.
+  * Precision was computed as (frames with a person and a box) / (all frames
+    with a box), so a wrong box in a frame containing a person could only ever
+    raise precision, never lower it.
+  * A frame with two people and one box scored the same as a frame with two
+    people and two boxes.
 
-  detector_banner.csv   one row per continuous person-free video segment
-      segment          label
-      person_free_s    length of the segment in seconds
-      banner_raises    times the "possible person" banner was raised
-      notes
+This version matches predicted boxes to ground-truth boxes by intersection
+over union, one to one, at a primary threshold of IoU 0.50, and counts true
+positives, false positives and false negatives per box (detector_iou.py).
+Precision, recall and F1 are computed from those counts.
 
-A frame counts as detected when the detector returned at least one person box,
-which is what raises the operator's box overlay and, after three consecutive
-frames, the banner (Section 3.11). Recall, precision and F1 carry 95% Wilson
-intervals; no hypothesis test is reported, in line with Section 5.
+The banner false-alarm measurement is unchanged and stays separate: it is a
+property of the three-frames-to-raise logic on continuous video, not of any
+single box, and its acceptance criterion (at most 1 false alarm per minute
+over at least 10 min of person-free video, Table 4.2) is untouched.
 
-    ./detector_eval.py                         # print markdown
+    ./detector_eval.py                              # markdown to stdout
     ./detector_eval.py --out results/detector_eval.md
+    ./detector_eval.py --iou 0.5 --strict            # non-zero exit on a data error
 """
 
 from __future__ import annotations
 
 import argparse
-import math
 import statistics as st
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import RESULTS_DIR, read_rows  # noqa: E402
 
-STRATA = ("posture", "occlusion", "light", "distance_band")
+from common import RESULTS_DIR, percentile, read_rows  # noqa: E402
+from detector_data import (  # noqa: E402
+    BANNER_FILE,
+    CONDITIONS,
+    FRAMES_INDEX_FILE,
+    GROUNDTRUTH_FILE,
+    LEGACY_FRAMES_FILE,
+    PREDICTIONS_FILE,
+    RUNS_FILE,
+    Dataset,
+    Frame,
+    load_dataset,
+)
+from detector_iou import (  # noqa: E402
+    PRIMARY_IOU,
+    SENSITIVITY_IOU,
+    Metrics,
+    aggregate,
+    average_precision,
+    match_frame,
+)
+
+#: Table 4.2's easiest stratum, where the pass criterion applies.
+EASIEST = {"posture": "upright", "occlusion": "unoccluded", "light": "room", "distance_band": "near"}
+RECALL_FLOOR = 0.80
+PRECISION_FLOOR = 0.90
+#: The dashboard turns detection off above this mean inference time (Section 3.11).
+AUTO_OFF_MS = 150.0
 
 out_lines: list[str] = []
 
@@ -55,89 +88,385 @@ def emit(line: str = "") -> None:
     out_lines.append(line)
 
 
-def wilson(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
-    """95% Wilson score interval; stays informative when k is 0 or n."""
-    if n == 0:
-        return float("nan"), float("nan")
-    p = k / n
-    centre = (p + z * z / (2 * n)) / (1 + z * z / n)
-    half = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / (1 + z * z / n)
-    return centre - half, centre + half
+def fmt(value: float, places: int = 2) -> str:
+    return "-" if value != value else f"{value:.{places}f}"  # NaN != NaN
 
 
-def rate(k: int, n: int) -> str:
-    if n == 0:
+def fmt_ci(value: float, ci: tuple[float, float]) -> str:
+    if value != value:
         return "-"
-    lo, hi = wilson(k, n)
-    return f"{k / n:.2f} ({lo:.2f} to {hi:.2f})"
+    lo, hi = ci
+    return f"{value:.3f} ({lo:.3f} to {hi:.3f})"
 
 
-def truthy(value: str) -> bool:
-    return str(value).strip() in ("1", "true", "True", "yes")
+def metrics_row(label: str, m: Metrics) -> str:
+    stats = m.iou_stats()
+    mean_iou = fmt(stats["mean"], 3) if stats else "-"
+    return (
+        f"| {label} | {m.n_gt} | {m.n_pred} | {m.tp} | {m.fp} | {m.fn} | "
+        f"{fmt_ci(m.precision, m.precision_ci)} | {fmt_ci(m.recall, m.recall_ci)} | "
+        f"{fmt(m.f1, 3)} | {mean_iou} |"
+    )
 
 
-def scores(rows: list[dict], key: str) -> list[float]:
-    out = []
-    for r in rows:
-        v = str(r.get(key, "")).strip()
-        if v:
-            try:
-                out.append(float(v))
-            except ValueError:
-                pass
-    return out
+METRIC_HEADER = (
+    "| group | GT boxes | predictions | TP | FP | FN | precision (95% CI) | "
+    "recall (95% CI) | F1 | mean IoU of TP |"
+)
+METRIC_RULE = "|---|---|---|---|---|---|---|---|---|---|"
 
 
-def frames_block(rows: list[dict]) -> None:
-    present = [r for r in rows if truthy(r["person_present"])]
-    absent = [r for r in rows if not truthy(r["person_present"])]
-    emit("## E18 frame-level detection by stratum (detector_frames.csv)")
+def score(frames: list[Frame], threshold: float) -> Metrics:
+    return aggregate(match_frame(f.preds, f.gt, threshold) for f in frames)
+
+
+def provenance_block(results_dir: Path, data: Dataset) -> None:
+    emit("## Provenance of the scored data")
     emit()
-    emit(f"{len(rows)} frames: {len(present)} with a person, {len(absent)} person-free.")
+    emit("| sheet | present | data rows | last modified (UTC) |")
+    emit("|---|---|---|---|")
+    for name in (FRAMES_INDEX_FILE, GROUNDTRUTH_FILE, RUNS_FILE, PREDICTIONS_FILE, BANNER_FILE):
+        path = results_dir / name
+        if path.exists():
+            when = datetime.fromtimestamp(path.stat().st_mtime, timezone.utc).isoformat(
+                timespec="seconds"
+            )
+            rows = data.row_counts.get(name)
+            count = str(rows) if rows is not None else str(len(read_rows(path)))
+            emit(f"| `{name}` | yes | {count} | {when} |")
+        else:
+            emit(f"| `{name}` | no | - | - |")
     emit()
-    emit("| posture | occlusion | light | distance | frames | detected | recall (95% CI) | median best score |")
-    emit("|---|---|---|---|---|---|---|---|")
-    cells: dict[tuple, list[dict]] = {}
-    for r in present:
-        cells.setdefault(tuple(r[k] for k in STRATA), []).append(r)
+    emit(
+        "Every scored box comes from one of these files. The predictions are the "
+        "deployed detector's own output, exported from the dashboard and imported by "
+        "`detector_import.py`, which records the export file in `export_source` and the "
+        "frame's SHA-256 in the index. The ground truth is hand-drawn and names its "
+        "annotator. This script writes nothing but its report."
+    )
+    emit()
+
+
+def integrity_block(data: Dataset) -> None:
+    if not data.errors and not data.warnings:
+        return
+    emit("## Data integrity")
+    emit()
+    if data.errors:
+        emit(f"**{len(data.errors)} row(s) were rejected and are not scored.** The input "
+             "files are not modified; fix them at the source and re-run.")
+        emit()
+        for message in data.errors:
+            emit(f"- ERROR: {message}")
+        emit()
+    if data.warnings:
+        for message in data.warnings:
+            emit(f"- WARNING: {message}")
+        emit()
+
+
+def inventory_block(data: Dataset) -> None:
+    frames = list(data.frames.values())
+    scorable = data.scorable
+    annotated = [f for f in frames if f.annotated]
+    ran = [f for f in frames if f.ran]
+    with_person = [f for f in scorable if f.gt]
+    person_free = [f for f in scorable if f.person_free]
+    gt_boxes = sum(len(f.gt) for f in scorable)
+    pred_boxes = sum(len(f.preds) for f in scorable)
+    annotators = sorted({a for f in annotated for a in f.annotators})
+
+    emit("## Dataset inventory")
+    emit()
+    emit("| quantity | value |")
+    emit("|---|---|")
+    emit(f"| Frames in the index | {len(frames)} |")
+    emit(f"| Frames annotated | {len(annotated)} |")
+    emit(f"| Frames the detector was run on | {len(ran)} |")
+    emit(f"| Frames scored (annotated and run) | {len(scorable)} |")
+    emit(f"| &nbsp;&nbsp;of those, containing a person | {len(with_person)} |")
+    emit(f"| &nbsp;&nbsp;of those, person-free | {len(person_free)} |")
+    emit(f"| Ground-truth person boxes scored | {gt_boxes} |")
+    emit(f"| Predicted boxes scored | {pred_boxes} |")
+    emit(f"| Annotators | {', '.join(annotators) if annotators else '-'} |")
+    models = sorted({f.model_label for f in ran if f.model_label})
+    emit(f"| Detector | {'; '.join(models) if models else '-'} |")
+    thresholds = sorted({
+        f"{run['score_threshold']:g}"
+        for f in ran for run in f.runs if run.get("score_threshold") is not None
+    })
+    emit(f"| Detector score threshold | {', '.join(thresholds) if thresholds else '-'} |")
+    emit()
+    excluded = data.excluded()
+    if excluded:
+        emit(f"{len(excluded)} frame(s) in the index are not scored:")
+        emit()
+        emit("| frame | reason |")
+        emit("|---|---|")
+        for frame, reason in excluded:
+            emit(f"| {frame.frame_id} | {reason} |")
+        emit()
+        emit(
+            "An unannotated frame is not a person-free frame, and a frame the detector "
+            "has not been run on is not a missed detection. Neither is scored."
+        )
+        emit()
+
+
+def primary_block(scorable: list[Frame], threshold: float) -> Metrics:
+    m = score(scorable, threshold)
+    emit(f"## Object-level detection at IoU {threshold:.2f} (primary result)")
+    emit()
+    emit(METRIC_HEADER)
+    emit(METRIC_RULE)
+    emit(metrics_row("**all scored frames**", m))
+    emit()
+    emit(
+        f"A true positive is a predicted box matched one-to-one to a ground-truth box at "
+        f"IoU >= {threshold:.2f}, predictions taken in descending confidence order, each "
+        "matched to the highest-IoU unmatched ground-truth box (`detector_iou.match_frame`). "
+        "An unmatched prediction is a false positive; an unmatched ground-truth box is a "
+        "false negative."
+    )
+    emit()
+    emit(
+        f"Precision = TP / (TP + FP) = {m.tp} / {m.n_pred} = {fmt(m.precision, 3)}; "
+        f"recall = TP / (TP + FN) = {m.tp} / {m.n_gt} = {fmt(m.recall, 3)}; "
+        f"F1 = {fmt(m.f1, 3)}."
+    )
+    emit()
+    stats = m.iou_stats()
+    if stats:
+        emit(
+            f"IoU of the {stats['n']} matched pairs: mean {stats['mean']:.3f}, median "
+            f"{stats['median']:.3f}, min {stats['min']:.3f}, max {stats['max']:.3f}, SD "
+            f"{fmt(stats['sd'], 3)}. This is localisation quality among the boxes that "
+            "matched; it says nothing about the ones that did not."
+        )
+        emit()
+    emit(
+        "The 95% intervals are Wilson score intervals on TP out of the prediction count "
+        "(precision) and out of the ground-truth count (recall). They assume the boxes are "
+        "independent Bernoulli trials, which boxes from consecutive frames of one scene are "
+        "not, so they understate the true uncertainty. Read them as an indication of how "
+        "little a small test set can settle, not as an exact coverage statement."
+    )
+    emit()
+    return m
+
+
+def sensitivity_block(scorable: list[Frame], primary: float) -> None:
+    thresholds = sorted(set(SENSITIVITY_IOU) | {primary})
+    emit("## Sensitivity to the IoU threshold")
+    emit()
+    emit("| IoU threshold | TP | FP | FN | precision | recall | F1 |")
+    emit("|---|---|---|---|---|---|---|")
+    for threshold in thresholds:
+        m = score(scorable, threshold)
+        mark = " (primary)" if threshold == primary else ""
+        emit(
+            f"| {threshold:.2f}{mark} | {m.tp} | {m.fp} | {m.fn} | {fmt(m.precision, 3)} | "
+            f"{fmt(m.recall, 3)} | {fmt(m.f1, 3)} |"
+        )
+    emit()
+    emit(
+        "Only the primary row is the E18 result. The others show how much of the result is "
+        "a localisation effect rather than a detection effect: a large gap between 0.25 and "
+        "0.75 means the detector finds people but boxes them loosely."
+    )
+    emit()
+
+
+def ap_block(scorable: list[Frame], threshold: float) -> None:
+    pairs = [(f.preds, f.gt) for f in scorable]
+    ap, n_gt = average_precision(pairs, threshold)
+    if n_gt == 0:
+        return
+    emit(f"## Average precision at IoU {threshold:.2f}")
+    emit()
+    emit(f"AP@{threshold:.2f} = {fmt(ap, 3)} over {n_gt} ground-truth boxes, all-point "
+         "interpolation of the precision-recall curve obtained by ranking every prediction "
+         "in the set by confidence.")
+    emit()
+    emit(
+        "**This is AP, not mAP.** There is one class (person), so nothing is averaged over "
+        "classes, and no average over IoU thresholds is taken. It is also a lower bound "
+        "rather than the model's AP: the only predictions that exist are those the shipped "
+        "detector emitted above its own 0.4 score threshold, so the recall axis is "
+        "truncated at whatever that threshold reaches and the curve has no low-confidence "
+        "tail. Do not compare it with a COCO mAP figure."
+    )
+    emit()
+
+
+def condition_blocks(scorable: list[Frame], threshold: float) -> None:
+    with_labels = [f for f in scorable if any(f.conditions.get(c) for c in CONDITIONS)]
+    if not with_labels:
+        return
+    emit(f"## Per-condition results at IoU {threshold:.2f}")
+    emit()
+    for name in CONDITIONS:
+        groups: dict[str, list[Frame]] = {}
+        for frame in with_labels:
+            value = frame.conditions.get(name, "")
+            if value:
+                groups.setdefault(value, []).append(frame)
+        if not groups:
+            continue
+        emit(f"### By {name}")
+        emit()
+        emit(METRIC_HEADER)
+        emit(METRIC_RULE)
+        for value in sorted(groups):
+            emit(metrics_row(value, score(groups[value], threshold)))
+        emit()
+    cells: dict[tuple, list[Frame]] = {}
+    for frame in with_labels:
+        cells.setdefault(frame.condition_key, []).append(frame)
+    emit("### By full condition cell")
+    emit()
+    emit("| " + " | ".join(CONDITIONS) + " | frames | GT boxes | predictions | TP | FP | FN | "
+         "precision (95% CI) | recall (95% CI) | F1 | mean IoU of TP |")
+    # 4 condition columns + frames, GT, preds, TP, FP, FN, precision, recall, F1, IoU
+    emit("|" + "---|" * (len(CONDITIONS) + 10))
     for key in sorted(cells):
         group = cells[key]
-        hit = [r for r in group if truthy(r["detected"])]
-        sc = scores(hit, "best_score")
-        emit("| " + " | ".join(key) + f" | {len(group)} | {len(hit)} | {rate(len(hit), len(group))} | "
-             + (f"{st.median(sc):.2f}" if sc else "-") + " |")
-    tp = [r for r in present if truthy(r["detected"])]
-    fp = [r for r in absent if truthy(r["detected"])]
-    emit(f"| **all with a person** | | | | **{len(present)}** | **{len(tp)}** | "
-         f"**{rate(len(tp), len(present))}** | |")
-    emit(f"| person-free | | | | {len(absent)} | {len(fp)} | - | |")
+        m = score(group, threshold)
+        stats = m.iou_stats()
+        emit(
+            "| " + " | ".join(v or "-" for v in key) + f" | {len(group)} | {m.n_gt} | "
+            f"{m.n_pred} | {m.tp} | {m.fp} | {m.fn} | {fmt_ci(m.precision, m.precision_ci)} | "
+            f"{fmt_ci(m.recall, m.recall_ci)} | {fmt(m.f1, 3)} | "
+            + (fmt(stats["mean"], 3) if stats else "-") + " |"
+        )
     emit()
-    prec_k, prec_n = len(tp), len(tp) + len(fp)
-    recall = len(tp) / len(present) if present else float("nan")
-    precision = prec_k / prec_n if prec_n else float("nan")
-    f1 = (2 * precision * recall / (precision + recall)) if (precision + recall) else float("nan")
-    emit(f"Pooled recall {rate(len(tp), len(present))}; pooled precision {rate(prec_k, prec_n)}; "
-         f"F1 {f1:.2f}.")
+    emit(
+        "A cell's recall is the measured failure region for that condition. No floor is set "
+        "for the harder cells (Table 4.2): whatever they read is the result."
+    )
     emit()
-    hit_sc, miss_sc = scores(tp, "best_score"), scores(fp, "best_score")
-    if hit_sc:
-        emit(f"Best score on true detections: median {st.median(hit_sc):.2f}, "
-             f"min {min(hit_sc):.2f}, max {max(hit_sc):.2f} (n {len(hit_sc)}).")
-    if miss_sc:
-        emit(f"Best score on false detections: median {st.median(miss_sc):.2f}, "
-             f"min {min(miss_sc):.2f}, max {max(miss_sc):.2f} (n {len(miss_sc)}).")
-    inf = scores(rows, "infer_ms")
-    if inf:
-        inf.sort()
-        p95 = inf[min(len(inf) - 1, int(round(0.95 * (len(inf) - 1))))]
-        over = sum(1 for v in inf if v > 150)
-        emit(f"Inference time: median {st.median(inf):.0f} ms, p95 {p95:.0f} ms, "
-             f"n {len(inf)}; {over} frame{'' if over == 1 else 's'} above the dashboard's "
-             f"150 ms auto-off level (it switches off on the mean of five, Section 3.11).")
+
+
+def criterion_block(scorable: list[Frame], threshold: float) -> None:
+    easiest = [
+        f for f in scorable
+        if all(f.conditions.get(k) == v for k, v in EASIEST.items())
+    ]
+    emit("## Pass criterion for the detector (Table 4.2)")
+    emit()
+    if not easiest:
+        emit(
+            "[PENDING MEASUREMENT] No scored frame carries the easiest stratum "
+            + ", ".join(f"{k}={v}" for k, v in EASIEST.items())
+            + ", so the criterion cannot be evaluated."
+        )
+        emit()
+        return
+    m = score(easiest, threshold)
+    emit(
+        f"Easiest stratum ({', '.join(f'{k}={v}' for k, v in EASIEST.items())}): "
+        f"{len(easiest)} frames, {m.n_gt} ground-truth boxes."
+    )
+    emit()
+    emit("| limit | required | measured | verdict |")
+    emit("|---|---|---|---|")
+    for label, value, floor in (
+        ("recall", m.recall, RECALL_FLOOR),
+        ("precision", m.precision, PRECISION_FLOOR),
+    ):
+        if value != value:
+            verdict = "cannot be evaluated"
+        else:
+            verdict = "met" if value >= floor else "**not met**"
+        emit(f"| {label} | >= {floor:.2f} | {fmt(value, 3)} | {verdict} |")
+    emit()
+    emit(
+        f"Both limits were fixed before capture (Table 4.2) on the frame-level definition "
+        f"the first version of this script used. They are evaluated here at box level, "
+        f"matched at IoU {threshold:.2f}, which is a strictly harder test: a box in the "
+        f"wrong place now counts against precision instead of for it. State the box-level "
+        f"definition and the IoU threshold wherever the criterion is quoted, so the "
+        f"comparison is not read as the frame-level one."
+    )
+    emit()
+
+
+def person_free_block(scorable: list[Frame], threshold: float) -> None:
+    person_free = [f for f in scorable if f.person_free]
+    if not person_free:
+        return
+    m = score(person_free, threshold)
+    frames_with_fp = sum(1 for f in person_free if f.preds)
+    emit("## Person-free frames")
+    emit()
+    emit(
+        f"{len(person_free)} scored frames contain no person, so they hold no ground-truth "
+        f"box and can only produce false positives. They produced {m.fp} false-positive "
+        f"box(es) on {frames_with_fp} frame(s), {m.fp / len(person_free):.2f} per frame."
+    )
+    emit()
+    emit(
+        "These false positives are already included in the pooled precision above; this "
+        "block only separates out where they came from. The banner false-alarm measurement "
+        "below is a different test on continuous video and shares none of these counts."
+    )
+    emit()
+
+
+def confidence_block(scorable: list[Frame], threshold: float) -> None:
+    tp_scores: list[float] = []
+    fp_scores: list[float] = []
+    for frame in scorable:
+        result = match_frame(frame.preds, frame.gt, threshold)
+        matched = {m.pred_index for m in result.matches}
+        for index, box in enumerate(frame.preds):
+            if box.confidence is None:
+                continue
+            (tp_scores if index in matched else fp_scores).append(box.confidence)
+    if not tp_scores and not fp_scores:
+        return
+    emit("## Confidence of matched and unmatched predictions")
+    emit()
+    emit("| predictions | n | median | min | max |")
+    emit("|---|---|---|---|---|")
+    for label, values in (("matched (TP)", tp_scores), ("unmatched (FP)", fp_scores)):
+        if values:
+            emit(f"| {label} | {len(values)} | {st.median(values):.2f} | "
+                 f"{min(values):.2f} | {max(values):.2f} |")
+        else:
+            emit(f"| {label} | 0 | - | - | - |")
+    emit()
+    emit(
+        "Scores below the detector's own 0.4 threshold cannot appear: the detector never "
+        "emits them. Nothing here is a threshold sweep, and no threshold other than the "
+        "shipped one was run."
+    )
+    emit()
+
+
+def timing_block(scorable: list[Frame]) -> None:
+    values = sorted(v for v in (f.infer_ms for f in scorable) if v is not None)
+    if not values:
+        emit("Inference time: [PENDING MEASUREMENT] no `infer_ms` recorded in "
+             f"`{RUNS_FILE}`.")
+        emit()
+        return
+    p95 = percentile(values, 95)
+    over = sum(1 for v in values if v > AUTO_OFF_MS)
+    emit("## Inference time")
+    emit()
+    emit(
+        f"n {len(values)} frames: median {st.median(values):.0f} ms, mean "
+        f"{st.fmean(values):.0f} ms, p95 {p95:.0f} ms, min {min(values):.0f} ms, max "
+        f"{max(values):.0f} ms. {over} frame{'' if over == 1 else 's'} above the "
+        f"dashboard's {AUTO_OFF_MS:.0f} ms auto-off level, which it applies to the mean of "
+        "five consecutive frames rather than to a single frame (Section 3.11)."
+    )
     emit()
 
 
 def banner_block(rows: list[dict]) -> None:
+    """Unchanged from the first version of this script: see the module docstring."""
     emit("## E18 banner false alarms on person-free video (detector_banner.csv)")
     emit()
     emit("| segment | person-free (min) | banner raises | false alarms per minute |")
@@ -158,48 +487,114 @@ def banner_block(rows: list[dict]) -> None:
     emit("Pass criterion (Table 4.2, adopted): at most 1 false alarm per minute over at "
          "least 10 min of person-free video.")
     emit()
+    if mins < 10:
+        emit(f"[PENDING MEASUREMENT] Only {mins:.1f} min of person-free video has been "
+             "scored; the criterion needs at least 10 min.")
+        emit()
+    emit(
+        "This is a measurement of the raise logic (three consecutive frames with a box to "
+        "raise, five without to clear) on continuous video. It is deliberately kept apart "
+        "from the box-level metrics above and shares no counts with them."
+    )
+    emit()
+
+
+def legacy_block(path: Path) -> None:
+    rows = read_rows(path)
+    emit(f"## Legacy sheet `{LEGACY_FRAMES_FILE}` (not scored)")
+    emit()
+    emit(
+        f"{len(rows)} row(s) are present in `{LEGACY_FRAMES_FILE}`, the frame-level sheet "
+        "this script used before the IoU rewrite. They are left on disk untouched and are "
+        "**not** included in any metric above."
+    )
+    emit()
+    emit(
+        "The sheet records only whether the detector returned at least one box per frame, "
+        "with no box coordinates on either side, so it cannot be converted into an "
+        "object-level measurement: the information a conversion would need was never "
+        "recorded. Treating its `detected` column as a box-level true positive would be "
+        "fabrication. Any frame in it that is to count towards E18 has to be re-exported "
+        "with its boxes and re-annotated."
+    )
+    emit()
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--results-dir", type=Path, default=RESULTS_DIR)
     ap.add_argument("--out", type=Path, help="write markdown here instead of stdout")
+    ap.add_argument("--iou", type=float, default=PRIMARY_IOU,
+                    help=f"primary IoU threshold (default {PRIMARY_IOU})")
+    ap.add_argument("--strict", action="store_true",
+                    help="exit non-zero if any input row was rejected")
     args = ap.parse_args()
+    if not 0 < args.iou <= 1:
+        ap.error("--iou must be in (0, 1]")
 
-    emit("# E18 person-detector evaluation")
+    data = load_dataset(args.results_dir)
+    scorable = sorted(data.scorable, key=lambda f: f.frame_id)
+
+    emit("# E18 person-detector evaluation (object-level, IoU matched)")
     emit()
-    emit("Generated by tools/eval/detector_eval.py from the labelled frame set. "
-         "Derived figures only; no input file is modified.")
+    emit(
+        f"Generated by `tools/eval/detector_eval.py` at "
+        f"{datetime.now(timezone.utc).isoformat(timespec='seconds')} from the sheets listed "
+        f"below, at a primary threshold of IoU {args.iou:.2f}. Derived figures only: no "
+        "input file is read for anything but its rows, and none is modified."
+    )
     emit()
-    any_input = False
-    frames = args.results_dir / "detector_frames.csv"
-    banner = args.results_dir / "detector_banner.csv"
-    if frames.exists():
-        rows = read_rows(frames)
-        if rows:
-            frames_block(rows)
-            any_input = True
+
+    provenance_block(args.results_dir, data)
+    integrity_block(data)
+
+    if data.any_input:
+        inventory_block(data)
+    if scorable:
+        primary_block(scorable, args.iou)
+        sensitivity_block(scorable, args.iou)
+        ap_block(scorable, args.iou)
+        condition_blocks(scorable, args.iou)
+        criterion_block(scorable, args.iou)
+        person_free_block(scorable, args.iou)
+        confidence_block(scorable, args.iou)
+        timing_block(scorable)
     else:
-        emit(f"(skipped: {frames.name} not present yet)")
+        emit("## Object-level detection")
         emit()
-    if banner.exists():
-        rows = read_rows(banner)
-        if rows:
-            banner_block(rows)
-            any_input = True
+        emit(
+            "[PENDING MEASUREMENT: E18 person detection.] No frame is both annotated and "
+            "scored by the deployed detector, so no precision, recall, F1 or IoU figure "
+            "exists. The protocol is in Section 5.9, the pass criterion in Table 4.2, and "
+            "the procedure for collecting the data in `tools/eval/README.md`."
+        )
+        emit()
+
+    banner = args.results_dir / BANNER_FILE
+    banner_rows = read_rows(banner) if banner.exists() else []
+    if banner_rows:
+        banner_block(banner_rows)
     else:
-        emit(f"(skipped: {banner.name} not present yet)")
+        emit("## E18 banner false alarms on person-free video")
         emit()
-    if not any_input:
-        emit("E18 is [PENDING MEASUREMENT]: no labelled frames have been captured. "
-             "The protocol and the pass criterion are in Section 5.9 and Table 4.2.")
+        emit(f"[PENDING MEASUREMENT] `{BANNER_FILE}` holds no segments. Criterion "
+             "(Table 4.2, adopted): at most 1 false alarm per minute over at least 10 min "
+             "of person-free video.")
         emit()
+
+    legacy = args.results_dir / LEGACY_FRAMES_FILE
+    if legacy.exists():
+        legacy_block(legacy)
+
     text = "\n".join(out_lines) + "\n"
     if args.out:
         args.out.write_text(text)
         print(f"written to {args.out}")
     else:
         sys.stdout.write(text)
+    if args.strict and data.errors:
+        print(f"{len(data.errors)} input row(s) rejected; see the report", file=sys.stderr)
+        return 1
     return 0
 
 

@@ -185,7 +185,9 @@
 - 3.10 GPS Localisation and Offline Mapping
 - 3.11 Victim-Finding Aids
   - Person detection in the operator's browser (advisory; accuracy and
-    failure region measured by E18, Section 5.9, [PENDING MEASUREMENT])
+    failure region measured box against box by E18, Section 5.9,
+    [PENDING MEASUREMENT]), with the evaluation capture mode that exports the
+    deployed detector's own boxes for that experiment
   - Repeating voice message (looped by P2; one of the three modes of E17,
     Section 5.8, [PENDING MEASUREMENT])
   - Victim marks (snapshot kept on the operator's device)
@@ -224,7 +226,7 @@
   - Internal comparisons: media isolation E16 (control latency with media
     off, on, and P2 frozen); alternative audio bitrate; communication mode
     within participants (E17, speech-only baseline); detection condition by
-    stratum (E18)
+    stratum (E18, at IoU 0.50)
   - Specification targets from Section 3 as pass/fail thresholds
   - Literature baselines: figures reported by the platforms in the Section 2.6
     comparison \cite{casper2003,liu2013,daun2023,megalingam2022}, taken from
@@ -252,6 +254,12 @@
   - E18: 400 frames through the robot's own video path, 2x2x2x2 strata
     (posture, occlusion, illumination, distance) plus person-free frames and
     10 min of person-free video for the banner false-alarm rate
+  - Scored box against box: predicted boxes from the deployed detector matched
+    one-to-one to hand-drawn ground-truth boxes at IoU 0.50, in descending
+    confidence order; TP/FP/FN, precision, recall, F1, IoU of matched pairs
+    and AP@0.50 (one class, not mAP). Classification accuracy is not reported
+  - Table 5.14 per stratum, Table 5.14a pooled with the banner rows, which are
+    a separate measurement on continuous video
 - 5.10 Cost Analysis and Comparison with Existing Systems
 
 **6. Discussion**

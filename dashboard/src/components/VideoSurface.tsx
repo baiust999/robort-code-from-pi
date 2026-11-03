@@ -3,6 +3,7 @@ import type { WebrtcVideoState } from '../hooks/useWebrtcVideo';
 import type { PersonBox, PersonDetectionState } from '../hooks/usePersonDetection';
 import type { RecorderState } from '../hooks/useRecorder';
 import { drawPersonBoxes } from '../lib/drawPersonBoxes';
+import { evalCaptureEnabled } from '../lib/detectorExport';
 
 /** Keeps the overlay canvas the size of the video box and draws the boxes where the picture is. */
 function DetectionOverlay(props: { videoRef: WebrtcVideoState['videoRef']; boxes: PersonBox[] }) {
@@ -53,6 +54,9 @@ export function VideoSurface(props: {
 }) {
   const { videoRef, connected, error, waiting, retry } = props.video;
   const { detection, recorder } = props;
+  // E18 capture mode only (?evalcapture=1 once, then remembered in this
+  // browser). Off for an operator, so the shipped controls are unchanged.
+  const [evalCapture] = useState(evalCaptureEnabled);
   // Browsers only autoplay muted media, so the robot's microphone starts
   // muted and the operator turns it on with a click.
   const [listening, setListening] = useState(false);
@@ -100,6 +104,16 @@ export function VideoSurface(props: {
             >
               {listening ? '🔊 Robot mic on' : '🔇 Listen to robot mic'}
             </button>
+            {evalCapture && detection.ready && (
+              <button
+                type="button"
+                onClick={detection.requestEvalCapture}
+                title="E18: save the next detected frame and its detector boxes to this computer"
+                className="rounded bg-black/60 px-2 py-1 text-xs text-white/90 hover:bg-black/80"
+              >
+                {detection.lastEvalCapture ? `✓ ${detection.lastEvalCapture}` : 'Capture eval frame'}
+              </button>
+            )}
             {recorder.supported && (
               <button
                 type="button"

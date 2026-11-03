@@ -96,12 +96,16 @@ REPORTS: tuple[dict, ...] = (
         "rate": ("all_three_correct", "all three items correct"),
     },
     {
-        "section": "5.9", "file": "detector_frames.csv",
-        "title": "Person detector on the labelled frame set (E18); per-stratum metrics "
-                 "come from detector_eval.py",
-        "kind": "agg", "group": ["posture", "occlusion", "light", "distance_band"],
-        "metrics": [("best_score", "best person score"), ("infer_ms", "inference (ms)")],
-        "rate": ("detected", "frames with a person box"),
+        # Object-level precision, recall, F1 and IoU are detector_eval.py's job:
+        # they need the ground-truth and prediction boxes matched to each other,
+        # which no per-row aggregation can do. This entry covers only the
+        # per-frame detector cost, from the run sheet.
+        "section": "5.9", "file": "detector_runs.csv",
+        "title": "Person-detector inference time per frame (E18); the IoU-matched "
+                 "precision, recall, F1 and per-condition tables come from "
+                 "detector_eval.py",
+        "kind": "agg", "group": ["model_name", "delegate"],
+        "metrics": [("infer_ms", "inference (ms)"), ("n_boxes", "boxes returned")],
     },
     {
         "section": "5.6", "file": "gps_static.csv",

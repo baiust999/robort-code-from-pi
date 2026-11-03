@@ -1,6 +1,6 @@
 # Project context: low-cost teleoperated rescue robot (firmware-enforced stop)
 
-Facts below were current on 2026-11-01. They are a summary, not the source of
+Facts below were current on 2026-11-03. They are a summary, not the source of
 truth. Always inspect the files named here before relying on a fact, and
 update this file when a fact changes.
 
@@ -53,8 +53,9 @@ update this file when a fact changes.
   16 kbps run is confounded by a P2 restart), E6 (partial), E9
   (resolution-limited), E15 (receipts).
 - [PENDING MEASUREMENT] (the experiments still planned, in run order):
-  E18 (person detector on 400 labelled frames, Section 5.9 - no ethics, no
-  purchase, cheapest), E16 (media isolation, Table 5.7e), E5, E4 (240 fps; the
+  E18 (person detector on 400 labelled frames with hand-drawn boxes, scored
+  box against box at IoU 0.50, Section 5.9 - no ethics, no purchase, cheapest;
+  the dashboard's evaluation capture mode must be built and deployed first), E16 (media isolation, Table 5.7e), E5, E4 (240 fps; the
   tape in frame also gives the distance covered after drive is removed, with no
   criterion on it), then E13 and E17 (victim communication, Section 5.8). Each
   has a claim and pass criterion fixed in advance in Section 4 Table 4.2 (q1
@@ -63,7 +64,12 @@ update this file when a fact changes.
   degraded conditions (15 participants x 3 modes x 2 victim states; the paper's
   only hypothesis test, fixed in advance in Section 4.2: Cochran's Q, then
   exact McNemar with Holm) and E18 person-detector evaluation on a labelled
-  frame set (`tools/eval/detector_eval.py`, `record.py victim_comms`). Both
+  frame set (`tools/eval/detector_eval.py` with `detector_iou.py`,
+  `detector_data.py`, `detector_import.py`, `detector_annotate.py` and the 102
+  tests in `tools/eval/tests/`; `record.py victim_comms`). E18 was moved from
+  frame-level "a box appeared somewhere" scoring to one-to-one IoU matching on
+  2026-11-03, before any frame was captured, so nothing was reinterpreted; the
+  Table 4.2 limits are unchanged. Procedure: `tools/eval/README.md`. Both
   cover the Section 3.11 aids and both are pending. Critical path: one ethics
   application covers E13 and E17, and E17 also needs a touch input on the robot
   display, since no tap-to-answer answer has ever been given on the robot.
