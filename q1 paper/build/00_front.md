@@ -1,4 +1,4 @@
-# A Low-Cost Fail-Safe Teleoperated Rescue Robot with Two-Way Victim Audio and Video: Firmware-Bounded Stop, Supervised Recovery and Measured Resource Cost
+# Firmware-Enforced Stop, Supervised Recovery, and Two-Way Victim Audio and Video on a Low-Cost Teleoperated Rescue Robot
 
 Chinmoy Sarkar, Sadman Adib, Sadia Sultana
 

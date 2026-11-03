@@ -1,4 +1,4 @@
-# A Fail-Safe Teleoperated Rescue Robot with Two-Way Victim Interaction on Edge Hardware: Design, Implementation and Experimental Evaluation
+# Firmware-Enforced Stop, Supervised Recovery, and Two-Way Victim Audio and Video on a Low-Cost Teleoperated Rescue Robot
 
 Chinmoy Sarkar, Sadman Adib, Sadia Sultana
 

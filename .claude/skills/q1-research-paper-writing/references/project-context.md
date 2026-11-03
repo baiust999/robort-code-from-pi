@@ -1,4 +1,4 @@
-# Project context: low-cost fail-safe teleoperated rescue robot
+# Project context: low-cost teleoperated rescue robot (firmware-enforced stop)
 
 Facts below were current on 2026-11-01. They are a summary, not the source of
 truth. Always inspect the files named here before relying on a fact, and
@@ -7,7 +7,7 @@ update this file when a fact changes.
 ## Target and manuscript files
 
 - Target journal: IEEE Access (Q1 at time of decision, 2026-10-18; re-check).
-- Working title: "A Low-Cost, Fail-Safe Teleoperated Rescue Robot..."
+- Title (decided 2026-11-03): "Firmware-Enforced Stop, Supervised Recovery, and Two-Way Victim Audio and Video on a Low-Cost Teleoperated Rescue Robot"
 - Manuscript folder: `research paper/`
   - `section1_introduction.md` ... `section8_conclusion.md` are the sources.
   - `RESEARCH PAPER.md` is the assembled master: front matter + the eight
