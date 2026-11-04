@@ -1,4 +1,4 @@
-# Firmware-Enforced Stop, Supervised Recovery, and Two-Way Victim Audio and Video on a Low-Cost Teleoperated Rescue Robot
+# Firmware-Enforced Stop, Supervised Recovery, and Two-Way Victim Audio and Video on a Teleoperated Rescue Robot
 
 ## Table of Contents
 

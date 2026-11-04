@@ -7,7 +7,7 @@ update this file when a fact changes.
 ## Target and manuscript files
 
 - Target journal: IEEE Access (Q1 at time of decision, 2026-10-18; re-check).
-- Title (decided 2026-11-03): "Firmware-Enforced Stop, Supervised Recovery, and Two-Way Victim Audio and Video on a Low-Cost Teleoperated Rescue Robot"
+- Title (decided 2026-11-03): "Firmware-Enforced Stop, Supervised Recovery, and Two-Way Victim Audio and Video on a Teleoperated Rescue Robot"
 - Manuscript folder: `research paper/`
   - `section1_introduction.md` ... `section8_conclusion.md` are the sources.
   - `RESEARCH PAPER.md` is the assembled master: front matter + the eight

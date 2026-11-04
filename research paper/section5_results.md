@@ -103,6 +103,8 @@ The physical dead-man wheel-stop time (E4) requires a 240 fps camera and has not
 
 **Limitations.** No E1 figure includes the Wi-Fi link. The latency metrics other than `hello_rtt` and the log-timed dead-man intervals are upper bounds. The log-timed method resolves the firmware stop to about 15 ms and does not observe the wheels; the time at which the wheels come to rest, and the distance covered after the stop, are not measured in this paper (E4).
 
+**Supplementary evidence (E1, E4).** The raw experimental dataset for E1 (control-plane latency) is provided in the supplementary experimental evidence archive [XX] (DOI: XXX) under `E01_Control_Communication/dataset/`: `latency.csv` (420 rows, the three sessions of Tables 5.1 to 5.2a) and the preserved P1 event-log window `p1_events_2026-10-21_1100-1400.log.gz`, from which Table 5.2b and the firmware-side interval cited for E4 are calculated. No experimental recording of the E1 sessions exists in the project repository, so none is provided under `E01_Control_Communication/video/`. For E4 (dead-man wheel-stop time) neither the dataset (`deadman_physical.csv`) nor the 240 fps recording exists yet; both will be added under `E04_Deadman_Timer/dataset/` and `E04_Deadman_Timer/video/` after the physical trials have been completed.
+
 ### 5.1a Software Verification: Automated Unit Tests
 
 The timing guarantees analysed in Section 3.5.2 and measured in Table 5.2b rest on firmware-facing and server-side logic whose correctness is checked separately by automated unit tests against `pi/common/mock_hardware.py`'s `MockArduino` model and the Pi-side validation code, under `MOCK_HARDWARE` semantics. This is SOFTWARE-TEST evidence: it establishes that the code behaves as documented at the inputs tested, and it does not operate the physical Arduino firmware, the motors, or the radio link.
@@ -231,6 +233,8 @@ This subsection reports the delay of the two-way media path (E5, Table 4.1). No 
 
 **Limitations.** Until E5 is measured, the paper makes no quantitative claim about media delay or quality.
 
+**Supplementary evidence (E5).** No dataset or experimental recording exists for E5. The raw experimental dataset (`glass2glass.csv` and the WebRTC statistics) and the photographs or recordings of the clock readings will be added to the supplementary experimental evidence archive [XX] (DOI: XXX) under `E05_Streaming/dataset/` and `E05_Streaming/video/` after the physical evaluation has been completed.
+
 ## 5.3 Communication Range and Link Degradation
 
 This subsection reports the Wi-Fi range sweep (E6, Table 4.1). The sweep is partial. Sixteen line-of-sight stations were logged in two sessions, 5 to 250 m from the access point (`tools/eval/results/network.csv`): N1 to N6 on 2026-10-22, and N7 to N10 and R1 to R6 on 2026-10-23. No obstacle condition was run, and no station at which the operator judged video or control unusable was reached, so no upper bound on usable range exists. The principal finding is negative and methodological: ICMP packet loss to the access point ranged from 0 to 16 percent per 100-ping burst without tracking distance, while the operator judged video and control usable at every judged station.
@@ -288,6 +292,8 @@ This subsection reports the Wi-Fi range sweep (E6, Table 4.1). The sweep is part
 **Relation to the dashboard link-quality warning.** The warning of Section 3.7.3 (amber at or below -70 dBm, red at or below -80 dBm) was added on 2026-10-28, after this sweep, and its thresholds are provisional. Every signal level in Table 5.5 lay between -39 and -60 dBm, so neither threshold was reached at any station, including the four stations that lost more than 5% of pings (N10, R4, R5, R6 at -55 to -60 dBm). In these data the signal level did not track ping loss either (finding iii), so the sweep gives no evidence yet that the signal level warns before the link degrades, or at what level it should. The software behaviour of the indicator was checked on 2026-10-28 against the Pi's real signal level and against scripted levels (SOFTWARE-TEST; `docs/TEST_REPORT.md`, addendum of that date): bars and banners followed the levels of Table 10a, and NO SIGNAL appeared within about 1 s of snapshots stopping. That check is not a measurement on a moving robot.
 
 The sweep was not extended beyond 250 m, no obstructed link was tested, and no station was repeated within a session; these extensions are left to future work (Section 7.1.1), and the range result is reported as a lower bound only.
+
+**Supplementary evidence (E6).** The raw experimental dataset for E6 (communication range), `network.csv` (16 stations, the two sessions of Table 5.5), is provided in the supplementary experimental evidence archive [XX] (DOI: XXX) under `E06_Communication_Range/dataset/`. Its radio figures are logged by `netsweep.py`; its distances and video and control judgements are operator-entered and unverified (Section 4.2). No experimental recording of the sweep exists in the project repository, so none is provided under `E06_Communication_Range/video/`. Obstructed links and distances beyond 250 m remain unmeasured.
 
 ## 5.4 Fault Injection and Recovery Time
 
@@ -387,6 +393,8 @@ F9 is not repeated in this evaluation, so the paper makes no claim about GPS los
 | media-on | | | | | |
 | p2-frozen | | | | | |
 
+**Supplementary evidence (E7, E16).** The raw experimental dataset for E7 (fault injection and recovery) is provided in the supplementary experimental evidence archive [XX] (DOI: XXX) under `E07_Fault_Recovery/dataset/`: `faults.csv` (30 automated trials, Table 5.6), `fault_watch.csv` (94 manual-watch rows, Tables 5.7 and 5.7b) and the preserved P1 event-log windows `p1_events_2026-10-07_2100-2259.log.gz` (F3 serial re-opens), `p1_events_2026-10-21_1940-1955.log.gz` (F6 and F7, Table 5.7a) and `p1_events_2026-10-22_1200-1402.log.gz` (F9 matching and the heartbeat stalls of Table 5.7c). The F9 rows of `fault_watch.csv` are included for completeness but are not a valid measurement and support no result. No experimental recording of the E7 trials exists in the project repository, so none is provided under `E07_Fault_Recovery/video/`. For E16 (media isolation) no dataset or recording exists yet; both will be added under `E16_Media_Isolation/dataset/` and `E16_Media_Isolation/video/` after the evaluation has been completed.
+
 ## 5.5 Resource Utilization on the Edge Device
 
 **Procedure.** Resource use was logged with `tools/eval/reslog.py` (E8, Table 4.1) at 1 Hz: system CPU (as a percentage of the whole four-core processor), per-process CPU for P1, P2 and P3 (as a percentage of one core, so up to 100% per fully busy core), memory, per-process resident memory (RSS), SoC temperature, the firmware throttle word and its decoded flags, and interface statistics. Six labelled conditions exist: `idle` (2026-10-08, no operator connected), `idle-partial-10min` (2026-10-07, media process encoding for the Robot Screen only), `driving` (2026-10-21, robot driven continuously over the control WebSocket by a scripted client, no operator media stream, wheels clear of the ground, freshly rebooted Pi), `driving+media` (2026-10-21, as `driving` with an operator video stream active, after the Pi supply was upgraded), `driving+media-16kbps` (2026-10-21, as `driving+media` with the Opus bitrate set to 16 kbit/s instead of 32 kbit/s, Section 4.3), and `driving+media-throttled` (2026-10-21, the first `driving+media` capture, on the original USB power bank of Table 2).
@@ -471,6 +479,8 @@ F9 is not repeated in this evaluation, so the paper makes no claim about GPS los
 
 **Limitations.** The driving conditions were reported by the operator to have run with the wheels clear of the ground; the logs cannot confirm this (the robot has no encoder), and a later 2026-10-22 session run on the same stated premise took place with the robot on the floor, so the statement is unverified. If it holds, motor current and its effect on the supply are not represented. Conditions are single captures of 3 to 30 min. A remote-desktop session was active in the idle and driving conditions and adds an unmeasured load to total CPU and to the interface counters. The 16 kbit/s run is confounded by a P2 restart and its configuration is not in version control. The Table 4.1 plan of four conditions at 30 min each was met only for `idle`. All of these captures also predate the aids of Section 3.11, so none of them includes the cost of the repeating voice message, which is decoded once on upload and then re-encoded into the existing Robot Screen audio track on the Pi, or of the tap-to-answer questions, which add only short data-channel messages; person detection and session recording run on the operator's computer and do not load the Pi by design.
 
+**Supplementary evidence (E8).** The raw experimental dataset for E8 (resource utilisation), `resources.csv` (3608 rows at 1 Hz, Tables 5.8 to 5.10), is provided in the supplementary experimental evidence archive [XX] (DOI: XXX) under `E08_Resource_Usage/dataset/`, together with the preserved P3 event-log window `p3_events_2026-10-21_2020-2029.log`, which records the P2 restart between the bitrate runs. The `driving+media` condition in this file consists of two overlapping logger runs (Table 5.8a). No experimental recording of the E8 sessions exists in the project repository, so none is provided under `E08_Resource_Usage/video/`. The data for the pending `driving+media+aids` condition below will be added to the same directory after it has been measured.
+
 [PENDING MEASUREMENT: one further E8 condition, `driving+media+aids`.] Protocol: `reslog.py --condition driving+media+aids --duration 1800`, in one uninterrupted logger run, with an operator media session open, the repeating voice message looping and a question asked and answered at least once a minute. It is reported in this subsection against the `driving+media` condition above, with the throttle word recorded as for every other condition. No pass criterion is fixed for it: it is a supporting measurement of the cost of the aids, not a test of a claim, which is why it is a condition of E8 and not an experiment of its own.
 
 ## 5.6 GPS Precision and Track Quality
@@ -510,6 +520,8 @@ The second window comes from the outdoor part of the F9 attempt (Section 5.4), d
 
 No full-resolution or surveyed-point GPS measurement is part of this evaluation; the figures above are bounded by the four-decimal logging resolution and are reported as such.
 
+**Supplementary evidence (E9).** The raw experimental dataset for E9 (GPS precision and track quality) is provided in the supplementary experimental evidence archive [XX] (DOI: XXX) under `E09_GPS_Evaluation/dataset/`: the evaluation output `gps_static.csv` (Table 5.11), the preserved telemetry window `telemetry_2026-09-29_E9_window.csv` from which Tables 5.11 and 5.11a are computed, the telemetry window `telemetry_2026-10-22_F9_1200-1320.csv` behind the second row of Table 5.11a (not a valid static test, included for transparency only) and the P1 track `gps_track_live_2026-10-22.geojson` (Table 5.11b). All coordinates in these files carry the four-decimal resolution stated above. No experimental recording of the GPS sessions exists in the project repository, so none is provided under `E09_GPS_Evaluation/video/`.
+
 ## 5.7 Field Trial: End-to-End Rescue Scenario
 
 This subsection reports the end-to-end rescue runs (E13, Table 4.1) over an indoor corridor course with a role-played victim, under the human-subject protocol of Section 4.1. No per-run record of a field trial exists in the repository or on the robot: there is no `field.csv`, and `tools/eval/results/summary.md` lists E13 as not yet measured. The experiment is therefore reported as pending.
@@ -543,6 +555,8 @@ This subsection reports the end-to-end rescue runs (E13, Table 4.1) over an indo
 | Runs without a touch, condition (iii) | | |
 
 [PENDING MEASUREMENT: E13 analysis to be filled when field.csv data is collected; the pass count will be judged against the 9 of 10 rule fixed in Table 4.2, and the success rate and two-way exchange success will be assessed against the two-way victim-interaction contribution (C3, RQ4), with the platforms of Table 2.1 (Section 2.6), none of which reports two-way audio and video with the victim on single-board hardware, as the qualitative baseline.]
+
+**Supplementary evidence (E13).** No dataset or experimental recording exists for E13. The per-run record (`field.csv`) and any run recordings permitted by the ethics approval will be added to the supplementary experimental evidence archive [XX] (DOI: XXX) under `E13_Field_Trial/dataset/` and `E13_Field_Trial/video/` after the field trial has been completed under the human-subject protocol of Section 4.1.
 
 <!--
 AUDIT NOTE, 2026-10-22. Not rendered. The text below was added to this
@@ -620,6 +634,8 @@ This subsection reports whether the victim channel transfers information from a 
 | Failure modes (count by type) | | | | |
 | Cochran's Q within victim state, and pairwise differences with 95% CI | | | | |
 
+**Supplementary evidence (E17).** No dataset or experimental recording exists for E17. The per-trial record (`victim_comms.csv`), the matching P2 event-log lines and any recordings permitted by the ethics approval will be added to the supplementary experimental evidence archive [XX] (DOI: XXX) under `E17_Victim_Communication/dataset/` and `E17_Victim_Communication/video/` after the evaluation has been completed.
+
 ## 5.9 Person Detection on a Labelled Test Set
 
 This subsection reports how well the operator's person detector finds a person in the video the operator actually sees (E18, Table 4.1). Section 3.11 predicts that the detector will miss people who are lying down, partly covered, poorly lit or distant, because it was trained on everyday photographs; that prediction is not a measurement, and this experiment replaces it with one. No data exist.
@@ -691,6 +707,8 @@ The person-free row holds no ground-truth box, so it can produce only false posi
 | Inference time, median and p95 (ms) | |
 | Frames at or above the 150 ms auto-off mean | |
 
+**Supplementary evidence (E18).** No dataset or experimental recording exists for E18. The frame index, ground-truth annotations, detector runs and predictions (`detector_frames_index.csv`, `detector_groundtruth.csv`, `detector_runs.csv`, `detector_predictions.csv`), the banner record (`detector_banner.csv`) and the evaluation output of `detector_eval.py` will be added to the supplementary experimental evidence archive [XX] (DOI: XXX) under `E18_Person_Detector/dataset/`, and the person-free video under `E18_Person_Detector/video/`, after the evaluation has been completed.
+
 ## 5.10 Cost Analysis and Comparison with Existing Systems
 
 This subsection compares the build cost of the robot with the cost reported by the platforms of the Section 2.6 comparison (E15, Table 4.1). The component list is Table 2 of Section 3.3; the per-line bill of materials is Appendix A (Table 5.15).
@@ -726,6 +744,8 @@ This subsection compares the build cost of the robot with the cost reported by t
 **Analysis.** From the authors' receipts the itemised parts sum to 37,158 BDT, approximately USD 310 at an indicative 1 USD = 120 BDT, dominated by the Pi with its display and storage (about USD 174) and the motor drive (about USD 57) rather than by any specialised part; the few unrecorded commodity items (webcam, speaker, power bank) would add a small amount. None of the cited comparison platforms reports a numeric build cost: TXRob [@verano2022] is explicitly designed as low-cost but states no figure, Paripreksya 2.0 [@megalingam2022] gives no cost in its full text, and the remaining references are a field study [@casper2003], a requirements study [@daun2023] and a survey [@liu2013] rather than single-platform build reports. The comparison here and in Section 6.1 is therefore qualitative plus the figures the papers state, as framed in Section 4.3: a cost ratio between this robot and those platforms cannot be computed, and the earlier statement that the platform is "an order of magnitude cheaper" than them is withdrawn, since it rested on no reported figure. The affordability contribution (C4) is now supported by receipts: the robot's recorded parts are commodity single-board, microcontroller and hobby-grade components totalling about USD 310, in place of the earlier estimate, with the currency (BDT) stated and the US-dollar figure resting on the single indicative exchange rate above.
 
 [E15 cost, receipt-backed. The per-line estimate of the earlier draft has been replaced by the authors' itemised receipts (Table 5.15). Residual items before the figure is final: confirm the exchange rate and date actually used for the BDT-to-USD conversion; add the USB webcam, the speaker and the Pi power bank (and any replacement supply), which the receipt record omits; and, if a per-component rather than per-subsystem breakdown is wanted, split the grouped sensors-and-circuit-board purchase into its parts.]
+
+**Supplementary evidence (E15).** The itemised procurement record behind Table 5.15 is the authors' receipt spreadsheet and is not held in the project repository. It will be added to the supplementary experimental evidence archive [XX] (DOI: XXX) under `E15_Cost_Analysis/dataset/` once deposited; [VERIFICATION REQUIRED: the deposited copy must match the receipt amounts of Table 5.15 and the items it omits must be stated]. No experimental recording applies to this analysis, so `E15_Cost_Analysis/video/` is not used.
 
 ## 5.11 Summary of Evidence
 
