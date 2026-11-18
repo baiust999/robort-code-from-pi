@@ -1,0 +1,30 @@
+[2026-11-18T18:21:04.075+00:00][P3][INFO][P3_START][watchdog starting]{enable_overlay=False}
+[2026-11-18T18:21:04.084+00:00][P3][INFO][PROC_SPAWN][process started]{name=P1 pid=926 cmd="/home/pi/robot/venv/bin/python -m p1_control.main"}
+[2026-11-18T18:21:04.086+00:00][P3][INFO][PROC_SPAWN][process started]{name=P2 pid=927 cmd="/home/pi/robot/venv/bin/python -m p2_media.main"}
+[2026-11-18T18:21:05.089+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P1 misses=1}
+[2026-11-18T18:21:05.091+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P2 misses=1}
+[2026-11-18T18:28:41.965+00:00][P3][INFO][P3_START][watchdog starting]{enable_overlay=False}
+[2026-11-18T18:28:41.991+00:00][P3][INFO][PROC_SPAWN][process started]{name=P1 pid=920 cmd="/home/pi/robot/venv/bin/python -m p1_control.main"}
+[2026-11-18T18:28:41.996+00:00][P3][INFO][PROC_SPAWN][process started]{name=P2 pid=922 cmd="/home/pi/robot/venv/bin/python -m p2_media.main"}
+[2026-11-18T18:28:43.002+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P1 misses=1}
+[2026-11-18T18:28:43.006+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P2 misses=1}
+[2026-11-18T18:35:15.979+00:00][P3][INFO][P3_START][watchdog starting]{enable_overlay=False}
+[2026-11-18T18:35:16.000+00:00][P3][INFO][PROC_SPAWN][process started]{name=P1 pid=970 cmd="/home/pi/robot/venv/bin/python -m p1_control.main"}
+[2026-11-18T18:35:16.002+00:00][P3][INFO][PROC_SPAWN][process started]{name=P2 pid=971 cmd="/home/pi/robot/venv/bin/python -m p2_media.main"}
+[2026-11-18T18:35:17.013+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P1 misses=1}
+[2026-11-18T18:35:17.016+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P2 misses=1}
+[2026-11-18T18:37:50.855+00:00][P3][INFO][P3_START][watchdog starting]{enable_overlay=False}
+[2026-11-18T18:37:50.879+00:00][P3][INFO][PROC_SPAWN][process started]{name=P1 pid=898 cmd="/home/pi/robot/venv/bin/python -m p1_control.main"}
+[2026-11-18T18:37:50.886+00:00][P3][INFO][PROC_SPAWN][process started]{name=P2 pid=900 cmd="/home/pi/robot/venv/bin/python -m p2_media.main"}
+[2026-11-18T18:37:51.893+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P1 misses=1}
+[2026-11-18T18:37:51.901+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P2 misses=1}
+[2026-11-18T18:40:14.032+00:00][P3][INFO][P3_START][watchdog starting]{enable_overlay=False}
+[2026-11-18T18:40:14.050+00:00][P3][INFO][PROC_SPAWN][process started]{name=P1 pid=972 cmd="/home/pi/robot/venv/bin/python -m p1_control.main"}
+[2026-11-18T18:40:14.054+00:00][P3][INFO][PROC_SPAWN][process started]{name=P2 pid=973 cmd="/home/pi/robot/venv/bin/python -m p2_media.main"}
+[2026-11-18T18:40:15.072+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P1 misses=1}
+[2026-11-18T18:40:15.084+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P2 misses=1}
+[2026-11-18T18:40:14.342+00:00][P3][INFO][P3_START][watchdog starting]{enable_overlay=False}
+[2026-11-18T18:40:14.363+00:00][P3][INFO][PROC_SPAWN][process started]{name=P1 pid=912 cmd="/home/pi/robot/venv/bin/python -m p1_control.main"}
+[2026-11-18T18:40:14.368+00:00][P3][INFO][PROC_SPAWN][process started]{name=P2 pid=913 cmd="/home/pi/robot/venv/bin/python -m p2_media.main"}
+[2026-11-18T18:40:15.373+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P1 misses=1}
+[2026-11-18T18:40:15.377+00:00][P3][WARNING][HEALTH_MISS][health check failed]{name=P2 misses=1}
