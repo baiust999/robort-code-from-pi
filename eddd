@@ -1,0 +1,20 @@
+ssh pi@192.168.0.106
+
+
+
+sudo systemctl status vncserver-x11-serviced
+
+
+
+sudo systemctl status wayvnc
+
+
+
+
+sudo ss -ltnp | grep 5900
+
+
+
+
+
+cat /etc/os-release
