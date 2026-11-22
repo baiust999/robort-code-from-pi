@@ -26,20 +26,20 @@ The controller key the drive probes need lives in a root-only drop-in:
 | Script | Paper | TEST_REPORT | Measures |
 |---|---|---|---|
 | `wslatency.py` | 5.1 | H7, N6 | Command -> telemetry confirmation, and the firmware dead-man trip, over the real WebSocket path. Automated, high n. Records the dead-man trip twice: `deadman_trip` (fw_state in telemetry, quantised) and `deadman_panic` (the firmware's immediate PANIC notice, read from P1's event log, so it needs to run on the Pi). |
-| `record.py latency_video` | 5.1 | N6 | True key-press-to-wheel latency from 240 fps video. |
-| `record.py deadman_physical` | 5.1 | H7 | Time until the wheels actually stop. |
-| `record.py glass2glass` | 5.2 | N7 | End-to-end video delay. |
+| `record.py latency_video` | - | N6 | True key-press-to-wheel latency from 240 fps video. Not in the paper (E2 removed 2026-11-01). |
+| `record.py deadman_physical` | 5.1 | H7 | E4: time until the wheels actually stop. Pending. |
+| `record.py glass2glass` | 5.2 | N7 | E5: end-to-end video delay. Pending. |
 | `netsweep.py` | 5.3 | N1-N5 | Latency, jitter, loss, RSSI and negotiated rate per position. |
 | `faultinject.py run` | 5.4 | F3-F5 | Kills a supervised process and times the automatic recovery. |
 | `faultinject.py watch` | 5.4 | F1-F2, F6-F10 | Times hand-injected faults by logging health transitions at 10 Hz. |
 | `reslog.py` | 5.5 | - | CPU, memory, temperature, throttling, throughput per load condition. |
 | `gpsdrift.py` | 5.6 | H14, I17c | Static GPS scatter: mean, SD, RMS, CEP50, CEP95. |
-| `record.py field` | 5.7 | section 8 | One row per complete rescue run. |
-| `record.py victim_comms` | 5.8 | - | E17: one row per victim-communication trial (3 modes x 2 victim states per participant); cross-check the tap-mode timings against P2's QUESTION_ASK / QUESTION_ANSWER lines. |
-| `detector_import.py` | 5.9 | - | E18: imports the dashboard's own exported detector output (boxes, confidences, inference time) into the prediction sheets. Never writes ground truth. |
-| `detector_annotate.py` | 5.9 | - | E18: typed entry of hand-drawn ground-truth person boxes, one row per person, plus an explicit record for a person-free frame. |
-| `detector_eval.py` | 5.9 | - | E18: scores predicted boxes against ground-truth boxes by IoU (primary threshold 0.50), one-to-one: TP/FP/FN, precision, recall, F1, IoU statistics, AP@0.50, per-condition tables, banner false alarms and inference time. |
-| `record.py sus` | - | - | Per-participant SUS items and task metrics; scores them. |
+| `record.py field` | - | section 8 | One row per complete rescue run. Not in the paper (E13 removed 2026-11-23); kept for future work. |
+| `record.py victim_comms` | - | - | Former E17 (removed from the paper 2026-11-23; kept for future work): one row per victim-communication trial (3 modes x 2 victim states per participant); cross-check the tap-mode timings against P2's QUESTION_ASK / QUESTION_ANSWER lines. |
+| `detector_import.py` | - | - | Former E18 (removed from the paper 2026-11-23; kept for future work): imports the dashboard's own exported detector output (boxes, confidences, inference time) into the prediction sheets. Never writes ground truth. |
+| `detector_annotate.py` | - | - | Former E18 (removed from the paper 2026-11-23; kept for future work): typed entry of hand-drawn ground-truth person boxes, one row per person, plus an explicit record for a person-free frame. |
+| `detector_eval.py` | - | - | Former E18 (removed from the paper 2026-11-23; kept for future work): scores predicted boxes against ground-truth boxes by IoU (primary threshold 0.50), one-to-one: TP/FP/FN, precision, recall, F1, IoU statistics, AP@0.50, per-condition tables, banner false alarms and inference time. |
+| `record.py sus` | - | - | Per-participant SUS items and task metrics; scores them. Not in the paper (E14 removed 2026-11-01). |
 | `record.py checklist` | - | H1-H15, I1-I19 | Pass/fail rows for the plain checklist tests. |
 
 ## Running the campaign
@@ -67,21 +67,24 @@ Wheels clear of the ground, or the robot in open space.
     ../../venv/bin/python wslatency.py --host <pi-ip> --key "$KEY" --probe all \
                                        --trials 30 --label wifi-5m
 
-Then the camera measurements, which are the ones that go in the abstract.
-Film the dashboard and the wheels in one frame at 240 fps, press a drive key,
+Optional, not in the paper (E2 was removed on 2026-11-01). Film the dashboard and the wheels in one frame at 240 fps, press a drive key,
 count frames to first wheel movement, and do it 30 times:
 
     ./record.py latency_video fps=240 frames=19 label=wifi-5m
 
-Dead-man physical stop, 20 trials. Film the wheels at 240 fps; with a tape
+E4, dead-man physical stop, 20 trials (pending, needed for contribution C1). Film the wheels at 240 fps; with a tape
 laid along the path, the same film also gives the distance covered after the
 last command:
 
     ./record.py deadman_physical speed_pwm=180 stop_s=2.1 panic_seen=1 distance_cm=6
 
-### Victim communication and the detector test set
+### Victim communication and the detector test set (not in the paper)
 
-E17 needs ethics approval and a touch input on the robot display (no answer has
+E13, E17 and E18 were removed from the paper on 2026-11-23: none had been run,
+E13 and E17 need ethics approval and participants, and none tests one of the
+paper's contributions (C1-C4). The tools stay for future work.
+
+The former E17 needs ethics approval and a touch input on the robot display (no answer has
 ever been given on the robot itself). One row per trial, entered during the
 session, three modes x two victim states per participant:
 
@@ -89,12 +92,13 @@ session, three modes x two victim states per participant:
         victim_state=cannot-speak items_correct=3 time_to_contact_s=41 \
         time_exchange_s=96 confidence=4 failure_mode=none question_ids="7;8;9"
 
-E18 needs no ethics approval and no purchase. It is scored box against box by
-IoU; the whole procedure is in **E18: the person-detector evaluation** below.
+The former E18 needs no ethics approval and no purchase. It is scored box
+against box by IoU; the whole procedure is in **E18: the person-detector
+evaluation** below.
 
 ### Day 2: streaming and resources
 
-Video delay, 20 trials per viewer count. Point the camera at a running
+E5, video delay, 20 trials per viewer count (pending, needed for contribution C3). Point the camera at a running
 stopwatch and photograph the real stopwatch and the video panel together:
 
     ./record.py glass2glass label=viewers-1 real_ms=12480 robot_ms=12190
@@ -148,8 +152,9 @@ distance as the maximum working range:
     ./netsweep.py --target <laptop-ip> --label N3 --distance-m 30 --obstacles none    --video choppy --control degraded
     ./netsweep.py --target <laptop-ip> --label N4 --distance-m 15 --obstacles 2-walls --video lost   --control no
 
-### Day 4: field trial
+### Day 4: field trial (not in the paper)
 
+Former E13, removed from the paper on 2026-11-23; kept for future work.
 5 to 10 complete runs of the scenario in TEST_REPORT section 8, not one:
 
     ./record.py field course="corridor-with-turn" course_m=35 time_to_victim_s=142 \
@@ -157,7 +162,9 @@ distance as the maximum working range:
                 victim_heard_operator=1 victim_saw_operator=1 \
                 operator_heard_victim=1 operator_saw_victim=1 result=PASS operator=XX
 
-### Scheduled separately: usability study
+### Scheduled separately: usability study (not in the paper)
+
+Former E14, removed from the paper on 2026-11-01; kept for future work.
 
 8-12 operators who did not build the robot. Each drives the same course to the
 victim; record completion, time, errors, then the 10 SUS items on 1-5. Check
@@ -167,11 +174,18 @@ before you start, and get it if so -- a reviewer may ask.
     ./record.py sus participant=P3 q1=4 q2=2 q3=5 q4=1 q5=4 q6=2 q7=5 q8=1 q9=4 q10=2 \
                 task_time_s=96 completed=1 errors=0 prior_experience=none
 
-## E18: the person-detector evaluation
+## E18: the person-detector evaluation (removed from the paper)
+
+**Update, 2026-11-23:** E18 is no longer one of the paper's experiments. It was
+removed with E13 and E17 because it had not been run and lies outside the
+paper's contributions; the paper now describes the detector as an operator aid
+that is not evaluated and lists its evaluation as future work. The procedure
+below is kept for that future evaluation; "Section 5.9" below refers to the
+plan as it stood before the removal.
 
 E18 measures how well the operator's person detector finds a person **in the
-right place** in the video the operator actually sees (paper Section 5.9).
-Status: [PENDING MEASUREMENT]. The tools below are in place and tested; no
+right place** in the video the operator actually sees.
+Status: not run, not part of the paper. The tools below are in place and tested; no
 frame has been annotated and no prediction has been collected, so no detection
 figure exists yet.
 
@@ -502,10 +516,10 @@ evaluation's arithmetic, nothing more.
 3. Write down the annotation rule, then annotate every frame, person-free
    frames included.
 4. Record at least 10 minutes of person-free video for the banner test.
-5. Run `./detector_eval.py --strict --out results/detector_eval.md` and carry
-   the numbers into Section 5.9.
+5. Run `./detector_eval.py --strict --out results/detector_eval.md`; the
+   numbers would go into a future paper, not the current one.
 
-Until all five are done, E18 stays `[PENDING MEASUREMENT]`. The code existing
+Until all five are done, no detector accuracy may be claimed anywhere. The code existing
 is not the experiment having been run.
 
 ## Producing the tables

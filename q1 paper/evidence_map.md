@@ -129,10 +129,10 @@ Conventions
 
 | Item | Reason |
 |---|---|
-| 5.7 "100-run" field-trial aggregate | No per-run data exist (no `field.csv`); kept out entirely. E13 is [PENDING MEASUREMENT] |
+| 5.7 "100-run" field-trial aggregate | No per-run data exist (no `field.csv`); kept out entirely. E13 (field trial) was deleted from the paper on 2026-11-23 and is future work only |
 | Crash or uptime counts from P3 logs | Not reported. Any future count must exclude the deliberate deploy restarts (2026-10-29 to 10-31) and the 2026-10-30 16:04-16:14 UTC test-load kills listed in project memory |
 | `bench_motor.csv` (60 rows) | Run on the floor under a false "wheels elevated" premise; not cited anywhere |
-| Victim-finding aid performance | No measurement yet. E17 (victim channel) and E18 (detector) are [PENDING MEASUREMENT] with criteria fixed in Table XVII; victim marks and the session recording stay unevaluated. No figure in the manuscript rests on any of them |
-| Wheel-stop time and the distance after it (E4), media quality (E5), media isolation (E16), field trial (E13), victim communication (E17), detector accuracy (E18) | Pending, each with a pass criterion fixed in advance (Table XVII). Wi-Fi control latency and usability: not evaluated (limitations) |
+| Victim-finding aid performance | No measurement. E17 (victim channel) and E18 (detector) were deleted from the paper on 2026-11-23; all aids of Section III-K are described as not evaluated (limitation 6) and their evaluation is future work. No figure in the manuscript rests on any of them |
+| Wheel-stop time and the distance after it (E4), media quality (E5), media isolation (E16) | Pending, each with a pass criterion fixed in advance (Table XVII). Field trial, victim communication and detector accuracy: not evaluated, future work (E13, E17, E18 deleted 2026-11-23). Wi-Fi control latency and usability: not evaluated (limitations) |
 | `avi2026review` and its corpus statistics | Not cited (project rule) |
 | OpenAlex hit counts from source Section 2 | Removed; the query results were not saved in the repository, so the counts cannot be traced |

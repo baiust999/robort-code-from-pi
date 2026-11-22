@@ -9,51 +9,28 @@ below was fixed before the test. If the robot fails, you report the failure.
 
 ---
 
-## 1. Experiments that are DONE (or partly done)
+## 1. Experiments that are DONE
 
 | Experiment | What it measured | Status |
 |---|---|---|
-| E1 | Delay between a command and the robot confirming it (WebSocket) | Done. Numbers are upper bounds (up to 700 ms extra, because telemetry is slow). |
-| E6 | Wi-Fi range | Partly done. Only 6 stations; the test stopped at 50 m. Full range is not known. |
-| E7 | Fault tests (crash, restart, recovery) | Done. The 16 kbps run is affected by a P2 restart. |
-| E8 | CPU / resource use (idle, viewers, driving + media) | Done for all conditions. |
+| E1 | Delay between a command and the robot confirming it (WebSocket), and the dead-man interval | Done. Latencies are upper bounds (up to 700 ms extra, because telemetry is slow). Dead-man interval: mean 2022.5 ms, max 2042 ms. |
+| E6 | Wi-Fi range | Done (partial design). 16 line-of-sight stations, 5-250 m, one ping burst each. No failure point was reached and no obstacles were tested. |
+| E7 | Fault tests (kill a process, watchdog restarts it) | Done. 30 of 30 SIGKILL trials recovered. Manual faults F6 (USB unplug) and F7 (Wi-Fi drop) run once each. |
+| E8 | CPU / resource use (idle, driving, driving + media) | Done. The 16 kbps Opus run is confounded by a P2 restart; it is not used for any claim. |
 | E9 | GPS drift | Done, but weak: GPS in the log has only 4 decimal places. |
 | E15 | Cost | Done. 37,158 BDT, about USD 310. Webcam, speaker and Pi power bank are not itemised. |
 
----
-
-## 2. Experiments NOT done yet (6 of them)
-
-Recommended order: **E18, E16, E5, E4, then E13 and E17.**
+Also done (supporting evidence, not numbered experiments): the Pi unit-test suite, the
+native firmware dead-man test, and the Monte Carlo heartbeat-loss simulation.
 
 ---
 
-### E18 - Person detector test (do this FIRST)
+## 2. Experiments NOT done yet (3 of them)
 
-**Simple idea:** The dashboard draws a box around a person it sees in the video.
-How often is that box right, and in the right place?
+These three are kept because each one tests a contribution of the paper directly:
+E4 tests C1 (firmware stop), E16 tests C2 (process split), E5 tests C3 (media path).
 
-**Why first:** No ethics approval, no money. You can do it alone.
-
-**Pass rule (easiest group only: person upright, not hidden, room light, near):**
-- Recall >= 0.80 (finds at least 80% of people)
-- Precision >= 0.90 (at least 90% of drawn boxes are right)
-- At most 1 false alarm per minute in 10 minutes of video with nobody in it
-- A box is "right" if it overlaps your hand-drawn box by IoU >= 0.50
-- Harder groups (lying down, hidden, dark, far) have no pass rule. Just report the result.
-
-**How to do it:**
-1. Build and deploy the dashboard's **evaluation capture mode** (not built yet; this is the blocker).
-2. Capture 400 frames through the robot's own camera: 320 with a person (16 groups of
-   posture / hidden or not / light / distance) and 80 with nobody.
-3. Import each batch: `tools/eval/detector_import.py` (check it reports no problems).
-4. Write down your drawing rule (for example "box the whole visible body"), then draw a
-   box on every person in every frame with `detector_annotate.py`. Mark empty frames too.
-5. Record 10+ minutes of video with nobody in it (for the false-alarm test).
-6. Run `./detector_eval.py --strict --out results/detector_eval.md`
-7. Put the numbers in Section 5.9 of the paper.
-
-**Careful:** The code exists, but that is not the experiment. Until all 6 steps are done it stays pending.
+Recommended order: **E16, E5, then E4.**
 
 ---
 
@@ -115,54 +92,25 @@ command in **20 of 20** trials, and the PANIC DEADMAN line is in the log in **20
 
 ---
 
-### E13 - Field trial (full rescue run)
+## 3. Experiments removed from the paper
 
-**Simple idea:** A full practice rescue on an indoor corridor course. The operator drives,
-finds a hidden person, talks with them using audio/video.
+| Experiment | Why it was removed |
+|---|---|
+| E13 Field trial | Not run. Needs ethics approval and a second person. Removed 2026-11-23. |
+| E17 Victim communication study (15 participants) | Not run. Needs ethics approval, 15 participants and a robot touch screen. It tests operator aids that are outside the paper's contributions. Removed 2026-11-23. |
+| E18 Person detector test | Not run. Outside the paper's contributions. Removed 2026-11-23. |
+| E2 Wi-Fi latency (240 fps), E14 SUS usability, dead-man/watchdog-off ablations | Removed 2026-11-01. |
+| E3 E-stop distance, E10 ultrasonic, E11 DHT11, E12 gas | Removed 2026-11-03 (hand-entered sheets, not backed by logs). |
 
-**A run passes only if all three are true:**
-1. Operator finds the victim (victim visible in video) within **300 s**.
-2. Operator asks 3 scripted questions, victim answers, operator writes all 3 answers
-   correctly, and the victim repeats back 1 scripted instruction.
-3. Nobody touches the robot during the run.
-
-**Pass rule:** at least **9 of 10** runs pass.
-
-**How to do it:**
-1. Fix the course (for example a corridor with a turn, about 35 m) and write the rule down.
-2. Run 10 times.
-3. Enter each run: `./record.py field course="corridor-with-turn" course_m=35 time_to_victim_s=142 time_total_s=265 collisions=0 unplanned_stops=1 victim_heard_operator=1 victim_saw_operator=1 operator_heard_victim=1 operator_saw_victim=1 result=PASS operator=XX`
-4. For any failed run, write the cause.
-
-**Warning:** The old "100-run" number has no real data. Do not use it.
+The features behind E17 and E18 (person detector, voice message, tap-to-answer
+questions) still exist in the code. Evaluating them is **future work**, not part of this
+paper. The detector scoring tools (`tools/eval/detector_*.py`) are kept for that later work.
+The old result files (`bench_motor.csv`, `estop*.csv`, `ultrasonic.csv`, `dht11_environmental.csv`,
+`gas.csv`) are kept as a record but are not cited.
 
 ---
 
-### E17 - Victim communication under degraded conditions (do LAST)
-
-**Simple idea:** Can a victim who cannot speak still give information to the operator,
-using the tap-to-answer screen or the repeating voice message?
-
-**Design:** 15 participants x 3 modes (speech-only, voice-message, tap-to-answer) x
-2 victim states (can speak / cannot speak) = 90 trials. Change the order between
-participants (counterbalance).
-
-**Pass rule (cannot-speak state):**
-- Tap-to-answer: all 3 scripted items correct in at least **12 of 15** participants.
-- Voice message: participant acts on 1 spoken instruction in at least **12 of 15**.
-- Speech-only is expected to fail. Report whatever happens.
-- Stats plan (fixed in advance): Cochran's Q, then exact McNemar with Holm correction.
-
-**Blockers before you start:**
-1. **Ethics approval** (one application can cover E13 and E17).
-2. A **touch input on the robot display**. No tap-to-answer has ever been done on the robot.
-
-**How to record:** `./record.py victim_comms participant=P3 order=2 mode=tap-to-answer victim_state=cannot-speak items_correct=3 time_to_contact_s=41 time_exchange_s=96 confidence=4 failure_mode=none question_ids="7;8;9"`
-Cross-check tap timings with the P2 log lines QUESTION_ASK / QUESTION_ANSWER.
-
----
-
-## 3. General rules for every experiment
+## 4. General rules for every experiment
 
 - One trial is not a result. Always report n, mean and SD.
 - Do all runs on a stable power supply. Check `under_voltage_ever`; if the supply sagged, rerun.
@@ -170,16 +118,13 @@ Cross-check tap timings with the P2 log lines QUESTION_ASK / QUESTION_ANSWER.
 - After new data, rerun `tools/eval/section5_stats.py --out tools/eval/results/section5_stats.md`.
 - Do not change a pass rule after seeing data.
 - Failures go into the paper too. A failed test is still a result.
-- Do not add E18, E17 or other unmeasured claims to the abstract, contributions or conclusion until data exist.
+- Do not add unmeasured claims to the abstract, contributions or conclusion until data exist.
 - Run `./summarize.py` any time to see what is still "Not yet measured".
 
 ---
 
-## 4. Quick checklist
+## 5. Quick checklist
 
-- [ ] E18 - build capture mode, capture 400 frames, annotate, score
 - [ ] E16 - media isolation, 3 conditions x 30
 - [ ] E5  - glass-to-glass delay, 3 conditions x 20
 - [ ] E4  - dead-man physical stop, 20 trials at 240 fps
-- [ ] E13 - field trial, 10 runs (needs a fixed course)
-- [ ] E17 - victim communication, 90 trials (needs ethics + robot touch input)

@@ -46,35 +46,30 @@ update this file when a fact changes.
 
 ## Measurement status (check Section 5 Table 5.0 for the current state)
 
-- Twelve experiments: E1, E4-E9, E13, E15-E18. Every reported result is
+- Nine experiments: E1, E4-E9, E15, E16. Every reported result is
   machine-logged; no [VERIFICATION REQUIRED] mark is left in the paper.
 - Machine-logged / usable: E1, E7, E8 (all conditions complete after the
   2026-10-21 supply upgrade; driving+media is two spliced logger runs; the
-  16 kbps run is confounded by a P2 restart), E6 (partial), E9
-  (resolution-limited), E15 (receipts).
+  16 kbps run is confounded by a P2 restart), E6 (16 line-of-sight stations,
+  5-250 m, no failure point reached), E9 (resolution-limited), E15 (receipts).
 - [PENDING MEASUREMENT] (the experiments still planned, in run order):
-  E18 (person detector on 400 labelled frames with hand-drawn boxes, scored
-  box against box at IoU 0.50, Section 5.9 - no ethics, no purchase, cheapest;
-  the dashboard's evaluation capture mode must be built and deployed first), E16 (media isolation, Table 5.7e), E5, E4 (240 fps; the
-  tape in frame also gives the distance covered after drive is removed, with no
-  criterion on it), then E13 and E17 (victim communication, Section 5.8). Each
-  has a claim and pass criterion fixed in advance in Section 4 Table 4.2 (q1
-  Table XVII); never change a criterion after its data is seen.
-- Added 2026-11-03 at the author's request: E17 victim communication under
-  degraded conditions (15 participants x 3 modes x 2 victim states; the paper's
-  only hypothesis test, fixed in advance in Section 4.2: Cochran's Q, then
-  exact McNemar with Holm) and E18 person-detector evaluation on a labelled
-  frame set (`tools/eval/detector_eval.py` with `detector_iou.py`,
-  `detector_data.py`, `detector_import.py`, `detector_annotate.py` and the 102
-  tests in `tools/eval/tests/`; `record.py victim_comms`). E18 was moved from
-  frame-level "a box appeared somewhere" scoring to one-to-one IoU matching on
-  2026-11-03, before any frame was captured, so nothing was reinterpreted; the
-  Table 4.2 limits are unchanged. Procedure: `tools/eval/README.md`. Both
-  cover the Section 3.11 aids and both are pending. Critical path: one ethics
-  application covers E13 and E17, and E17 also needs a touch input on the robot
-  display, since no tap-to-answer answer has ever been given on the robot.
-  The abstract, contributions and conclusion were deliberately NOT changed -
-  an unmeasured experiment earns a protocol and a criterion, not a claim.
+  E16 (media isolation, C2), E5 (glass-to-glass media delay, C3), E4 (240 fps
+  physical wheel stop, C1; the tape in frame also gives the distance covered
+  after drive is removed, with no criterion on it). Each has a claim and pass
+  criterion fixed in advance in Section 4 Table 4.2 (q1 Table XVII); never
+  change a criterion after its data is seen. Procedures: `experiment.md` and
+  `tools/eval/README.md`.
+- Deleted 2026-11-23 at the author's request: E13 (field trial), E17 (victim
+  communication, 15 participants; its Cochran's Q / McNemar plan is gone too)
+  and E18 (person detector, IoU 0.50). None had been run; E13 and E17 needed
+  ethics approval and participants; none tests a contribution C1-C4. They were
+  removed from `research paper/`, `q1 paper/`, `docs/`, `experiment.md` and
+  `tools/eval/README.md` (marked "not in the paper"). The tools stay in the code
+  for future work (`detector_*.py`, their tests, `record.py victim_comms` and
+  `field`); their evaluation is future work (research paper Section 7.5.2 and
+  7.6.4; q1 Section VII). The paper now reports no human-subject experiments
+  and has no ethics section or ethics author-input marker. Do not re-add these
+  experiments unless the author asks.
 - Deleted 2026-11-01 at the author's request: E2, E14 (usability), ablations
   1-2, and the optional E6/E9/E11/F9 extensions.
 - Deleted 2026-11-03 at the author's request: E3 (e-stop distance), E10
@@ -86,12 +81,13 @@ update this file when a fact changes.
   renumbered (gaps E2, E3, E10-E12, E14 are intentional). Source Section
   5.6 is GPS only; Section 5 tables were renumbered to close the gaps (old
   5.4-5.12 -> 5.3-5.11, old 5.16 -> 5.12, old 5.17/5.18 -> 5.13/5.14, then
-  the cost tables again to 5.15/5.16 when 5.8 and 5.9 were inserted).
+  the cost tables again to 5.15/5.16 when 5.8 and 5.9 were inserted, and
+  to 5.12/5.13 when 5.7-5.9 were deleted on 2026-11-23).
   Section 5 subsections now: 5.1 latency, 5.2 media, 5.3 range, 5.4 faults,
-  5.5 resources, 5.6 GPS, 5.7 field trial, 5.8 victim communication (E17),
-  5.9 person detection (E18), 5.10 cost, 5.11 summary.
-- The 5.7 "100-run" aggregate has no per-run data. Do not restore it without
-  real field rows.
+  5.5 resources, 5.6 GPS, 5.7 cost, 5.8 summary. q1 paper: V-G cost,
+  V-H experiments without data.
+- The old "100-run" field-trial aggregate has no per-run data. Do not restore
+  it without real field rows.
 - `bench_motor.csv` (60 rows) was collected with the robot on the floor under
   a false "wheels elevated" premise. Never cite it as stationary bench data or
   as a stopping-distance result. Operator confirmations are not independent
@@ -135,5 +131,5 @@ update this file when a fact changes.
 ## Open author inputs
 
 Affiliation, author-name spelling, CRediT contributions, data/code URL + DOI,
-acknowledgments, ethics-approval reference, FX rate confirmation, prices of
+acknowledgments, FX rate confirmation, prices of
 the three unitemised parts.

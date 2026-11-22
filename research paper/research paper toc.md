@@ -43,10 +43,10 @@
     bound 88.6% \cite{wilson1927}; about 63% of one core on P2, P1 near 4%;
     about USD 320 ESTIMATE); no table, so Table 8.2 is not duplicated
   - Limits paragraph: one robot, operator and access point; drive removal, not
-    wheel stop or distance (E4); Wi-Fi latency, media quality, field trial,
-    media isolation, victim communication (E17) and detector accuracy (E18)
-    [PENDING MEASUREMENT] with pass criteria fixed in
-    Table 4.2; usability not evaluated; category 0 stop,
+    wheel stop or distance (E4); Wi-Fi latency, media quality (E5) and
+    media isolation (E16) [PENDING MEASUREMENT] with pass criteria fixed in
+    Table 4.2; field trial, usability and the operator aids not evaluated
+    (future work); category 0 stop,
     no compliance claim \cite{iec60204}; points to Section 6.3
   - (unnumbered closing paragraph: organization of the paper)
   - Full text: section1_introduction.md
@@ -89,7 +89,7 @@
     \cite{megalingam2022,verano2022,pramono2024,deshmukh2025,manuel2022,gehlot2025,cafolla2026,jia2025,yamauchi2022,kim2023,raghavan2026,khattab2025,cantizani2022}
   - Cost asserted without figures: five designs call themselves low-cost,
     none of the recent platforms states a build cost; only Survivor Buddy
-    does \cite{murphy2011}; Section 5.10 reports this robot's figure as an
+    does \cite{murphy2011}; Section 5.7 reports this robot's figure as an
     estimate (C4)
 - 2.3 Fail-Safe and Fault-Tolerant Architectures for Low-Cost Mobile Robots
   - Bounded stop (C1): behaves like IEC 60204-1 stop category 0, no
@@ -184,19 +184,17 @@
   - 3.9.5 Low-Latency Audio on a Constrained CPU
 - 3.10 GPS Localisation and Offline Mapping
 - 3.11 Victim-Finding Aids
-  - Person detection in the operator's browser (advisory; accuracy and
-    failure region measured box against box by E18, Section 5.9,
-    [PENDING MEASUREMENT]), with the evaluation capture mode that exports the
-    deployed detector's own boxes for that experiment
-  - Repeating voice message (looped by P2; one of the three modes of E17,
-    Section 5.8, [PENDING MEASUREMENT])
+  - Person detection in the operator's browser (advisory; accuracy not
+    evaluated in this paper), with the evaluation capture mode that exports
+    the deployed detector's own boxes for a future evaluation (Section 7.5.2)
+  - Repeating voice message (looped by P2; not evaluated)
   - Victim marks (snapshot kept on the operator's device)
   - Session recording (MP4 or WebM on the operator's device, both voices
     mixed; not evaluated)
 
 **4. Experimental Setup**
 
-- Scope rule: only what is shared across all fourteen experiments appears here
+- Scope rule: only what is shared across all nine experiments appears here
   (test conditions, metric definitions, baselines). Procedure specific to one
   experiment opens the matching Section 5 subsection, so nothing is described
   twice. Hardware, network and software are specified in Sections 3.2-3.4 and
@@ -204,13 +202,13 @@
 - 4.1 Test Conditions
   - One paragraph: the robot as built (Table 2, Figure 3), operator laptop and
     browser, single 802.11n cell (Section 3.2), MOCK_HARDWARE off for all runs
-  - Test sites: indoor corridor and lab for latency, fault and resource runs;
+  - Test sites: indoor lab for latency, fault, resource and isolation runs;
     outdoor area for range and GPS runs
 - 4.2 Experiments, Metrics and Validity Rules
   - Table 4.1 (the only table in this section): experiment | site | trials (N) |
     tool under tools/eval/ | metric, start point to end point, unit | reported in
-  - Twelve rows (E1, E4-E9, E13, E15-E18) in ten groups, one per Section 5 subsection
-    (5.1-5.11); tools are wslatency.py,
+  - Nine rows (E1, E4-E9, E15, E16) in seven groups, one per Section 5 subsection
+    (5.1-5.7); E13, E17 and E18 removed before being run; tools are wslatency.py,
     faultinject.py, netsweep.py, reslog.py, gpsdrift.py, record.py and
     summarize.py, raw output under tools/eval/results/
   - Pass/fail thresholds from Section 3, stated in one sentence: 2000 ms
@@ -218,15 +216,11 @@
     (Sections 3.5.2, 3.6.2)
   - Validity rule for a trial and discard criteria, stated once
   - Table 4.2: claim tested, pass criterion and consequence of failure for
-    each remaining experiment (E18 detector set, E16 media isolation, E5,
-    E4, E13, E17), fixed before data collection; run order E18 -> E16 -> E5
-    -> E4 -> E13 and E17, the last two after one shared ethics approval and,
-    for E17, after a touch input is fitted to the robot display
+    each remaining experiment (E16 media isolation, E5, E4), fixed before
+    data collection; run order E16 -> E5 -> E4
 - 4.3 Baselines
   - Internal comparisons: media isolation E16 (control latency with media
-    off, on, and P2 frozen); alternative audio bitrate; communication mode
-    within participants (E17, speech-only baseline); detection condition by
-    stratum (E18, at IoU 0.50)
+    off, on, and P2 frozen); alternative audio bitrate
   - Specification targets from Section 3 as pass/fail thresholds
   - Literature baselines: figures reported by the platforms in the Section 2.6
     comparison \cite{casper2003,liu2013,daun2023,megalingam2022}, taken from
@@ -244,23 +238,8 @@
 - 5.4 Fault Injection and Recovery Time
 - 5.5 Resource Utilization on the Edge Device
 - 5.6 GPS Precision and Track Quality
-- 5.7 Field Trial: End-to-End Rescue Scenario
-- 5.8 Victim Communication Under Degraded Conditions
-  - E17: within-subjects, 15 participants, three communication modes x two
-    victim states, 90 trials; primary metric is the per-trial transfer of
-    three scripted items; the one experiment with a hypothesis test, fixed in
-    advance in Section 4.2 (Cochran's Q, then exact McNemar with Holm)
-- 5.9 Person Detection on a Labelled Test Set
-  - E18: 400 frames through the robot's own video path, 2x2x2x2 strata
-    (posture, occlusion, illumination, distance) plus person-free frames and
-    10 min of person-free video for the banner false-alarm rate
-  - Scored box against box: predicted boxes from the deployed detector matched
-    one-to-one to hand-drawn ground-truth boxes at IoU 0.50, in descending
-    confidence order; TP/FP/FN, precision, recall, F1, IoU of matched pairs
-    and AP@0.50 (one class, not mAP). Classification accuracy is not reported
-  - Table 5.14 per stratum, Table 5.14a pooled with the banner rows, which are
-    a separate measurement on continuous video
-- 5.10 Cost Analysis and Comparison with Existing Systems
+- 5.7 Cost Analysis and Comparison with Existing Systems
+- 5.8 Summary of Evidence
 
 **6. Discussion**
 
@@ -290,7 +269,7 @@
 - 6.3 Limitations
   - Seven claims the paper does not make (physical stop timing, end-to-end
     performance, benefit over a baseline, fault and environment coverage,
-    unverified sensors, software-only checks, cost); points to Table 5.0 and
+    software-only checks, cost, operator aids not evaluated); points to Table 5.0 and
     Section 4.4 instead of repeating them
 - 6.4 Threats to Validity
   - Table 6.3: internal, construct, external and conclusion threats with

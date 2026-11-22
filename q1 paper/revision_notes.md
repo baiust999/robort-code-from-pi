@@ -87,18 +87,17 @@ Known figure issues, to fix before submission:
 
 ## 6. Open [PENDING MEASUREMENT] items (Table XVII)
 
-1. E18: person detector on 400 labelled frames through the robot's own video path, plus 10 min of person-free video for the banner false-alarm rate. No ethics, no purchase, no participants: run this first.
-2. E16: media isolation (control latency with media off, on, and P2 frozen).
-3. E5: glass-to-glass video delay, audio delay each way, frame rate and packet loss, for 1 and 2 viewers and at 20 m.
-4. E4: wheel-stop time after a dead-man trip, at 240 fps, with a tape in frame for the distance covered after drive is removed.
-5. E13: field trial, 10 runs, fixed course and per-run success rule (pass if at least 9 of 10). Needs ethics approval.
-6. E17: victim communication, 15 participants x 3 modes x 2 victim states. Needs the same ethics approval and a touch input on the robot display.
-7. One further E8 condition, `driving+media+aids`, for the processor cost of the voice loop and the questions. A supporting measurement with no criterion, not an experiment.
+(Updated 2026-11-23: E13, E17 and E18 were deleted; see Section 12.)
+
+1. E16: media isolation (control latency with media off, on, and P2 frozen).
+2. E5: glass-to-glass video delay, audio delay each way, frame rate and packet loss, for 1 and 2 viewers and at 20 m.
+3. E4: wheel-stop time after a dead-man trip, at 240 fps, with a tape in frame for the distance covered after drive is removed.
+4. Optional: one further E8 condition, `driving+media+aids`, for the processor cost of the voice loop and the questions. A supporting measurement with no criterion, not an experiment.
 
 ## 7. [AUTHOR INPUT REQUIRED] items in the manuscript
 
 1. Author-name spelling and order, affiliations, corresponding author, ORCID.
-2. Ethics-committee decision or waiver with reference and date (Section IV-F).
+2. (Removed 2026-11-23: no human-subject experiments remain, so no ethics reference is needed in Section IV-F.)
 3. Repository URL and archived DOI; choose and add a licence (none exists).
 4. Deposit or describe the procurement receipt record.
 5. Confirm the BDT -> USD rate and date; price the webcam, the speaker, the Pi power bank and its replacement.
@@ -240,3 +239,41 @@ Consequences accepted with them:
 - **Section 5 renumbering.** Cost moved from source Section 5.8 to 5.10 and
   Summary from 5.9 to 5.11, and the cost tables from 5.13/5.14 to 5.15/5.16,
   to make room for the two new subsections. All cross-references were updated.
+
+## 12. Pending experiments outside the contributions deleted, 2026-11-23
+
+At the author's request, the experiment list was cut to what the paper's
+contributions need. Experiments with data were kept unchanged. Of the pending
+ones, only those that test a contribution were kept. Applied to both
+`research paper/` and this folder. Identifiers are not renumbered.
+
+| Kept | Status | Why |
+|---|---|---|
+| E1, E6, E7 (with F6, F7, F9), E8, E9, E15 | Done, results reported | Have data; numbers unchanged |
+| E4 | Pending | Physical stop of C1 (RQ1) |
+| E5 | Pending | Media half of C3 (RQ4) |
+| E16 | Pending | Process isolation of C2 |
+
+| Deleted | Why | Now |
+|---|---|---|
+| E13 field trial | No data; needs ethics approval and a second person; tests no contribution beyond C1-C4 | Future work (Section VII) and limitation 2 |
+| E17 victim-communication study | No data; needs ethics approval, 15 participants and a touch input; tests the operator aids, which Section III-K and the project rule keep out of the contributions | Future work (Section VII, victim-finding aids); limitation 6 |
+| E18 person detector | No data; tests an operator aid outside the contributions | Future work (Section VII); limitation 6 |
+
+Consequences:
+
+- Table VIII now lists nine experiments (E1, E4-E9, E15, E16); Table XVII
+  lists E5, E4 and E16 only. The run order is E16, E5, E4.
+- Results Section V-G (victim communication and person detection) was
+  removed, so Cost is V-G and Experiments Without Data is V-H. The intro's
+  reference to the cost section was updated.
+- The E17 hypothesis-test plan (Cochran's Q, McNemar, Holm) was removed from
+  IV-D; the paper again reports no hypothesis test.
+- IV-F now states that no human-subject experiments are reported, so the
+  ethics [AUTHOR INPUT REQUIRED] marker was removed. The Section 11 notes
+  about ethics and the touch-input purchase no longer apply.
+- Leftovers of the 2026-11-03 deletions were fixed: VI-A no longer refers to
+  stopping-distance data, VI-D no longer cites "5 readings for the sensors",
+  and Table VIII's E8 row says 5 conditions, matching Table XIV.
+- The detector scripts (`tools/eval/detector_*.py`) and the evaluation
+  capture mode stay in the repository; they are not cited by the paper.

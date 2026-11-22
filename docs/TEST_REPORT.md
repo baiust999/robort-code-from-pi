@@ -344,9 +344,11 @@ read and write nothing under `tools/eval/results/`, and they say nothing
 about the detector's accuracy. They are also separate from the 172-test
 `pi/tests` suite above and do not change its count.
 
-These tests do not make E18 a measured experiment. E18 remains
-[PENDING MEASUREMENT] until real frames are captured, annotated and
-scored.
+These tests do not make E18 a measured experiment. **Update,
+2026-11-23:** E18 was dropped from the paper's experiment list (together
+with E13 and E17) because it lies outside the paper's contributions; the
+detector, the capture mode and this scoring harness remain in the code,
+and evaluating the detector is future work.
 
 On the dashboard side, still no JavaScript test runner is configured. The
 evaluation capture mode added for E18 (one button, hidden unless the
