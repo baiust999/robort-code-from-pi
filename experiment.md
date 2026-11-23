@@ -79,11 +79,11 @@ Pi, the operator laptop with the dashboard open (for the `media-on` condition).
 No camera. No video to upload. The CSV is the evidence.
 
 **Important thing about P3 (the watchdog):** P3 checks P2's `/health` every 10 s.
-After 3 missed checks (about 30-45 s) it kills and restarts P2. So a frozen P2
-can stay frozen only about 30 s. If P3 restarts P2 in the middle, the
-`p2-frozen` trials are no longer "frozen". So run the frozen condition in
-**3 short batches of 10 trials**, and un-freeze P2 between batches.
-Write this method in the paper (Section 5, Method of E16).
+After 3 missed checks (about 35 s) it kills and restarts P2. If that happens in
+the middle, the `p2-frozen` trials are no longer "frozen". Your paper (Section 5.4,
+E16 paragraph) already promises: **each freeze lasts at most 15 s**, then SIGCONT.
+One motor trial takes about 2-3 s, so do **5 trials per freeze, 6 freezes = 30 trials**.
+Check with a stopwatch that one batch of 5 finishes in under 15 s; if not, use 4.
 
 1. SSH to the Pi. Get the key and go to the tools folder:
    ```
@@ -99,15 +99,15 @@ Write this method in the paper (Section 5, Method of E16).
 3. **Condition `media-on`** (video + audio really streaming). Open the dashboard on
    the laptop, start video and two-way audio, and keep it open. Then run the same
    command with `--label media-on`.
-4. **Condition `p2-frozen`.** Close the dashboard. Find P2 and freeze it:
+4. **Condition `p2-frozen`.** Close the dashboard. Find P2, then freeze, run 5
+   trials, un-freeze, all in one line so the freeze cannot last too long:
    ```
    P2=$(pgrep -f p2_media.main); echo $P2     # must print ONE number
-   sudo kill -STOP $P2                        # freeze P2
-   ../../venv/bin/python wslatency.py --host 127.0.0.1 --key "$KEY" --probe motor --trials 10 --label p2-frozen
-   sudo kill -CONT $P2                        # un-freeze P2
+   sudo kill -STOP $P2; ../../venv/bin/python wslatency.py --host 127.0.0.1 --key "$KEY" --probe motor --trials 5 --label p2-frozen; sudo kill -CONT $P2
    ```
-   Wait 30 s, check P2 is the same PID (`pgrep -f p2_media.main`), then repeat
-   2 more times. Total 30 trials.
+   Wait 30 s (P2 recovers, P3 sees it healthy again). Check P2 has the same PID
+   (`pgrep -f p2_media.main`). Repeat 6 times. Total 30 trials. (The `trial`
+   column restarts at 1 in each batch; that is fine, write "batch 1..6" in your notes.)
 5. **Check P3 did not restart P2** during a frozen batch:
    `grep -E "PROC_KILL|PROC_SPAWN" /var/log/robot/p3_events.log | tail`.
    If you see a kill/spawn inside a batch, that batch is invalid: write it in
@@ -120,13 +120,15 @@ Write this method in the paper (Section 5, Method of E16).
 the dashboard is still open in some tab during `media-off`, or a trial times out
 because the robot is on the floor and hits something. Keep the area clear.
 
+**How to put it in the paper:** see Section 10.3.
+
 ### E5 - Video and audio delay `[NOT RUN]`
 
 - **Idea:** How old is the picture on the dashboard? Point the camera at a running stopwatch. Photograph the real stopwatch and the dashboard together.
 - **Pass rule (only `viewers-1` decides):** median video delay <= 500 ms; median audio delay <= 400 ms each direction.
 - **How:** 3 conditions x 20 trials: `viewers-1`, `viewers-2`, `wifi-20m`. `./record.py glass2glass label=viewers-1 real_ms=12480 robot_ms=12190`.
 - **Open points:**
-  - No method exists yet for **audio** delay (robot to operator, operator to robot). Decide first.
+  - **Audio** delay: the paper (5.2) names the clap method, but no tool or CSV sheet exists for it yet. Steps below.
   - The 400 ms audio limit is "adopted". If you cite ITU-T G.114 as its basis, add and verify that reference first.
   - Frame rate and packet loss are also listed as outputs. No tool for them is described.
 - **Paper place:** Tables 5.4 and 5.4a (empty).
@@ -171,7 +173,7 @@ running, open `chrome://webrtc-internals` in the laptop's Chrome. Find the video
 Press "Create dump" to save a file. Save one dump per condition. Loss % =
 packetsLost / (packetsLost + packetsReceived) x 100.
 
-**Audio delay, robot -> operator (method proposal, decide before you start):**
+**Audio delay, robot -> operator (the clap method your paper Section 5.2 already describes):**
 1. Put the recording phone so it hears **both** a sound near the robot mic and
    the laptop speaker. (Robot and laptop in the same room, about 1 m apart.)
 2. Start recording on the phone. Make a sharp sound near the robot mic (clap or
@@ -193,7 +195,7 @@ sheet to `record.py`.
 
 **Evidence to keep:** all photos (name them `e5_viewers-1_01.jpg` ...), the
 `webrtc-internals` dumps, and the audio recordings. Upload them to Zenodo (see
-Section 9).
+Section 9; paper text in Section 10.4).
 
 **Will anything go wrong?** Glare on the screens (turn down room lights), the
 camera auto-focus misses the stopwatch digits (move closer), the laptop speaker
@@ -264,7 +266,7 @@ Check with `ffprobe e4_trial01.mp4` (look for `r_frame_rate` or the
 `com.android.capture.fps` / Apple tag). Write the real rate in the paper.
 
 **Evidence to keep:** the 20 videos + the matching `p1_events.log` lines.
-Upload them to Zenodo (Section 9). Put one short clip (or 3 still frames:
+Upload them to Zenodo (Section 9; paper text in Section 10.5). Put one short clip (or 3 still frames:
 last command, wheels slowing, wheels still) in the paper as a figure.
 
 **Will anything go wrong?** Too dark -> blurry slow motion. The robot drives
@@ -453,42 +455,283 @@ If E13 returns: 10 runs, pass = victim found in 300 s + 3 questions answered + 1
 
 ## 9. Evidence: videos, photos, logs and Zenodo
 
-**Short answer: yes.** Collect the videos and photos, upload them to **Zenodo**
-(zenodo.org, free, run by CERN), and cite the DOI link in the paper. A reviewer can
-then check your numbers.
+**Short answer: yes.** Collect the videos, photos and CSV files, upload them to
+**Zenodo** (zenodo.org, free, run by CERN) as one dataset, and cite its DOI in the
+paper. Your paper ALREADY promises this archive: every "Supplementary evidence"
+paragraph in Section 5 says "supplementary experimental evidence archive [XX]
+(DOI: XXX)" with a fixed folder layout. So build exactly that layout.
 
-**What to upload:**
-- E4: the 20 slow-motion videos + matching P1 log lines.
-- E5: all photos, the `webrtc-internals` dumps, the audio recordings.
-- E6, E7, E8, E16: no video needed. The CSV files in `tools/eval/results/` and
-  the log excerpts are the evidence.
-- E15: receipts PDF.
-- Also the CSV files themselves and a short `README.txt` that says which file
-  belongs to which table.
+### 9.1 Folder layout (copy it exactly, the paper uses these names)
 
-**How:**
-1. Make a folder, e.g. `evidence/E4/`, `evidence/E5/` ... Name files clearly
-   (`e4_trial01.mp4`). Do NOT put big videos in git; keep them out of the repo.
-2. Make a checksum list so nobody can say the files changed:
-   `sha256sum evidence/*/* > evidence/SHA256SUMS.txt`
-3. Zenodo -> New upload -> type **Dataset**. Title like "Rescue robot evaluation
-   data (E4, E5, E16)". Add the files (limit 50 GB per record; that is enough).
-4. Choose licence **CC-BY-4.0** for data. You can first save it as a draft;
-   you get a **reserved DOI** before you publish, so you can put the DOI in the
-   paper now.
-5. Publish when the paper is submitted. In the paper write a "Data availability"
-   sentence: "Raw data, videos and logs are available at Zenodo,
-   doi:10.5281/zenodo.XXXXXXX."
-6. Also link the GitHub repo to Zenodo (Zenodo -> GitHub) to get a DOI for the
-   code. This fills the "archived DOI" item in Section 8.
+```
+evidence/
+  README.txt                           which file belongs to which table
+  SHA256SUMS.txt                       checksums of every file
+  E01_Control_Communication/dataset/   latency.csv, p1_events_2026-10-21_1100-1400.log.gz
+  E01_Control_Communication/video/     (empty - say so in README)
+  E04_Deadman_Timer/dataset/           deadman_physical.csv, P1 log lines of the trials
+  E04_Deadman_Timer/video/             e4_trial01.mp4 ... e4_trial20.mp4        <- VIDEO NEEDED
+  E05_Streaming/dataset/               glass2glass.csv, audio_delay.csv, webrtc dumps
+  E05_Streaming/video/                 e5_viewers-1_01.jpg ..., audio files     <- PHOTOS + AUDIO NEEDED
+  E06_Communication_Range/dataset/     network.csv
+  E07_Fault_Recovery/dataset/          faults.csv, fault_watch.csv, p1_events_*.log.gz
+  E08_Resource_Usage/dataset/          resources.csv, p3_events_2026-10-21_2020-2029.log
+  E09_GPS_Evaluation/dataset/          gps_static.csv, telemetry windows, geojson track
+  E16_Media_Isolation/dataset/         latency.csv rows media-off/media-on/p2-frozen, p3_events window
+```
 
-**Privacy:** no faces, names or house numbers of other people in videos or photos.
-Blur them or cut them before upload. Zenodo records cannot be fully deleted
-after publishing.
+Empty `video/` folders: the paper already says "no recording exists, so none is
+provided". Keep them empty and say so in `README.txt`.
+
+**Which experiments need a video or photo?**
+
+| Exp. | Video / photo? | Why |
+|---|---|---|
+| E4 | **YES: 240 fps video, all 20 trials** | The measurement IS the video (frame counting). A reviewer must be able to count again |
+| E5 | **YES: all 60 photos + the audio recordings** | The measurement IS the photo (two clock readings) |
+| E16 | No | CSV + P3 log is the evidence. Optional: a screen recording of the terminal during one freeze |
+| E6 | No (optional photo of each station) | netsweep logs it |
+| E7 | Optional (phone video of one unplug/replug) | The log is the evidence |
+| E1, E8, E9 | No | Machine logs |
+| Not-verified features (Section 5.1 of this file) | Short phone video recommended | The only proof that it worked on real hardware |
+| E15 | Receipts PDF, only if you want to share it | Cost evidence |
+
+### 9.2 How to upload
+
+1. Make the `evidence/` folder OUTSIDE git (videos are big). Fill it as above.
+2. Checksums: `find evidence -type f ! -name SHA256SUMS.txt -exec sha256sum {} + > evidence/SHA256SUMS.txt`
+3. Zip each `E..` folder (Zenodo shows files flat; the zip keeps the layout).
+4. zenodo.org -> New upload -> Resource type **Dataset**. Title, e.g.
+   "Evaluation data and recordings for a teleoperated rescue robot with a
+   firmware-enforced stop". Authors = the paper authors. Licence **CC-BY-4.0**.
+5. Click **"Reserve DOI"** BEFORE publishing. Now you have the DOI
+   (10.5281/zenodo.XXXXXXX) and can write it in the paper. Save as draft.
+6. Publish when you submit the paper. After publishing you can add a new
+   *version*, but you cannot remove the old files. So check privacy first.
+7. Optional: connect the GitHub repo to Zenodo for a code DOI (Section 8 needs one).
+
+**Privacy:** no faces, names or house numbers of other people. Blur or cut them.
 
 ---
 
-## 10. Quick checklist
+## 10. How to put each experiment into the paper
+
+### 10.1 Where the paper lives (3 copies - keep them the same)
+
+1. `research paper/section1..8_*.md` - the working sections. **Edit these first.**
+2. `research paper/RESEARCH PAPER.md` - the combined paper. Copy the same change in.
+3. `q1 paper/manuscript.md` - the IEEE-style version. Same content, but tables
+   have Roman numbers (Table VIII, IX ...). Find the place by searching for the
+   experiment ID (e.g. `E16`).
+
+### 10.2 The 10 places to update when ONE experiment is finished
+
+Do this list for every experiment you finish (E16, E5, E4). Search for the
+experiment ID in each file:
+
+| # | Place | What to change |
+|---|---|---|
+| 1 | Section 4, **Table 4.1** | "Achieved" column: `Not run` -> e.g. `30 per condition, 2026-12-05` |
+| 2 | Section 4.4 **Deviations** | Remove the ID from "Experiments not run"; remove its substitute line (e.g. "E4 ... replaced by the firmware-side interval") |
+| 3 | Section 5, **Table 5.0** | Status `[PENDING MEASUREMENT]` -> `MEASURED`; fill Source (e.g. `deadman_physical.csv, 20 rows`) and Corroboration (e.g. `PANIC lines in p1_events.log`) |
+| 4 | Section 5.x **protocol paragraph** | Remove `[PENDING MEASUREMENT: ...]`. Keep the protocol, but change future to past ("is run" -> "was run"). Add the date, the git commit of the build, and any change you had to make |
+| 5 | Section 5.x **table** | Fill it. In the caption, replace `[PENDING MEASUREMENT]` with `MEASURED.` like the other tables |
+| 6 | Section 5.x **analysis line** | Replace `[PENDING MEASUREMENT: ... analysis to be filled ...]` with a **Result** paragraph (templates below) and a **Limitations** paragraph |
+| 7 | Section 5.x **Supplementary evidence** | "neither the dataset nor the recording exists yet; both will be added" -> "is provided ... under `E04_Deadman_Timer/dataset/` and `.../video/`" |
+| 8 | Section 5.8 **Summary of evidence** | Add one sentence with the main number |
+| 9 | Section 6.1 / **6.3 Limitations** / 6.4 | Delete or rewrite the limitation that is now solved (E4 = item 1, E5 = item 2, E16 = item 3) |
+| 10 | Section 8 **Table 8.1**, Section 8.2, **Abstract**, Section 1 contributions | Add the new number to the RQ it answers (E4 -> RQ1/C1, E16 -> RQ3/C2, E5 -> RQ4/C3). Abstract: one short phrase |
+
+**Rules:**
+- Pass or fail, you report it. **Never change the pass rule** after seeing data.
+- If it fails, the paper already says what happens (each Section 5.x says "if any
+  trial fails, contribution ... stays limited to ..."). Use that sentence.
+- Numbers come from the tools, not by hand:
+  `tools/eval/summarize.py` (n, mean, SD, median, p95 for `deadman_physical.csv`
+  and `glass2glass.csv`) and `tools/eval/section5_stats.py` (95% CI, bootstrap
+  median; it groups `latency.csv` by label, so the E16 labels appear
+  automatically). Save its output to `tools/eval/results/section5_stats.md`.
+- Last step for all: replace every `[XX] (DOI: XXX)` with the Zenodo citation and
+  add a dataset entry to `references.bib`:
+  ```
+  @dataset{sarkar2026evidence,
+    author    = {Sarkar, Chinmoy and Adib, Sadman and Sultana, Sadia},
+    title     = {Evaluation data and recordings for a teleoperated rescue robot},
+    year      = {2026}, publisher = {Zenodo},
+    doi       = {10.5281/zenodo.XXXXXXX}}
+  ```
+  Then add a **Data Availability** statement at the end of the paper (IEEE Access
+  asks for it): "The datasets, logs and recordings behind Section 5 are openly
+  available on Zenodo at doi:10.5281/zenodo.XXXXXXX [@sarkar2026evidence]."
+
+### 10.3 E16 - media isolation -> Section 5.4, Table 5.7e
+
+**Fill Table 5.7e:** one row per condition: N (30), Confirmed (count of `ok=1`
+`motor_stop` rows), median `motor_stop`, 95% bootstrap interval (from
+`section5_stats.py`), difference from the `media-off` median.
+
+**Protocol paragraph:** remove `[PENDING MEASUREMENT: E16.]`. Add: "The test was
+run on <date> on build <git commit>. Each `p2-frozen` freeze held 5 trials and
+lasted at most <x> s; `p3_events.log` shows no P2 restart during any freeze."
+
+**Result (PASS) template:**
+> In all three conditions, 30 of 30 motor commands were confirmed. The median
+> `motor_stop` upper bound was A ms with media off, B ms with one operator media
+> session and C ms with P2 suspended, a difference of at most D ms, inside the
+> 50 ms criterion (Table 5.7e). A stall of the media process therefore neither
+> dropped nor measurably delayed control commands at the resolution of the
+> telemetry path.
+
+**Result (FAIL) template:**
+> In the `p2-frozen` condition, N of 30 commands were confirmed (median X ms,
+> Y ms above `media-off`), which fails the criterion of Table 4.2. Contribution C2
+> is therefore limited to process recovery (Section 5.4) and does not include
+> isolation of control from the media process.
+
+**Limitations (always write):** values are telemetry-quantised upper bounds
+(shifts below about 50 ms cannot be seen); loopback on the Pi, so no Wi-Fi; no
+merged single-process build was compared.
+
+**Other places:** Table 5.0 row E16; Section 4.4 ("Until E16 is run, it claims no
+measured isolation ..." -> delete); 6.3 item 3; Table 8.1 RQ3 add "and a P2 stall
+did not delay control (Table 5.7e)". In the 5.4 "Supplementary evidence (E7, E16)"
+paragraph: E16 "is provided under `E16_Media_Isolation/dataset/`"; no recording.
+
+### 10.4 E5 - video and audio delay -> Section 5.2, Tables 5.4 and 5.4a
+
+**Table 5.4** is per trial (60 rows), which is long. Recommended: in the paper,
+show a summary per condition (`label | N | mean | 95% CI | median | max`) and put
+the 60 rows in the Zenodo dataset. Change the caption to match.
+
+**Table 5.4a:** fill each condition: video delay mean (95% CI), audio delay in
+each direction (median), frame rate, bitrate, packet loss (from the
+`webrtc-internals` dumps).
+
+**Procedure paragraph:** it already describes the clap method for audio. Keep it
+and add what you actually used: stopwatch device and its refresh rate, recorder
+phone, distances (clap to mic, speaker to recorder), and how `wifi-20m` was set up
+(router 20 m away from robot and laptop).
+
+**Result (PASS) template:**
+> In `viewers-1`, the median glass-to-glass video delay was A ms (mean B ms, 95% CI
+> C to D ms, n = 20) and the median audio delay was E ms robot to operator and F ms
+> operator to robot, inside the 500 ms and 400 ms limits of Table 4.2. A second
+> viewer raised the median video delay to G ms; at 20 m it was H ms (Table 5.4a).
+
+**Result (FAIL) template:**
+> The median video delay in `viewers-1` was A ms, above the 500 ms limit. As
+> stated in Section 4.2, contribution C3 is therefore reported with its measured
+> delay and without the claim that the delay supports conversation with a victim.
+
+**Limitations:** clock-photo resolution (screen refresh about 17 ms, exposure),
+sound travel in air (about 3 ms per metre), one room, one router, one session.
+
+**Delete or shorten:** the paragraph "What existing data can and cannot show"
+(the part saying no delay figure is reported), and the sentence "Until E5 is
+measured, the paper makes no quantitative claim about media delay or quality."
+
+**Other places:** Table 5.0 row E5; 4.4 "E5 (streaming): no substitute ..." ->
+delete; 6.3 item 2 (rewrite: only true control latency over Wi-Fi stays
+unmeasured); Table 8.1 RQ4 add the delay numbers; abstract / C3 add "median video
+delay A ms". "Supplementary evidence (E5)": "is provided under
+`E05_Streaming/dataset/` and `E05_Streaming/video/` (60 photographs and the audio
+recordings)".
+
+**Figure (recommended):** one of the 60 photos (stopwatch and video panel in one
+frame). Caption: "Figure X. Example glass-to-glass reading: real clock 12.480 s,
+displayed clock 12.190 s, delay 290 ms." Reviewers like to see the method.
+
+### 10.5 E4 - dead-man physical stop -> Section 5.1, Table 5.3
+
+**Table 5.3:** 20 rows is fine here. Add a summary line under it:
+mean `stop_s`, SD, max, and trials with `panic_seen = 1`.
+
+**Protocol paragraph:** remove `[PENDING MEASUREMENT: ...]`. Add what you really
+did: phone model, **real capture frame rate** (from `ffprobe`), how the "last
+command" moment is visible in the film (beep or flash marker), lighting,
+frame-counting tool (Kinovea or VLC), one video per trial.
+
+**Result (PASS) template:**
+> In 20 of 20 trials at PWM 180, the wheels were stationary within S_max s of the
+> last command (mean S_mean s, SD x s; Table 5.3), below the 2.5 s criterion, and
+> the PANIC DEADMAN line was logged in all 20. The robot travelled a further
+> D_mean cm on average (maximum D_max cm) after the last command. The physical
+> stop is consistent with the firmware-side interval of Table 5.2b (maximum
+> 2042 ms) plus a coast-down of about (S_mean - 2.02) s.
+
+**Result (FAIL) template:**
+> In N of 20 trials the wheels were still moving 2.5 s after the last command
+> (Table 5.3). As stated in Section 4.2, contribution C1 is therefore limited to
+> the time at which drive is removed (2042 ms, Table 5.2b), not the time at which
+> the robot comes to rest.
+
+**Limitations:** one floor surface, one speed (PWM 180), one battery level (write
+the voltage), frame resolution 1/240 s = 4.2 ms plus the marker error.
+
+**Figure (recommended):** 3 still frames from one video with the tape visible.
+Caption: "Figure X. Dead-man stop, trial 7, 240 fps. (a) last command, t = 0;
+(b) t = 1.5 s; (c) wheels at rest, t = 2.08 s, 6 cm travelled."
+
+**Other places:** Table 5.0 E4; Table 4.1; 4.4 "E4 (physical dead-man stop):
+replaced by ..." -> delete; 6.3 item 1 (rewrite: you CAN now claim a measured stop
+time on this floor at PWM 180, but not stopping distance at other speeds or
+surfaces); Table 8.1 RQ1 add "wheels at rest within S_max s in 20 of 20";
+abstract. In "Supplementary evidence (E1, E4)": E4 "is provided under
+`E04_Deadman_Timer/dataset/` and `E04_Deadman_Timer/video/` (20 recordings at
+240 fps)".
+
+### 10.6 PARTIAL experiments - how to update the paper
+
+If you redo one, add the NEW rows with a NEW label and keep the old ones.
+
+| Exp. | Paper place | If you redo it | If you do NOT redo it |
+|---|---|---|---|
+| E1 | 5.1, Tables 5.1-5.2b | Nothing to redo | Keep the "upper bound" wording. Nothing else |
+| E6 | 5.3, Tables 5.5, 5.5a; Table 5.0; 6.3 item 4; 7.1.1 | Add new stations as new rows (N17 ...), add obstacle rows, write the failure distance. Change "usable range is at least 250 m" to "usable range was X m line of sight and Y m through Z walls" | Keep the current "partial" text. It is already correct |
+| E7 | 5.4, Tables 5.7, 5.7a; Table 5.0 | New table "Manual faults, 10 trials each" (F6, F7, F9) with mean/max recovery. F9: remove "invalid", give the reboot result | Keep "run once each" and "F9 invalid". Already correct |
+| E8 | 5.5, Tables 5.8, 5.10; the `[PENDING MEASUREMENT: one further E8 condition ...]` line | Add a `driving+media+aids` row to Table 5.8 and delete the PENDING line. Replace Table 5.10 with the clean 16 kbps run | Change the PENDING line to "The `driving+media+aids` condition was not measured" and add it to 6.3 Limitations |
+| E9 | 5.6, Tables 5.11, 5.11a | New row "6 decimals, known reference" in Table 5.11; give the error from the reference point, not only from the centroid | Keep "resolution-limited (about 11 m)". Already correct |
+| E15 | 5.7, Table 5.12; 6.3 item 6 | Add the 3 missing parts as rows; write "USD at 1 USD = N BDT, <source>, <date>" | Keep "indicative rate" and "not itemised" |
+
+### 10.7 SIMULATED / software-only items - how to mention them
+
+They are already in the paper with the right label. Never call them measurements.
+- Keep the label in the caption: `SIMULATED` (Tables 5.3b, 5.3c),
+  `SOFTWARE-TEST` (Tables 5.3a, 5.3d).
+- Fix the unit-test count: recount (`pytest -q`) and update Table 5.3a and every
+  place that says 121 or 146 (search for "121" and "146").
+- Telemetry timeout 3000 ms: write "design constant, not measured". Never put it
+  in a results table.
+- Lockout rule (5 failures in 300 s): write "verified by software test only".
+
+### 10.8 NOT VERIFIED features - how to mention them
+
+The paper does not evaluate these (Section 6.3 item 7 already says so). Two choices:
+
+- **Option 1 (recommended, safest):** keep them out of Section 5. Keep 6.3 item 7.
+  Mention them only in Section 3.11 (design) and Section 7.5.2 (future work).
+- **Option 2 (only if you do the checks in Section 5.1 of this file):** add ONE
+  short table, in Section 5 or an appendix, called "Functional checks on the
+  assembled robot (pass/fail, not a performance measurement)": one row per
+  feature with date, device, result and the Zenodo video file name. Then change
+  6.3 item 7 to "... were checked to work on the assembled robot (Table X), but
+  their performance was not measured." Never claim accuracy or usability from it.
+  Put the videos under a new Zenodo folder `Functional_Checks/video/`.
+
+### 10.9 REMOVED experiments (E2, E3, E10-E14, E17, E18, ablations)
+
+- Never put a number from them in Section 5. Never cite the old CSVs
+  (`estop*.csv`, `ultrasonic.csv`, `dht11_environmental.csv`, `gas.csv`,
+  `bench_motor.csv`).
+- They may appear only in Section 4.4 (one line: removed, and why) and in
+  Section 7 future work (7.6.4 operator usability, 7.5.2 victim assistance,
+  7.2.2 fault injection). The current paper already does this; just search for
+  "E13", "E17", "E18" and "SUS" to make sure no old number is left.
+- Do not upload their data to Zenodo (it would look like evidence).
+
+---
+
+## 11. Quick checklist
 
 Must run for the paper:
 - [ ] E16 - media isolation, 3 conditions x 30
